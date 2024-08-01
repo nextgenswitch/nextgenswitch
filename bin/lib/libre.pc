@@ -1,0 +1,12 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=/usr/local/lib
+includedir=${prefix}/include/re
+
+Name: libre
+Description: Generic library for real-time communications with async IO support
+Version: 2.4.0
+URL: https://github.com/baresip/re
+Libs: -L${libdir} -lre
+Libs.private: -L${libdir} -lre -ldl -lssl -lcrypto -lz -lpthread
+Cflags: -I${includedir}
