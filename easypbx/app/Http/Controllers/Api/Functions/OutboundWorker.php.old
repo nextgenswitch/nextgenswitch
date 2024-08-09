@@ -1,0 +1,179 @@
+<?php
+
+namespace App\Http\Controllers\Api\Functions;
+use App\Jobs\OutboundJob;
+use App\Http\Controllers\Api\FunctionCall;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
+use App\Http\Controllers\Api\VoiceResponse;
+use App\Models\OutboundRoute;
+use App\Models\CallHistory;
+use App\Models\Call;
+use App\Enums\CallStatusEnum;
+use Carbon\Carbon;
+
+
+class OutboundWorker{
+    private $id;
+    private $params;
+    
+
+    function __construct($id,$params)
+    {
+        $this->id = $id;
+        $this->params = $params;
+    }
+
+    public static function hangup($call_id){
+        $response = new VoiceResponse();
+        $response->hangup();
+        FunctionCall::modify_call($call_id,['responseXml'=>$response->xml()]);
+    }
+    public static function modifyoutbound($outbound_route,$call_id){
+        Cache::forget("OutboundDialStatus:" . $call_id);
+        Cache::forget("OutboundCall:" . $call_id);
+        Cache::forget("OutboundDial:" . $call_id);
+        Cache::forget("OutboundCallStatus:" . $call_id);
+
+        $response = new VoiceResponse();
+        $response->redirect(route('api.func_call',['func_id'=>$outbound_route->function_id,'dest_id'=>$outbound_route->destination_id]));
+        FunctionCall::modify_call($call_id,['responseXml'=>$response->xml()]);
+       
+    }
+
+
+    function send_call($outbound_route,$parent_call_id){
+        if(Cache::get("OutboundCallStatus:" . $parent_call_id,false) == false) return;
+
+        $extensions = Cache::pull("OutboundDial:" . $parent_call_id,[]);
+        $call_sent = false;
+        while(true){
+            $extension = array_shift($extensions);
+            if(!$extension) break;
+            Log::debug("call to send");
+            Log::debug($extension);     
+            $rjson = FunctionCall::send_call($extension);
+            Log::Info("Sent new trunk call ");
+            Log::debug($rjson);
+            if(isset($rjson['call_id'])) Call::where('id',$rjson['call_id'])->update(['parent_call_id'=>$parent_call_id]);
+            if(isset($rjson['call_id']) && $rjson['status-code'] < CallStatusEnum::Disconnected->value){
+                Cache::put("OutboundCall:" . $parent_call_id,$rjson['call_id'],3600);
+                //Log::Info("Sent new trunk call " . $rjson['call_id']);
+                $call_sent = true;
+                break;
+            }
+        }
+
+        if(sizeof($extensions) > 0)
+            Cache::put("OutboundDial:" . $parent_call_id,$extensions,3600);
+
+        if($call_sent == false){
+            self::modifyoutbound($outbound_route,$parent_call_id);
+        }   
+    }
+
+
+    function process_calls($response){
+        $outbound_route = OutboundRoute::find($this->id);
+        //Log::debug("On call process");
+        //Log::debug($this->params);
+        if(isset($this->params['action'])){
+            Log::info("Trunk call disconnected . parent call id " . $this->params['parent_call_id'] );
+            Log::debug($this->params);    
+            $data = request()->input();
+            CallHistory::create(
+                ['organization_id'=>$outbound_route->organization_id,'call_id'=>$data['bridge_call_id'],'bridge_call_id'=>$data['call_id'],'duration'=>$data['duration'],'status'=>CallStatusEnum::Disconnected,'record_file'=>isset($data['record_file'])?$data['record_file']:""]
+            );
+            self::modifyoutbound($outbound_route,$this->params['parent_call_id']); 
+           
+        }else if(isset($this->params['status'])){
+            $calldata = request()->input();
+            Log::info("status callback with parent call " . $this->params['parent_call_id']);   
+            Log::info(request()->input()); 
+            if((int) $calldata['status-code'] > (int) CallStatusEnum::Disconnected->value){
+                Log::info("sending call again");
+               $this->send_call($outbound_route,$this->params['parent_call_id']);
+            }else
+               Log::info("not sending call again " . (int) $calldata['status-code'] . " " . (int) CallStatusEnum::Disconnected->value); 
+
+        }else if(isset($this->params['join'])){
+             Log::info("Joining trunk with parent call " . $this->params['parent_call_id']);   
+             Cache::put("OutboundDialStatus:" . $this->params['parent_call_id'],true,3600);          
+             $response->bridge($this->params['parent_call_id']);
+        }else{
+            //Log::info("Sending trunk response xml");
+            $opt = [
+                'action'=>route('api.func_call',['func_id'=>'outbound_route','dest_id'=>$this->id,'verify'=>true,'parent_call_id'=>$this->params['parent_call_id'],'queue'=>true,'action'=>true])
+            ];
+            if($outbound_route->record) $opt['record'] = 'record-from-answer';
+            $dial = $response->dial('',$opt);
+            $dial->queue("outbound_" . $this->id,['url'=>route('api.func_call',['func_id'=>'outbound_route','dest_id'=>$this->id,'queue'=>true,'join'=>true,'parent_call_id'=>$this->params['parent_call_id']])]);
+        }
+
+    }
+
+
+
+    function process($response){
+        //Log::debug("On outbound process");
+        //Log::debug($this->params);
+        $dest = $this->params['dest'];
+        
+        if(empty($dest))  return;
+        $outbound_route = OutboundRoute::find($this->id);
+        $call_to_send = [];
+        if(isset($this->params['join'])){  
+            Log::debug("On enqueue join call id " . $this->params['call_id']);    
+            Cache::put("OutboundCallStatus:" . $this->params['call_id'],true,3600);     
+            foreach($outbound_route->trunks as $trunk)            
+                $call_to_send[] = ['statusCallback'=>route('api.func_call',['func_id'=>'outbound_route','dest_id'=>$this->id,'verify'=>true,'parent_call_id'=>$this->params['call_id'],'queue'=>true,'status'=>true]),'to'=>$dest,'channel_id'=>$trunk->sip_user_id,"organization_id"=>$outbound_route->organization_id,"from"=>$this->params['caller_id'],
+                'response'=>route('api.func_call',['func_id'=>'outbound_route','dest_id'=>$this->id,'verify'=>true,'parent_call_id'=>$this->params['call_id'],'queue'=>true])];
+            
+            Log::debug("trunk list to try");
+            Log::debug($call_to_send);
+            if(sizeof($call_to_send) > 0){ 
+                Cache::put("OutboundDial:" . $this->params['call_id'],$call_to_send,3600);
+                //self::handle($this->params['call_id'],$this->id);
+                $this->send_call($outbound_route,$this->params['call_id']);
+            }else
+                self::modifyoutbound($outbound_route,$this->params['call_id']); 
+     
+        
+        }elseif(isset($this->params['enqueue_result'])){
+            
+            $dial_call_id = Cache::pull("OutboundCall:" . $this->params['call_id'],"");
+           
+            Log::debug("Outbound call disconnected " . $dial_call_id);
+           
+            if(intval(request()->input('dial_status')) == 0){
+                
+                $data = request()->input();
+               
+                CallHistory::create(
+                    ['organization_id'=>$outbound_route->organization_id,'call_id'=>$data['call_id'],'bridge_call_id'=>"",'status'=>CallStatusEnum::Failed]
+                );
+            }
+
+            if(!empty($dial_call_id)){
+                self::hangup($dial_call_id);
+            }
+
+           
+
+                  
+        }else{
+
+            Log::debug("Got outbound request" );
+            $caller_id = isset($this->params['caller_id'])?$this->params['caller_id']:"easypbx";
+            $response->enqueue("outbound_" . $this->id,['answerOnBridge'=>true,
+            'action'=>route('api.func_call',['func_id'=>'outbound_route','dest_id'=>$this->id,'enqueue_result'=>true,'verify'=>true,'dest'=>$dest,'caller_id'=>$caller_id]),
+            'waitUrl'=>route('api.func_call',['func_id'=>'outbound_route','dest_id'=>$this->id,'join'=>true,'verify'=>true,'dest'=>$dest,'caller_id'=>$caller_id])
+            ]);
+
+        }
+    }
+
+
+
+}

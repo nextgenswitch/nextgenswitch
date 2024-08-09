@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Builder</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <style>
+        .form-element {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Form Builder</h1>
+        <div id="buttons">
+            <button class="btn btn-primary" data-type="text">Add Text</button>
+            <button class="btn btn-primary" data-type="email">Add Email</button>
+            <button class="btn btn-primary" data-type="number">Add Number</button>
+            <button class="btn btn-primary" data-type="textarea">Add Textarea</button>
+            <button class="btn btn-primary" data-type="select">Add Select</button>
+        </div>
+        <div id="form-elements"></div>
+        <h2>Generated JSON</h2>
+        <pre id="generated-json"></pre>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="configModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Configure Field</h4>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="config-form">
+                        <div class="form-group">
+                            <label for="label">Label:</label>
+                            <input type="text" class="form-control" id="label" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="name">Name:</label>
+                            <input type="text" class="form-control" id="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="placeholder">Placeholder:</label>
+                            <input type="text" class="form-control" id="placeholder">
+                        </div>
+                        <div class="form-group select-options d-none">
+                            <label for="options">Options (comma separated):</label>
+                            <input type="text" class="form-control" id="options">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+    var formElements = [];
+    var currentType = '';
+
+    $('#buttons button').click(function() {
+        currentType = $(this).data('type');
+        if (currentType === 'select') {
+            $('.select-options').removeClass('d-none');
+        } else {
+            $('.select-options').addClass('d-none');
+        }
+        $('#configModal').modal('show');
+    });
+
+    $('#config-form').submit(function(event) {
+        event.preventDefault();
+        var label = $('#label').val();
+        var name = $('#name').val();
+        var placeholder = $('#placeholder').val();
+        var options = $('#options').val().split(',').map(function(option) {
+            var trimmed = option.trim();
+            return { value: trimmed.toLowerCase().replace(/\s+/g, '_'), text: trimmed };
+        });
+
+        var newElement = {
+            type: currentType,
+            label: label,
+            name: name,
+            placeholder: placeholder
+        };
+
+        if (currentType === 'select') {
+            newElement.options = options;
+        }
+
+        formElements.push(newElement);
+        updateForm();
+        updateJSON();
+        $('#configModal').modal('hide');
+        $('#config-form')[0].reset();
+    });
+
+    function updateForm() {
+        var container = $('#form-elements');
+        container.empty();
+        formElements.forEach(function(element, index) {
+            var formGroup = $('<div class="form-group form-element"></div>');
+            var label = $('<label></label>').attr('for', element.name).text(element.label);
+            var input;
+
+            switch(element.type) {
+                case 'text':
+                case 'email':
+                case 'number':
+                    input = $('<input>')
+                        .attr('type', element.type)
+                        .attr('name', element.name)
+                        .attr('placeholder', element.placeholder)
+                        .addClass('form-control');
+                    break;
+                case 'textarea':
+                    input = $('<textarea></textarea>')
+                        .attr('name', element.name)
+                        .attr('placeholder', element.placeholder)
+                        .addClass('form-control');
+                    break;
+                case 'select':
+                    input = $('<select></select>')
+                        .attr('name', element.name)
+                        .addClass('form-control');
+                    element.options.forEach(function(option) {
+                        var opt = $('<option></option>')
+                            .attr('value', option.value)
+                            .text(option.text);
+                        input.append(opt);
+                    });
+                    break;
+                default:
+                    console.log('Unsupported input type: ' + element.type);
+            }
+
+            formGroup.append(label).append(input);
+            container.append(formGroup);
+        });
+    }
+
+    function updateJSON() {
+        var jsonContainer = $('#generated-json');
+        jsonContainer.text(JSON.stringify(formElements, null, 4));
+    }
+});
+
+    </script>
+</body>
+</html>

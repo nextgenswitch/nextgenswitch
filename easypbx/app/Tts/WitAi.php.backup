@@ -1,0 +1,67 @@
+<?php 
+
+namespace App\Tts;
+
+
+class WitAi{
+
+	public static function speechToText($audioPath){
+		if(is_dir($audioPath) || !file_exists($audioPath))
+            return false;
+        $request = curl_init('https://api.wit.ai/speech?v=' . config('witai.api_version'));
+
+        $headers[] = 'Authorization: Bearer ' . config('witai.token');
+        $headers[] = 'Content-Type: audio/wav';
+        $headers[] = 'Accept: application/vnd.wit.' . config('witai.api_version') .'+json';
+
+        curl_setopt($request, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($request, CURLOPT_POSTFIELDS, file_get_contents($audioPath));
+        curl_setopt($request, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($request, CURLOPT_RETURNTRANSFER, true);
+
+        $response = curl_exec($request);
+        if (curl_errno($request)) {
+            $error_msg = curl_error($request);
+            dd($error_msg);
+        }
+       // echo $response;
+        $ret =  json_decode($response, true);
+        //dd($ret);
+        if(isset($ret['text']))
+            return ['text'=>$ret['text'],'confidence'=>isset($ret['speech']['confidence'])?(string) $ret['speech']['confidence']:""];
+        return false;		
+	}
+
+    public static function textToSpeech($text,$model = "Rebecca"){
+
+        $storage_path = storage_path(config('enums.tts_storage_path') . 'witai');
+        @mkdir($storage_path,0777,true);
+        $filename = md5($text) . ".wav";
+        $full_path = $storage_path . '/' . $filename;
+        if(file_exists($full_path))
+           return $full_path;
+
+        $request = curl_init('https://api.wit.ai/synthesize');
+
+        $headers[] = 'Authorization: Bearer ' . config('witai.token');
+        $headers[] = 'Accept: audio/wav';
+        $headers[] = 'Content-Type: application/json';
+        $fp = fopen ($full_path, 'w+');
+        curl_setopt($request, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($request, CURLOPT_POSTFIELDS, '{"q": "'.  $text  .'", "voice": "'. $model .'","style":"soft"}');
+        curl_setopt($request, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($request, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($request, CURLOPT_FILE, $fp); 
+        curl_setopt($request, CURLOPT_FOLLOWLOCATION, true);
+        
+        
+        $response = curl_exec($request);
+        fclose($fp);
+        //file_put_contents($full_path, $response);
+        return $full_path;
+      
+    }
+
+
+
+}

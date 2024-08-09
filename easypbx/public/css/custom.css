@@ -1,0 +1,20 @@
+.text-required{
+    font-size: 18px;
+    color: rgb(247, 28, 28);
+  }
+
+#dial_input_form{
+    /* border:1px solid red; */
+    position: relative;
+}
+
+#dialer_ajax_content{
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+#forwardGroup{
+    position: absolute;
+    top: -44px !important;
+    right: 0px !important;
+    width: 185px !important;
+}
