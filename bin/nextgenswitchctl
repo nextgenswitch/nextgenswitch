@@ -25,7 +25,12 @@ startswitch)
    export LD_LIBRARY_PATH=$BIN_PATH/lib:${LD_LIBRARY_PATH}
    cd $BIN_PATH
    ./nextgenswitch &> "/dev/null" & echo $!>$BIN_PATH/pid/nextgenswitch.pid
-   echo "$BIN is starting"
+   echo $BIN started, pid=`cat $BIN_PATH/pid/nextgenswitch.pid`
+   ;;   
+startconsole)
+   export LD_LIBRARY_PATH=$BIN_PATH/lib:${LD_LIBRARY_PATH}
+   cd $BIN_PATH
+   ./nextgenswitch
    ;;   
 firewall)
    ipset create nextgenswitch_temp_block hash:ip timeout 0
@@ -95,7 +100,7 @@ status)
    fi
    ;;
 *)
-   echo "Usage: $0 {start|stop|status|restart}"
+   echo "Usage: $0 {start|stop|status|restart|startconsole}"
 esac
 
 exit 0 

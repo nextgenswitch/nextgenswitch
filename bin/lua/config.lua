@@ -1,4 +1,4 @@
-SERVER_API_URL = "http://172.17.0.1:82/api/switch"
+SERVER_API_URL = "http://127.0.0.1/api/switch"
 API_USERNAME = "admin"
 API_PASSOWRD = "admin"
 USE_CURL = true
