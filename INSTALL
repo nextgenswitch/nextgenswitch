@@ -48,6 +48,7 @@ cd /usr/infosoftbd/nextgenswitch
 yes | rm lua/config.lua 
 cp lua/config.lua.sample lua/config.lua
 mkdir logs media pid
+ln -s /var/www/html/easypbx/storage/app/public/records records
 cd $cwd
 
 

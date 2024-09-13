@@ -33,10 +33,7 @@ startconsole)
    ./nextgenswitch
    ;;   
 firewall)
-   iptables-restore < /var/www/html/easypbx/storage/iptables-rules
    ipset create nextgenswitch_temp_block hash:ip timeout 0
-   iptables -I INPUT 1 -m set -j DROP  --match-set nextgenswitch_temp_block src
-   iptables -I FORWARD 1 -m set -j DROP  --match-set nextgenswitch_temp_block src
    trim() { echo "$1" | perl -p -e 's/^\s+|\s+$//g'; }
    while true; do
    input="$BIN_PATH/logs/temp_block.csv"
