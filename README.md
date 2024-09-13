@@ -18,5 +18,6 @@ Multi-Tenant Virtual PBX , AI BOT, Call Center , Campaign and Survey solution.
 > SIP  Domain: demo.nextgenswitch.com \
 > SIP Port: 5060 (UDP + TCP) , 5061 (TLS)
 
-Documentation can found on  [NextGenSwitch Docs](https://nextgenswitch.com/docs).
+Documentation can found on  [NextGenSwitch Docs](https://nextgenswitch.com/docs).\
+For plan and pricing  [NextGenSwitch Pricing](https://nextgenswitch.com/plans-and-pricing/).
 
