@@ -131,12 +131,12 @@ if(curaction and curaction.verb == "record") then
         local filename = jsondata.rec_path
         filename = filename:match("(.+)%..+$")
         
-        local soxcmd =  "sox " .. filename .. ".wav -n noiseprof " .. filename .. "_noise.prof"
+       --[[  local soxcmd =  "sox " .. filename .. ".wav -n noiseprof " .. filename .. "_noise.prof"
         os.execute(soxcmd)
         
         soxcmd =  "sox " .. filename .. ".wav " ..  filename .. "_clean.wav noisered " ..   filename .. "_noise.prof 0.21"
-        os.execute(soxcmd)
-        jsondata.voice = filename .. "_clean.wav"
+        os.execute(soxcmd) ]]
+        jsondata.voice = filename .. ".wav"
         if(curaction.transcribe == true) then
             --local err,resp = curl_post(SERVER_API_URL .. "/speech_to_text",json.encode(jsondata))
             local err,resp = capture.agi("/speech_to_text",json.encode(jsondata))
@@ -162,7 +162,7 @@ if(curaction and curaction.verb == "record") then
         soxcmd =  "lame -V2 " .. filename .. ".wav " ..  filename .. ".mp3"
         os.execute(soxcmd)
         jsondata.record_file = filename .. ".mp3"
-        os.execute("rm -f " .. filename .. ".wav " .. filename .. "_clean.wav")
+        os.execute("rm -f "  .. filename .. "_clean.wav")
     
         
         
