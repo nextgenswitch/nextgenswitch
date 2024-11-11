@@ -102,6 +102,17 @@ status)
       exit 1
    fi
    ;;
+ update)
+   mkdir updates
+   rm -fr updates/*
+   cd updates/
+   wget https://github.com/nextgenswitch/nextgenswitch/archive/refs/heads/main.zip
+   unzip main.zip
+   rsync -azvh --exclude='bin/lua/config.lua' --exclude='bin/records' nextgenswitch-main/bin/ ../
+   cd ..
+   rm -fr updates
+   echo update completed
+   ;;   
 *)
    echo "Usage: $0 {start|stop|status|restart|startconsole}"
 esac
