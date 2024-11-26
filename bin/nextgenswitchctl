@@ -31,7 +31,12 @@ startconsole)
    export LD_LIBRARY_PATH=$BIN_PATH/lib:${LD_LIBRARY_PATH}
    cd $BIN_PATH
    ./nextgenswitch
-   ;;   
+   ;;  
+tun_service)
+   export LD_LIBRARY_PATH=$BIN_PATH/lib:${LD_LIBRARY_PATH}
+   cd $BIN_PATH
+   ./easytun -e $2 -i $3 -d
+   ;;     
 firewall)
    iptables-restore < /var/www/html/easypbx/storage/iptables-rules
    ipset create nextgenswitch_temp_block hash:ip timeout 0
@@ -102,7 +107,7 @@ status)
       exit 1
    fi
    ;;
- update)
+update)
    mkdir updates
    rm -fr updates/*
    cd updates/
