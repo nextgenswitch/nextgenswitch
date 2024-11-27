@@ -24,7 +24,7 @@ class MailProfilesController extends Controller
         $perPage = $request->get('per_page') ?: 10;
         $filter = $request->get('filter') ?: '';
         $sort = $request->get('sort') ?: '';
-        $mailProfile = MailProfile::query();
+        $mailProfile = MailProfile::where('organization_id', auth()->user()->organization_id);
         if(!empty($q))  $mailProfile->where('name', 'LIKE', '%' . $q . '%');
 
         if(!empty($filter)){

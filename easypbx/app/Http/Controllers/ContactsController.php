@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\ContactGroup;
 use App\Models\Func;
+use App\Http\Controllers\Api\FunctionCall;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,7 +28,7 @@ class ContactsController extends Controller {
         $perPage = $request->get( 'per_page' ) ?: 10;
         $filter  = $request->get( 'filter' ) ?: '';
         $sort    = $request->get( 'sort' ) ?: '';
-        $contact = Contact::where( 'organization_id', '=', auth()->user()->organization_id );
+        $contact = Contact::where( 'organization_id', '=', auth()->user()->organization_id )->orderBy('id', 'desc');
 
         if (  ! empty( $q ) ) {
             $contact->where( 'tel_no', 'LIKE', '%' . $q . '%' );
@@ -55,12 +56,7 @@ class ContactsController extends Controller {
             $contact->orderBy( 'created_at', 'DESC' );
         }
 
-        $contact_groups = ContactGroup::where( 'organization_id', '=', auth()->user()->organization_id )->pluck( 'name', 'id' )->all();
-
-        $contacts = $contact->paginate( $perPage );
-
-        $contacts->appends( ['sort' => $sort, 'filter' => $filter, 'q' => $q, 'per_page' => $perPage] );
-
+       
         if (  ! empty( $request->get( 'csv' ) ) ) {
 
             $fileName = 'contacts.csv';
@@ -73,7 +69,7 @@ class ContactsController extends Controller {
                 "Expires"             => "0",
             ];
 
-            $columns = ['tel_no', 'name', 'contact_group']; // specify columns if need
+            $columns = ['tel_no', 'first_name', 'last_name', 'email', 'gender', 'address', 'city', 'state', 'post_code', 'country', 'notes']; // specify columns if need
 
             $callback = function () use ( $contacts, $columns ) {
                 $contact_groups = ContactGroup::where( 'organization_id', '=', auth()->user()->organization_id )->pluck( 'name', 'id' )->all();
@@ -115,6 +111,13 @@ class ContactsController extends Controller {
             return response()->stream( $callback, 200, $headers );
         }
 
+        $contact_groups = ContactGroup::where( 'organization_id', '=', auth()->user()->organization_id )->pluck( 'name', 'id' )->all();
+
+        $contacts = $contact->paginate( $perPage );
+
+        $contacts->appends( ['sort' => $sort, 'filter' => $filter, 'q' => $q, 'per_page' => $perPage] );
+
+
         $destinations = [];
         $functions    = Func::getFuncList();
 
@@ -152,9 +155,49 @@ class ContactsController extends Controller {
      */
     public function store( Request $request ) {
 
-        $data                    = $this->getData( $request );
-        $data['organization_id'] = auth()->user()->organization_id;
-        Contact::create( $data );
+        $data = $this->getData( $request );
+        
+        $contact = Contact::where('tel_no', $data['tel_no'])->where('organization_id', auth()->user()->organization_id)->first();
+
+        $contactGroups = $request->input('contact_groups');
+        
+        foreach( $contactGroups as  $k=>$contactGroup){
+            if(!is_numeric($contactGroup)){
+
+                $cgroup = ContactGroup::where('name', $contactGroup)->where('organization_id', auth()->user()->organization_id)->first();
+            
+                if($cgroup){
+                    $contactGroups[$k] = $cgroup->id;
+                }
+                else{
+                    $cgroup = ContactGroup::create([
+                        'name' => $contactGroup,
+                        'organization_id' => auth()->user()->organization_id
+                    ]);
+                    
+                    if($cgroup){
+                        $contactGroups[$k] = $cgroup->id;
+                    }
+                }
+
+            }
+        }
+        
+        if($contact){
+
+            if($request->has('contact_groups') && is_array($request->input('contact_groups'))){
+                $data['contact_groups'] = array_merge($contact->contact_groups, $contactGroups);
+            }
+            
+            $contact->update($data);
+
+        }else{
+            $data['organization_id'] = auth()->user()->organization_id;
+            $data['contact_groups'] = $contactGroups;
+            Contact::create( $data );
+        }
+        
+        
 
         if ( $request->ajax() ) {
             return response()->json( ['success' => true] );
@@ -162,27 +205,187 @@ class ContactsController extends Controller {
 
         return redirect()->route( 'contacts.contact.index' )
             ->with( 'success_message', 'Contact was successfully added.' );
+            
 
     }
 
     public function upload( Request $request ) {
-
+        
+        $contacts = array();
         $rules = [
-            'file' => 'required|mimes:csv,txt|max:40960',
+            'file' => 'required|file|mimes:csv,txt|max:40960',
+            'contact_groups' => 'required_without:contact_group',
+           // 'contact_group' => 'required_without:contact_groups'
         ];
+        
+        $request->validate($rules);
+        $n = 0;
+       
 
-        $data = $request->validate( $rules );
+       /*  if( $request->has('contact_group') && !empty($request->contact_group)){
+            
+            $cgroup = ContactGroup::where('name', $request->input('contact_group'))->where('organization_id', auth()->user()->organization_id)->first();
+            
+            if($cgroup){
+                $newCGroup = $cgroup->id;
+            }
+            else{
+                $cgroup = ContactGroup::create([
+                    'name' => $request->input('contact_group'),
+                    'organization_id' => auth()->user()->organization_id
+                ]);
+                
+                if($cgroup){
+                    $newCGroup = $cgroup->id;
+                }
+            }
+            
+        } */
 
-        if ( $request->file() ) {
+        $contactGroups = $request->input('contact_groups');
+        foreach( $contactGroups as  $k=>$contactGroup){
+            if(!is_numeric($contactGroup)){
 
-            $path   = $request->file( 'file' )->getRealPath();
-            $data   = array_map( 'str_getcsv', file( $path ) );
-            $ccodes = config( 'enums.tel_codes' );
-            krsort( $ccodes );
+                $cgroup = ContactGroup::where('name', $contactGroup)->where('organization_id', auth()->user()->organization_id)->first();
+            
+                if($cgroup){
+                    $contactGroups[$k] = $cgroup->id;
+                }
+                else{
+                    $cgroup = ContactGroup::create([
+                        'name' => $contactGroup,
+                        'organization_id' => auth()->user()->organization_id
+                    ]);
+                    
+                    if($cgroup){
+                        $contactGroups[$k] = $cgroup->id;
+                    }
+                }
 
-            $n              = 0;
+            }
+        }
+
+        // dd($contactGroups);
+        
+        if ($request->file()) {
+            $path = $request->file('file')->getRealPath();
+
+            if (($handle = fopen($path, "r")) !== FALSE) {
+
+
+                if($request->file('file')->getClientOriginalExtension() == 'txt'){
+
+                    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+                    foreach ($lines as $line) {
+                        $row = array();
+
+                        $row['organization_id'] = auth()->user()->organization_id;
+
+                        $lineArr = explode(',', $line);
+                        
+                        if(count($lineArr) > 0){
+                            $row['tel_no'] = $lineArr[0];
+
+                            if( count($lineArr) > 1) $row['first_name'] = $lineArr[1];
+                            if( count($lineArr) > 2) $row['last_name']  = $lineArr[2];
+                            if( count($lineArr) > 3) $row['email'] = $lineArr[3];
+                            if( count($lineArr) > 4) $row['gender'] = $lineArr[4];
+                            if( count($lineArr) > 5) $row['address'] = $lineArr[5];
+                            if( count($lineArr) > 6) $row['city'] = $lineArr[6];
+                            if( count($lineArr) > 7) $row['state'] = $lineArr[7];
+                            if( count($lineArr) > 8) $row['post_code'] = $lineArr[8];
+                            if( count($lineArr) > 9) $row['country'] = $lineArr[9];
+                            if( count($lineArr) > 10) $row['notes'] = $lineArr[10];
+
+
+                            $contact = Contact::where('tel_no', $row['tel_no'])->where('organization_id', auth()->user()->organization_id)->first();
+
+                            if($contact){
+                                $newContactGroups = array_unique(array_merge($contact->contact_groups, $contactGroups));
+                                $contact->update(['contact_groups' => $newContactGroups]);
+
+                            }else{
+                                $row['contact_groups'] = implode(',', $contactGroups);
+                                unset($row['contact_group']);
+                                $contacts[] = $row;
+                            }  
+
+                        }
+
+                    }
+                    
+                }
+
+                
+                if($request->file('file')->getClientOriginalExtension() == 'csv'){
+                    $headers = fgetcsv($handle, 1000, ",");
+                
+                    while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                        $row = array_combine($headers, $data);
+                        if(array_key_exists('tel_no', $row) && !empty($row['tel_no'])){
+                            $row['organization_id'] = auth()->user()->organization_id;
+
+                        // $contactGroups =  $newCGroup ? [$newCGroup] : $request->input('contact_groups');
+
+                            $contact = Contact::where('tel_no', $row['tel_no'])->where('organization_id', auth()->user()->organization_id)->first();
+
+                            if($contact){
+                                $newContactGroups = array_unique(array_merge($contact->contact_groups, $contactGroups));
+                                $contact->update(['contact_groups' => $newContactGroups]);
+
+                            }else{
+                                $row['contact_groups'] = implode(',', $contactGroups);
+                                unset($row['contact_group']);
+                                $contacts[] = $row;
+                            }                    
+                        }
+                    }
+
+                    fclose($handle);
+                }
+                
+
+                $upload = Contact::insert($contacts);
+
+                if($upload){
+                    $n = count($contacts);
+                }
+                
+            }        
+
+        }
+
+        return redirect()->route( 'contacts.contact.index' )
+            ->with( 'success_message', $n . ' New contacts successfully uploaded.' );
+
+        
+        
+        
+        // $rules = [
+        //     'file' => 'required|file|mimes:csv|max:40960',
+        //     'contact_groups' => 'required'
+        // ];
+
+        // $data = $request->validate( $rules );
+
+        // if ( $request->file() ) {
+
+        //     $path   = $request->file( 'file' )->getRealPath();
+        //     $data   = array_map( 'str_getcsv', file( $path ) );
+            
+        //     $n = 0;
+
+        //     foreach($data as $row){
+        //         print_r($row);
+        //     }
+
+        //     die();
+
+            
+            /*
             $contact_groups = array_flip( ContactGroup::where( 'organization_id', '=', auth()->user()->organization_id )->pluck( 'name', 'id' )->all() );
-
+            
             foreach ( $data as $c ) {
 
                 if (  ! empty( $c[0] ) ) {
@@ -265,10 +468,11 @@ class ContactsController extends Controller {
 
             }
 
-        }
+            */
 
-        return redirect()->route( 'contacts.contact.index' )
-            ->with( 'success_message', $n . ' Contacts successfully uploaded.' );
+        // }
+
+        
 
     }
 
@@ -314,6 +518,31 @@ class ContactsController extends Controller {
         }
 
         $contact = Contact::findOrFail( $id );
+        
+        $contactGroups = $request->input('contact_groups');
+        foreach( $contactGroups as  $k=>$contactGroup){
+            if(!is_numeric($contactGroup)){
+
+                $cgroup = ContactGroup::where('name', $contactGroup)->where('organization_id', auth()->user()->organization_id)->first();
+            
+                if($cgroup){
+                    $contactGroups[$k] = $cgroup->id;
+                }
+                else{
+                    $cgroup = ContactGroup::create([
+                        'name' => $contactGroup,
+                        'organization_id' => auth()->user()->organization_id
+                    ]);
+                    
+                    if($cgroup){
+                        $contactGroups[$k] = $cgroup->id;
+                    }
+                }
+
+            }
+        }
+
+        $data['contact_groups'] = $contactGroups;
         $contact->update( $data );
 
         if ( $request->ajax() ) {
@@ -429,6 +658,32 @@ class ContactsController extends Controller {
 
     }
 
+
+
+    public function sendSms(Request $request){
+        $to = $request->input('to');
+        $body = $request->input('body');
+
+        if(!empty($to) && !empty($body)){
+            $res = FunctionCall::send_sms([
+                'to' => $to,
+                'body' => $body,
+            ]);
+
+            
+            if ( $request->ajax() ) {
+                return response()->json( $res );
+            }
+            else{
+                return back()->with( 'success_message', 'SMS sent successfully.' );
+            }
+
+        }
+
+        return back()->withInput()->withErrors( ['unexpected_error' => 'Unexpected error occurred while trying to process your request.'] );
+    }
+
+
     /**
      * Get the request's data from the request.
      *
@@ -443,7 +698,8 @@ class ContactsController extends Controller {
             'email'          => 'nullable|email',
             'gender'         => 'nullable|string',
             // 'cc'             => 'nullable|string|min:1|max:7',
-            'tel_no'         => 'required|regex:/[0-9]/|not_regex:/[a-z]/|min:4|unique:contacts,tel_no',
+            // 'tel_no'         => 'required|regex:/[0-9]/|not_regex:/[a-z]/|min:4|unique:contacts,tel_no',
+            'tel_no'         => 'required|regex:/[0-9]/|not_regex:/[a-z]/',
             'contact_groups' => 'nullable|min:0|max:100',
             'address'        => 'nullable|string',
             'city'           => 'nullable|string',

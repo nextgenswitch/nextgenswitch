@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\SwitchController;
 use App\Http\Controllers\Api\VirtualAgentController;
 use App\Http\Controllers\Api\TestController;
+use App\Http\Controllers\Api\VtigerController;
 use App\Http\Controllers\DialerController;
 use App\Http\Controllers\CustomFuncsController;
 use App\Http\Controllers\DialerCampaignsController;
@@ -26,17 +27,19 @@ Route::group(['prefix' => 'v1', 'middleware' => 'api.auth'], function () {
     Route::post('/call', [SwitchController::class, 'api_call_create'])->name('api.call_create');
     Route::put('/call/{call_id}', [SwitchController::class, 'api_call_modify'])->name('api.call_modify');
     Route::get('/call/{call_id}', [SwitchController::class, 'api_call_get'])->name('api.call_get');
-    
+    Route::post('/vtiger', [VtigerController::class, 'call']);
 });
 
+//Vtiger Status callback
+Route::post('/vtiger/status-callback', [VtigerController::class, 'statusCallback'])->name('vtiger.status.callback');
 
 
 Route::get('/', [SwitchController::class, 'index'])->name('index');
 Route::post('/', [SwitchController::class, 'index'])->name('index.post');
+Route::get('/calls', [SwitchController::class, 'calls'])->name('api.calls.list');
 Route::get('/func/{function_id}', [CustomFuncsController::class, 'function_execute'])->name('api.function_execute');
 Route::post('/func/{function_id}', [CustomFuncsController::class, 'function_execute'])->name('api.function_execute.post');
-Route::post('campain/history/{campaign_id}', [SwitchController::class, 'update_campaign_history'])->name('campaign.history.update');
-Route::post('/call_queue/worker/{id}/{func_id}', [SwitchController::class, 'queue_worker'])->name('api.call_queue_worker_execute');
+Route::post('broadcast/update_call/{campaign_id}', [SwitchController::class, 'update_broadcast_history'])->name('broadcast.history.update');
 Route::post('/function/{func_id}/{dest_id}/', [SwitchController::class, 'func_call'])->name('api.func_call');
 Route::get('/set_sip_log', [SwitchController::class, 'set_sip_log'])->name('api.set_sip_log');
 Route::post('/gtts', [TestController::class, 'gtts'])->name('api.gtts');
@@ -44,12 +47,16 @@ Route::post('/whisper', [TestController::class, 'whisper'])->name('api.whisper')
 Route::post( '/webdialer/dialer_response', [DialerController::class, 'dialer_connect_response'] )->name( 'webdialer.response');
 Route::post( '/webdialer/dialer_response_callback/{client_id}', [DialerController::class, 'dialer_response_callback'] )->name( 'webdialer.responseCallback');
 Route::post( '/webdialer/dialer_status_callback/{client_id}', [DialerController::class, 'dial_status_callback'] )->name( 'webdialer.statusCallback');
+Route::post('/call_queue/worker/{id}/{func_id}', [SwitchController::class, 'queue_worker'])->name('api.call_queue_worker_execute');
+Route::post('/broadcast/worker/{campaign_id}/', [SwitchController::class, 'broadcast_worker'])->name('api.broadcast_worker');
+Route::post('/call_parking/worker/{id}/', [SwitchController::class, 'call_parking_worker'])->name('api.call_park_worker_execute');
 
 // dialer campaign callback route
-Route::post( '/dialer_campaign/dialer_response', [DialerCampaignsController::class, 'dialer_connect_response'] )->name( 'dialer_campaign.response');
+/* Route::post( '/dialer_campaign/dialer_response', [DialerCampaignsController::class, 'dialer_connect_response'] )->name( 'dialer_campaign.response');
 Route::post( '/dialer_campaign/dialer_response_callback/{client_id}', [DialerCampaignsController::class, 'dialer_response_callback'] )->name( 'dialer_campaign.responseCallback');
 Route::post( '/dialer_campaign/dialer_status_callback/{client_id}', [DialerCampaignsController::class, 'dial_status_callback'] )->name( 'dialer_campaign.statusCallback');
 
+ */
 
 Route::group([
     'prefix' => 'switch','middleware' => ['switch.auth']
@@ -66,6 +73,7 @@ Route::group([
     Route::post('/call/update', [SwitchController::class, 'call_update'])->name('api.call_update');
     Route::post('/sip_user/validate', [SwitchController::class, 'sip_user_validate'])->name('sip_user_validate');
     Route::post('/sip_user/outbound', [SwitchController::class, 'sip_user_outbound'])->name('sip_user_outbound');
+    Route::post('/sip_user/sms', [SwitchController::class, 'sip_user_sms'])->name('sip_user_sms');
     
     Route::get('/function/{func_id}/{dest_id}/', [SwitchController::class, 'func_call'])->name('api.func_call.get');
     Route::post('/config', [SwitchController::class, 'getConfig'])->name('api.config');

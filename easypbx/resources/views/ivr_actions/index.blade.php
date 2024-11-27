@@ -35,7 +35,7 @@
         <div class="col-sm-12 col-md-4">
             <div class="dataTables_length py-2" id="sampleTable_length">
                 <div class="input-group">
-                <div class="input-group-prepend"> {!! Form::select('crud_per_page',config('enums.pagination_count'),app('request')->input('per_page'),['id'=>"crud_per_page",'class' => 'form-control form-control-sm ','style'=>'width:50px']) !!} 
+                <div class="input-group-prepend"> {!! Form::select('crud_per_page',config('enums.pagination_count'),app('request')->input('per_page'),['id'=>"crud_per_page",'class' => 'form-control form-control-sm ','style'=>'width:70px']) !!} 
 
                 </div>&nbsp;
 

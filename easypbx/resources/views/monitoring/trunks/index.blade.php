@@ -94,6 +94,7 @@
             </div>
         </div>
     </div>
+    @include('contacts.sms_modal')
 @endsection
 
 @push('script')

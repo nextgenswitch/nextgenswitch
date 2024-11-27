@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Call;
 use App\Models\CallHistory;
 use App\Models\Queue;
+use App\Models\QueueCall;
 use App\Models\CallRecord;
 use Illuminate\Console\Command;
 
@@ -35,7 +36,7 @@ class ClearOldRecords extends Command
         CallHistory::whereDate('created_at', '<', $one_month_ago)->delete();
         Queue::whereDate('created_at', '<', $one_month_ago)->delete();
         CallRecord::whereDate('created_at', '<', $one_month_ago)->delete();
-
+        QueueCall::whereDate('created_at', '<', $one_month_ago)->delete();
         
         $rec_path = storage_path( 'app/public/records/' );
         // $cmd = 'find ' . $rec_path . ' -type f ! -newermt ' . '"' . $one_month_ago .'"' . ' -exec /bin/rm {} \;';

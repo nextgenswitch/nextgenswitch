@@ -19,14 +19,17 @@ class CampaignCallsController extends Controller {
      *
      * @return Illuminate\View\View
      */
-    public function index( Request $request) {
+    public function __construct(){
+        config(['menu.group' => 'menu-campaign']);  
+    } 
+     public function index( Request $request) {
         $campaignId = $request->query('id');
         if(empty($campaignId)){
             $campaign = Campaign::where("organization_id",auth()->user()->organization_id)->first();
             if($campaign)
                 $campaignId = $campaign->id;
             else
-                return redirect()->route( 'campaigns.campaign.index' );
+                return redirect()->route( 'broadcasts.broadcast.index' );
         }
         if ( $campaignId == 0 ) {
             $campaign = Campaign::where( 'organization_id', '=', auth()->user()->organization_id )->first();
@@ -45,10 +48,10 @@ class CampaignCallsController extends Controller {
         $filter   = $request->get( 'filter' ) ?: '';
         $sort     = $request->get( 'sort' ) ?: '';
 
-        $campaignCall = CampaignCall::with( ['campaign', 'call'] )->where( 'campaign_id', '=', $campaignId );
+        $campaignCall = CampaignCall::with( ['campaign', 'call'] )->where( 'campaign_id', $campaignId );
 
         if (  ! empty( $q ) ) {
-            $campaignCall->where( 'tel_no', 'LIKE', '%' . $q . '%' );
+            $campaignCall->where( 'tel', 'LIKE', '%' . $q . '%' );
         }
 
         if (  ! empty( $filter ) ) {
@@ -80,7 +83,8 @@ class CampaignCallsController extends Controller {
             ];
 
             // specify columns if need
-            $columns = ['call_id', 'call_type', 'call_sid', 'user_id', 'campaign_id', 'tel_no', 'cost', 'duration', 'last_try', 'num_try', 'status', 'error_code'];
+            $columns = ['tel', 'duration', 'rety', 'status'];
+            
 
             $callback = function () use ( $campaignCalls, $columns ) {
                 $file = fopen( 'php://output', 'w' );
@@ -89,7 +93,13 @@ class CampaignCallsController extends Controller {
                 foreach ( $campaignCalls as $campaignCall ) {
 
                     foreach ( $columns as $column ) {
-                        $row[$column] = $campaignCall->{$column};
+                        if($column == 'status'){
+                            $row[$column] = $campaignCall->status->getText();
+                        }
+                        else{
+                            $row[$column] = $campaignCall->{$column};
+                        }
+                        
                     }
 
                     fputcsv( $file, $row );

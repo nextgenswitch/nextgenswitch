@@ -32,81 +32,15 @@ class RingGroupWorker{
         //Http::asForm()->post(route('api.switch.call_modify'),['call_id'=>$call_id,'responseXml'=>$response->xml()]);
     }
 
-    /* public static function handle($parent_call_id,$id){
-        $ring_group = RingGroup::find($id);   
-        if(!$ring_group) return;
-        $group_calls = Cache::pull("RingCall:" . $parent_call_id,[]);
-        $established = Cache::pull("RingCallStatus:" . $parent_call_id,false);
-        //Log::info("Group calls");
-        //Log::info($group_calls);
-        
-        foreach($group_calls as $k=>$queue_call){  
-            $call = Call::find($queue_call);
-            //Log::info($call);
-            if($call && $call->status->value >= CallStatusEnum::Established->value){
-                unset($group_calls[$k]);
-            }else if($call && $call->status->value < CallStatusEnum::Established->value){
-                $connect_time = Carbon::createFromFormat("Y-m-d H:i:s",$call->connect_time);
-               if($connect_time->diffInSeconds(now()) > $ring_group->ring_time){
-                Log::info("force disconnect call as its greater than ring time");
-                self::hangup($call->id);
-                unset($group_calls[$k]);
-               } 
-            }
-        }
-
-        if($established) return;
-
-
-
-        
-
-        //$call = Call::find($parent_call_id);
-
-
-       // Cache::put("RingCall:" . $parent_call_id,$group_calls,3600);
-
-        $extensions = Cache::pull("RingExtension:" . $parent_call_id,[]);
-        
-       
-        if(sizeof($extensions) > 0)         
-        while(1){
-            if($ring_group->ring_strategy == 1 && sizeof($group_calls) > 0) break;
-            $extension = array_pop($extensions);
-            if(!$extension) break;
-            $rjson = FunctionCall::send_call($extension);
-            if(isset($rjson['error'])) continue;                    
-            $call_id = $rjson["call_id"];
-
-    
-            if(!empty($call_id)){
-                
-                $group_calls[] = $call_id; //['call_id'=>$call_id,'connect_tm'=>time()];                
-            } 
-            
-        }
-       // Log::info("RingCall:" . $parent_call_id);
-       // Log::info($group_calls);
-
-        if(sizeof($group_calls) > 0) Cache::put("RingCall:" . $parent_call_id,$group_calls,3600);
-
-        if(sizeof($extensions) > 0 || sizeof($group_calls) > 0){
-            Log::info("Dispatching RingCall");
-            Cache::put("RingExtension:" . $parent_call_id,$extensions,3600);
-            $ringJobs = new RingGroupJob($id,$parent_call_id);
-            dispatch($ringJobs)->delay(now()->addSeconds(1)); 
-        } else if(sizeof($extensions) == 0 && sizeof($group_calls) == 0 && $established == false){
-            Log::info("Hangup as no more call to send in RingCall");
-            //self::hangup($parent_call_id);
-            $response = new VoiceResponse();
-            $response->redirect(route('api.func_call',['func_id'=>$ring_group->function_id,'dest_id'=>$ring_group->destination_id]));
-            //Http::asForm()->post(route('api.switch.call_modify'),['call_id'=>$parent_call_id,'responseXml'=>$response->xml()]);
-            FunctionCall::modify_call($parent_call_id,['responseXml'=>$response->xml()]);
-        } 
-
+    function redirect_failed_destination($ring_group,$parent_call_id){
+        $response = new VoiceResponse();
+        $response->redirect(route('api.func_call',['func_id'=>$ring_group->function_id,'dest_id'=>$ring_group->destination_id]));            
+        FunctionCall::modify_call($parent_call_id,['responseXml'=>$response->xml()]);
+        $this->cache_cleanup($parent_call_id);
+        Log::info("hangup ring call here");
     }
 
- */
+
 
     function send_to_extension($ring_group,$call_to_send,$parent_call_id){
         $group_calls = Cache::pull("RingCall:" . $parent_call_id,[]);
@@ -132,11 +66,7 @@ class RingGroupWorker{
 
         if(sizeof($group_calls) > 0) Cache::put("RingCall:" . $parent_call_id,$group_calls,3600);
         else{
-            $response = new VoiceResponse();
-            $response->redirect(route('api.func_call',['func_id'=>$ring_group->function_id,'dest_id'=>$ring_group->destination_id]));            
-            FunctionCall::modify_call($parent_call_id,['responseXml'=>$response->xml()]);
-            $this->cache_cleanup($parent_call_id);
-            Log::info("hangup ring call here");
+            $this->redirect_failed_destination($ring_group,$parent_call_id);
             return false;
         }
 
@@ -172,11 +102,11 @@ class RingGroupWorker{
         foreach( $extensions as $extension){
             
             $call_to_send[] = ['statusCallback'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$ring_group->id,'queue_status'=>true,'extension'=>$extension->id,'parent_call_id'=>$parent_call_id]),
-            'to'=>$extension->code,"domain"=>$extension->organization->domain,"from"=>$call->caller_id,'timeout'=>$ring_group->ring_time,
+            'to'=>$extension->code,"organization_id"=>$extension->organization->id,"from"=>$call->caller_id,'timeout'=>$ring_group->ring_time,
             'response'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$ring_group->id,'queue'=>true,'parent_call_id'=>$parent_call_id,'record'=>$extension->sipUser->record])];            
             if ($ring_group->allow_diversions && !empty($extension->forwarding_number))
                 $call_to_send[] = ['statusCallback'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$ring_group->id,'queue_status'=>true,'extension'=>$extension->id,'parent_call_id'=>$parent_call_id]),
-                'to'=>$extension->forwarding_number,"domain"=>$extension->organization->domain,"from"=>$call->caller_id,'timeout'=>$ring_group->ring_time,
+                'to'=>$extension->forwarding_number,"organization_id"=>$extension->organization->id,"from"=>$call->caller_id,'timeout'=>$ring_group->ring_time,
                 'response'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$ring_group->id,'queue'=>true,'parent_call_id'=>$parent_call_id,'record'=>$extension->sipUser->record])];            
 
         }
@@ -250,7 +180,9 @@ class RingGroupWorker{
             if($ring_group->ring_strategy == 1){
                 $call_to_send = Cache::get("RingExtension:" . $parent_call_id,[]);            
                 $this->send_to_extension($ring_group,$call_to_send,$parent_call_id);
-    
+            }else{
+                if(sizeof($group_calls) ==0)
+                    $this->redirect_failed_destination($ring_group,$parent_call_id);
             }
            
         }elseif(request()->query('queue_result') == 1){
@@ -275,9 +207,9 @@ class RingGroupWorker{
             if(intval(request()->input('dial_status')) == 0){
                 $data = request()->input();
                
-                CallHistory::create(
+               /*  CallHistory::create(
                     ['organization_id'=>$ring_group->organization_id,'call_id'=>$data['call_id'],'bridge_call_id'=>"",'status'=>CallStatusEnum::Failed]
-                );
+                ); */
             }                        
             //$response->say("this is a after enqueue end");
             $this->cache_cleanup($data['call_id']);

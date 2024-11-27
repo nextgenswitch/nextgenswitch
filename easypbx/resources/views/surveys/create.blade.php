@@ -53,4 +53,6 @@
 
 @endsection
 
-
+@push('script')
+<script src="{{ asset('js/play.js') }}"></script>
+@endpush

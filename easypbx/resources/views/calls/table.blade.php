@@ -30,11 +30,11 @@
                             <td>{{ $call->channel }}</td>
                             <td>{{ optional($call->sipUser)->id }}</td>
                             <td>{{ $call->call_status }}</td>
-                            <td>{{ $call->connect_time }}</td>
-                            <td>{{ $call->ringing_time }}</td>
-                            <td>{{ $call->establish_time }}</td>
-                            <td>{{ $call->disconnect_time }}</td>
-                            <td>{{ $call->duration }}</td>
+                            <td>{{ date_time_format($call->connect_time) }}</td>
+                            <td>{{ date_time_format($call->ringing_time) }}</td>
+                            <td>{{ date_time_format($call->establish_time) }}</td>
+                            <td>{{ date_time_format($call->disconnect_time) }}</td>
+                            <td>{{ duration_format($call->duration) }}</td>
                             <td>{{ $call->user_agent }}</td>
                             <td>{{ ($call->uas) ? 'Yes' : 'No' }}</td>
 

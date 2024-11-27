@@ -15,7 +15,7 @@
         <div class="panel-heading clearfix">
 
             <div class="pull-left">
-                <h4 class="tile-title">{{ __('All Voice Mails') }}</h4>
+                <h4 class="tile-title">{{ __('Voice Record Logs') }}</h4>
             </div>
 
         </div>
@@ -28,7 +28,7 @@
 
                     <div class="row">
                         <div class="col-sm-12 col-md-8">
-                            @include('monitoring.search', ['type' => 'voice_mail'])
+                            @include('monitoring.search', ['type' => 'voiceRecord'])
                         </div>
 
 
@@ -95,7 +95,7 @@
         $(function() {
 
             $('#filter_group').change(function(){
-                window.location.href = "{{URL::to('/panel/monitoring/voice-mails?filter=status:')}}" + $(this).val();
+                window.location.href = "{{URL::to('/monitoring/voice-record-logs?filter=voice_record_id:')}}" + $(this).val();
             });
             
         })

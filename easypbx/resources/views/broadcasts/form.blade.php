@@ -179,7 +179,7 @@
 
     <div class="col-lg-6 column">
         <div class="form-group @error('function_id') has-error @enderror">
-            {!! Form::label('function_id', __('Broadcast Destination*'), ['class' => 'control-label']) !!}
+            {!! Form::label('function_id', __('Broadcast Destination'), ['class' => 'control-label']) !!}
             <span class="text-required">*</span>
             @php
                 $func = isset($campaign->func->func) ? $campaign->func->func : '';
@@ -264,7 +264,7 @@
 
 
             if ($('#timezone').val() == '') {
-                console.log(Intl.DateTimeFormat().resolvedOptions().timeZone);
+                //console.log(Intl.DateTimeFormat().resolvedOptions().timeZone);
                 $('#timezone').selectpicker('val', (Intl.DateTimeFormat().resolvedOptions().timeZone));
             }
 

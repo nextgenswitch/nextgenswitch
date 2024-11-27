@@ -61,5 +61,15 @@ class IpBlackList extends Model
         return $this->belongsTo('App\Models\Organization','organization_id');
     }
 
+    public static function writeIpList(){
+        $ips = self::where('organization_id', auth()->user()->organization_id)->get();
+        $lines = '';
+        foreach($ips as $ip){
+            $lines .= $ip->ip . "/" . $ip->subnet . "\n";
+        }
+
+        file_put_contents(storage_path('settings/ip_block_list.txt'), $lines);
+    }
+
 
 }

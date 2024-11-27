@@ -7,6 +7,7 @@ class VoiceResponse extends \SimpleXMLElement
    // private $verb;
     function __construct($tag = null)
     {
+        //info("tag is " . $tag);
         if(empty($tag))
             parent::__construct("<response></response>");
         else
@@ -121,6 +122,7 @@ class VoiceResponse extends \SimpleXMLElement
     }
 
     public function redirect($text = null,$options = []){
+        //dd($text);
         $this->appendXML(self::genXmlElelment('redirect',$text,$options));
     }
     

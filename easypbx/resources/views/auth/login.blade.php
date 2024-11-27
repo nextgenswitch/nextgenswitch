@@ -1,7 +1,10 @@
 @extends('auth.layout')
+@php
+$title = env('APP_NAME', 'EasyPBX');
+if(config('licence.brand_name')) $title = config('licence.brand_name')
+@endphp
 
-
-@section('title', 'Login - EasyPBX')
+@section('title', __('Login - ' . $title))
 
 
 @section('content')
@@ -50,7 +53,9 @@
           <div class="form-group btn-container">
             <button class="btn btn-primary btn-block"><i class="fa fa-sign-in fa-lg fa-fw"></i>{{ __('SIGN IN') }} </button>
           </div>
-
+          @if(env('TRIAL_ENABLE'))
+            <!-- <p class="semibold-text mt-2"><a href="{{ route('register') }}"> {{ __('Register') }}</a></p> -->
+          @endif
         </form>
 
         <form class="forget-form" action="{{ route('password.email') }}" method="post">

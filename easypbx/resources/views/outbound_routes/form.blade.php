@@ -67,7 +67,7 @@
         </div>
     </div>
 
-    <div class="col-lg-12">
+    <!-- <div class="col-lg-12">
         <div class="form-group @error('pin_list_id') has-error @enderror">
             {!! Form::label('pin_list_id', __('Pin'), ['class' => 'control-label']) !!}
 
@@ -81,7 +81,7 @@
                 <p class="help-block  text-danger"> {{ $message }} </p>
             @enderror
         </div>
-    </div>
+    </div> -->
 
     <div class="col-lg-6">
         <div class="form-group @error('is_active') has-error @enderror">
@@ -144,6 +144,7 @@
         'func' => isset($outboundRoute->func->func) ? $outboundRoute->func->func : '',
         'destinations' => $destinations,
         'destination_id' => optional($outboundRoute)->destination_id,
+        'label'=>__('Failover Destination')
     ])
 
 </div>
@@ -154,8 +155,6 @@
 @endif
 
 @push('script')
-    
-    
     <script src="{{ asset('js/jquery-ui/jquery-ui.min.js') }}"></script>
     <script src="{{ asset('js/selectize.min.js') }}"></script>
 

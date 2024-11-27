@@ -30,8 +30,8 @@ class setupEasypbx extends Command
     public function handle()
     {
         $orgName = $this->ask('Enter your organization name', 'NextGenSwitch');
-        $domain = $this->ask('Enter your organization domain', 'demo.nextgenswitch.com');
-        $contact = $this->ask('Enter your contact no', '+8801734936561');
+        $domain = $this->ask('Enter your organization domain', 'localhost');
+        $contact = $this->ask('Enter your contact no', '+100000000');
         
         $email = null;
         while (!$email) {
@@ -56,7 +56,7 @@ class setupEasypbx extends Command
 
         }
         
-        $address = $this->ask('Enter your company address', "House # 38, Road - 1, Uttara, Dhaka-1230");
+        $address = $this->ask('Enter your company address', "Change it");
 
         $this->info("Organization : $orgName");
         $this->info("Domian : $domain");
@@ -65,6 +65,9 @@ class setupEasypbx extends Command
         $this->info("Address : $address");
 
         if ($this->confirm('Do you want to continue?')) {
+            
+            User::createRoleAndPermisssions();
+
             $organization =Organization::create([
                 'name' => $orgName,
                 'domain' => $domain,
@@ -84,10 +87,8 @@ class setupEasypbx extends Command
             
             Artisan::call("easypbx:permission superAdmin $user->id");
 
-            $this->info('Done! please login from web portal');
+            $this->info('Done! please login from web portal http://127.0.0.1/');
         }
-
-    
     }
 
 }

@@ -26,7 +26,7 @@ class ApiAuth {
         $header = $request->header(self::AUTH_HEADER);
         $secret = $request->header(self::AUTH_SECRET);
         $apiKey = ApiKey::getByKey($header);
-       
+       // dd($secret);
         if ($apiKey instanceof ApiKey && $this->testSecretKey($secret, $apiKey)) {
             $this->logAccessEvent($request, $apiKey);
             $data   = $request->all();
@@ -41,8 +41,6 @@ class ApiAuth {
             ]]
         ], 401);
         
-      
-      
     }
 
     /**
@@ -53,6 +51,7 @@ class ApiAuth {
      * @return boolean
      */
     public function testSecretKey($secret, ApiKey $apiKey) {
+        
         if(config('apikey.enable_secret_key') === true) {
             if($secret && Hash::check($secret, $apiKey->secret)) {
                 if (Hash::needsRehash($apiKey->secret)) {

@@ -14,9 +14,10 @@ class FirewallController extends Controller
         $ipBlackLists = IpBlackList::where('organization_id', auth()->user()->organization_id)->latest()->paginate(10);
         
         if(request()->ajax()){
+            IpBlackList::writeIpList();
             return view( 'firewall.ip.table', compact( 'settings', 'ipBlackLists' ) );    
         }
-
+        
         return view( 'firewall.index', compact( 'settings', 'ipBlackLists' ) );
     }
 

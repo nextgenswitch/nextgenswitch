@@ -50,22 +50,22 @@
 
                     <div class="form-group mb-3">
                         <label for="domain">Domain</label>
-                        <input type="text" name="organization[domain]" class="form-control" placeholder="example.com" value="{{ old('organization.domain', optional($user)->organization->domain) }}">
+                        <input type="text" readonly name="organization[domain]" class="form-control" placeholder="example.com" value="{{ old('organization.domain', optional($user)->organization->domain) }}">
                     </div>
 
                     <div class="form-group mb-3">
                         <label for="email">Email</label>
-                        <input type="text" name="organization[email]" class="form-control" placeholder="John Doe" value="{{ old('organization.email', optional($user)->organization->email) }}">
+                        <input type="text" readonly name="organization[email]" class="form-control" placeholder="John Doe" value="{{ old('organization.email', optional($user)->organization->email) }}">
                     </div>
 
                     <div class="form-group mb-3">
                         <label for="contact_no">Contact Number</label>
-                        <input type="text" name="organization[contact_no]" class="form-control" placeholder="88015xx-xxxxxx" value="{{ old('organization.contact_no', optional($user)->organization->contact_no) }}">
+                        <input type="text" readonly name="organization[contact_no]" class="form-control" placeholder="88015xx-xxxxxx" value="{{ old('organization.contact_no', optional($user)->organization->contact_no) }}">
                     </div>
 
                     <div class="form-group mb-3">
                         <label for="address">Address</label>
-                        <textarea  name="organization[address]" class="form-control" placeholder="House # 38 Road-1, Sector-5, Dhaka 1230" rows="2">{{ old('organization.address', optional($user)->organization->address) }}</textarea>
+                        <textarea  name="organization[address]" readonly class="form-control" placeholder="House # 38 Road-1, Sector-5, Dhaka 1230" rows="2">{{ old('organization.address', optional($user)->organization->address) }}</textarea>
                     </div>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>

@@ -18,8 +18,8 @@
                             
                             <td>{{ $survey->name }}</td>
                             
-                            <td voice-id="{{ optional($survey->voice)->id }}" class="voice-preview">
-                                <span class="btn btn-outline-primary btn-sm play"><i class="fa fa-play"></i></span>
+                            <td class="voice-preview">
+                                <span voice_file_id="{{ optional($survey->voice)->id }}" class="btn btn-outline-primary btn-sm play"><i class="fa fa-play"></i></span>
   
                                 <span class="btn btn-outline-primary btn-sm stop d-none"><i
                                         class="fa fa-stop"></i></span>
@@ -35,6 +35,10 @@
                                    @method('DELETE')   
                                     <a href="#" data-toggle="dropdown"> <i data-feather="more-horizontal"> </i> </a>
                                     <ul class="dropdown-menu shadow-dropdown action-dropdown-menu" aria-labelledby="dropdownMenuButton1">
+                                      <li><a title="Survey results #{{ $survey->id }}" class="dropdown-item" href="{{ route('monitoring.surveys', ['survey_id'=>$survey->id ]) }}">
+                                            <i data-feather="activity"></i> {{ __('Results') }}
+                                        </a>
+                                       </li>
                                         <li><a title="Edit Survey #{{ $survey->id }}" class="dropdown-item" href="{{ route('surveys.survey.edit', $survey->id ) }}">
                                             <i data-feather="edit"></i> {{ __('Edit') }}
                                         </a>

@@ -4,10 +4,17 @@
 
     <div class="panel panel-default">
 
-        <div class="panel-heading clearfix">
+        <div class="panel-heading clearfix mb-3">
 
             <div class="pull-left">
-                <h4 class="mb-5">{{ !empty($hotdesk->name) ? $hotdesk->name : __('Hotdesk') }}</h4>
+                <ul class="nav nav-tabs" id="myTab" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="extension-tab" data-toggle="tab" href="#edit_extension_form">{{ __('Edit Hotdesk') }}</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="allow-ip-tab" data-allow-ip-route="{{ route('extensions.extension.allow.ip', $hotdesk->sip_user_id) }}" data-allow-ip="{{ $hotdesk->sipuser->allow_ip }}" data-toggle="tab" href="#allow_ip_list" role="tab">{{ __('Allow IP List')}}</a>
+                        </li>
+                </ul>
             </div>
 
             <div class="btn-group btn-group-sm pull-right" role="group">
@@ -24,6 +31,8 @@
         </div>
 
         <div class="panel-body">
+            <div class="tab-content" id="myTabContent">
+                <div class="tab-pane fade show active" id="edit_extension_form">
 
             @if ($errors->any())
                 <ul class="alert alert-danger">
@@ -52,6 +61,30 @@
 
             {!! Form::close() !!}
 
+            </div>
+
+            <div class="tab-pane fade" id="allow_ip_list">
+                    
+                    <div class="row">
+                        <div class="col-lg-4 offset-lg-3">
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" placeholder="Enter allow ip address" id="add_allow_ip">
+                                <button class="btn btn-primary" type="button" id="btn_add_ip">
+                                    <i class="fa fa-plus"></i>
+                                </button>
+                            </div>
+
+                            <div id="ip_contents">
+                                
+                            </div>
+                        </div>
+
+                        
+                    </div>
+
+                </div>
+
+            </div>
         </div>
     </div>
 

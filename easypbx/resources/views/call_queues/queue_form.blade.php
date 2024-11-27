@@ -6,7 +6,7 @@
 
 <div class="row">
 
-    <div class="col-lg-12">
+    <div class="col-lg-6">
         <div class="form-group @error('code') has-error @enderror">
             {!! Form::label('code', __('Code'), ['class' => 'control-label']) !!}
             <span class="text-required">*</span>
@@ -24,7 +24,26 @@
         </div>
     </div>
 
-    <div class="col-lg-12">
+    <div class="col-lg-6">
+        <div class="form-group @error('code') has-error @enderror">
+            {!! Form::label('login_code', __('Login/Logout/Join Code'), ['class' => 'control-label']) !!}
+            <span class="text-required">*</span>
+
+            {!! Form::number('login_code', old('login_code', optional($callQueue)->login_code), [
+                'class' => 'form-control' . ($errors->has('login_code') ? ' is-invalid' : null),
+                'min' => '1',
+                'required' => true,
+                'max' => '2147483647',
+                'placeholder' => __('Enter login code here...'),
+            ]) !!}
+            @error('login_code')
+                <p class="help-block  text-danger"> {{ $message }} </p>
+            @enderror
+        </div>
+    </div>
+
+
+    <div class="col-lg-6">
         <div class="form-group @error('name') has-error @enderror">
             {!! Form::label('name', __('name'), ['class' => 'control-label']) !!}
             <span class="text-required">*</span>
@@ -43,7 +62,7 @@
     </div>
 
 
-    {{-- <div class="col-lg-12">
+    {{-- <div class="col-lg-6">
         <div class="form-group @error('description') has-error @enderror">
             {!! Form::label('description', __('Description*'), ['class' => 'control-label']) !!}
 
@@ -61,7 +80,7 @@
     </div> --}}
 
 
-    <div class="col-lg-12">
+    <div class="col-lg-6">
         <div class="form-group @error('strategy') has-error @enderror">
             {!! Form::label('strategy', __('Strategy'), ['class' => 'control-label']) !!}
             <span class="text-required">*</span>
@@ -78,7 +97,7 @@
         </div>
     </div>
 
-    <div class="col-lg-12">
+    <div class="col-lg-6">
         <div class="form-group @error('cid_name_prefix') has-error @enderror">
             {!! Form::label('cid_name_prefix', __('Cid Name Prefix'), ['class' => 'control-label']) !!}
 
@@ -96,7 +115,7 @@
     </div>
 
 
-    <div class="col-lg-12">
+    <div class="col-lg-6">
         <div class="form-group @error('agent_announcemnet') has-error @enderror">
             {!! Form::label('agent_announcemnet', __('Agent Announcemnet'), ['class' => 'control-label']) !!}
 
@@ -133,7 +152,7 @@
     </div>
 
 
-    <div class="col-lg-12">
+    <div class="col-lg-6">
         <div class="form-group @error('join_announcement') has-error @enderror">
             {!! Form::label('join_announcement', __('Join Announcement'), ['class' => 'control-label']) !!}
             <div class="input-group voice-preview">
@@ -167,72 +186,7 @@
         </div>
     </div>
 
-    <div class="col-lg-12">
-        <div class="form-group @error('join_empty') has-error @enderror">
-            {!! Form::label('join_empty', __('Join Empty'), ['class' => 'control-label']) !!}
-            <div class="checkbox">
-                <label for='join_empty'>
-                    {!! Form::checkbox('join_empty', '1', old('join_empty', optional($callQueue)->join_empty) == '0' ? null : true, [
-                        'id' => 'join_empty',
-                        'class' => '' . ($errors->has('join_empty') ? ' is-invalid' : null),
-                    ]) !!}
-                    {{ __('Yes') }}
-                </label>
-            </div>
-
-            @error('join_empty')
-                <p class="help-block  text-danger"> {{ $message }} </p>
-            @enderror
-        </div>
-    </div>
-
-
-
-
-    <div class="col-lg-12">
-        <div class="form-group @error('leave_when_empty') has-error @enderror">
-            {!! Form::label('leave_when_empty', __('Leave When Empty'), ['class' => 'control-label']) !!}
-
-            <div class="checkbox">
-                <label for='leave_when_empty'>
-                    {!! Form::checkbox(
-                        'leave_when_empty',
-                        '1',
-                        old('leave_when_empty', optional($callQueue)->leave_when_empty) == '1' ? true : null,
-                        ['id' => 'leave_when_empty', 'class' => '' . ($errors->has('leave_when_empty') ? ' is-invalid' : null)],
-                    ) !!}
-                    {{ __('Yes') }}
-                </label>
-            </div>
-
-            @error('leave_when_empty')
-                <p class="help-block  text-danger"> {{ $message }} </p>
-            @enderror
-        </div>
-    </div>
-
-    <div class="col-lg-12">
-        <div class="form-group @error('member_timeout') has-error @enderror">
-            {!! Form::label('member_timeout', __('Member Timeout'), ['class' => 'control-label']) !!}
-
-            {!! Form::number(
-                'member_timeout',
-                old('member_timeout', optional($callQueue)->member_timeout ? optional($callQueue)->member_timeout : 30),
-                [
-                    'class' => 'form-control' . ($errors->has('member_timeout') ? ' is-invalid' : null),
-                    'min' => '0',
-                    'max' => '2147483647',
-                    'required' => false,
-                    'placeholder' => __('Enter member timeout here...'),
-                ],
-            ) !!}
-            @error('member_timeout')
-                <p class="help-block  text-danger"> {{ $message }} </p>
-            @enderror
-        </div>
-    </div>
-
-    <div class="col-lg-12">
+    <div class="col-lg-6">
         <div class="form-group @error('music_on_hold') has-error @enderror">
             {!! Form::label('music_on_hold', __('Music On Hold'), ['class' => 'control-label']) !!}
             <div class="input-group voice-preview">
@@ -260,8 +214,115 @@
         </div>
     </div>
 
+    <div class="col-lg-6">
+        <div class="form-group @error('join_empty') has-error @enderror">
+            {!! Form::label('join_empty', __('Join Empty'), ['class' => 'control-label']) !!}
+            <div class="checkbox">
+                <label for='join_empty'>
+                    {!! Form::checkbox('join_empty', '1', old('join_empty', optional($callQueue)->join_empty) == '0' ? null : true, [
+                        'id' => 'join_empty',
+                        'class' => '' . ($errors->has('join_empty') ? ' is-invalid' : null),
+                    ]) !!}
+                    {{ __('Yes') }}
+                </label>
+            </div>
+
+            @error('join_empty')
+                <p class="help-block  text-danger"> {{ $message }} </p>
+            @enderror
+        </div>
+    </div>
+
+
+
+
+    <div class="col-lg-6">
+        <div class="form-group @error('leave_when_empty') has-error @enderror">
+            {!! Form::label('leave_when_empty', __('Leave When Empty'), ['class' => 'control-label']) !!}
+
+            <div class="checkbox">
+                <label for='leave_when_empty'>
+                    {!! Form::checkbox(
+                        'leave_when_empty',
+                        '1',
+                        old('leave_when_empty', optional($callQueue)->leave_when_empty) == '1' ? true : null,
+                        ['id' => 'leave_when_empty', 'class' => '' . ($errors->has('leave_when_empty') ? ' is-invalid' : null)],
+                    ) !!}
+                    {{ __('Yes') }}
+                </label>
+            </div>
+
+            @error('leave_when_empty')
+                <p class="help-block  text-danger"> {{ $message }} </p>
+            @enderror
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="form-group @error('record') has-error @enderror">
+            {!! Form::label('record', __('Record'), ['class' => 'control-label']) !!}
+
+            <div class="checkbox">
+                <label for='record'>
+                    {!! Form::checkbox('record', '1', old('record', optional($callQueue)->record) == '1' ? true : null, [
+                        'id' => 'record',
+                        'class' => '' . ($errors->has('record') ? ' is-invalid' : null),
+                    ]) !!}
+                    {{ __('Yes') }}
+                </label>
+            </div>
+            @error('record')
+                <p class="help-block  text-danger"> {{ $message }} </p>
+            @enderror
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="form-group @error('ring_busy_agent') has-error @enderror">
+            {!! Form::label('ring_busy_agent', __('Ring Busy Agent'), ['class' => 'control-label']) !!}
+
+            <div class="checkbox">
+                <label for='ring_busy_agent'>
+                    {!! Form::checkbox(
+                        'ring_busy_agent',
+                        '1',
+                        old('ring_busy_agent', optional($callQueue)->ring_busy_agent) == '1' ? true : null,
+                        ['id' => 'ring_busy_agent', 'class' => '' . ($errors->has('ring_busy_agent') ? ' is-invalid' : null)],
+                    ) !!}
+                    {{ __('Yes') }}
+                </label>
+            </div>
+
+            @error('ring_busy_agent')
+                <p class="help-block  text-danger"> {{ $message }} </p>
+            @enderror
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="form-group @error('member_timeout') has-error @enderror">
+            {!! Form::label('member_timeout', __('Member Timeout'), ['class' => 'control-label']) !!}
+
+            {!! Form::number(
+                'member_timeout',
+                old('member_timeout', optional($callQueue)->member_timeout ? optional($callQueue)->member_timeout : 30),
+                [
+                    'class' => 'form-control' . ($errors->has('member_timeout') ? ' is-invalid' : null),
+                    'min' => '0',
+                    'max' => '2147483647',
+                    'required' => false,
+                    'placeholder' => __('Enter member timeout here...'),
+                ],
+            ) !!}
+            @error('member_timeout')
+                <p class="help-block  text-danger"> {{ $message }} </p>
+            @enderror
+        </div>
+    </div>
+
+    
     {{--  
-    <div class="col-lg-12">
+    <div class="col-lg-6">
         <div class="form-group @error('queue_callback') has-error @enderror">
             {!! Form::label('queue_callback', __('Queue Callback'), ['class' => 'control-label']) !!}
 
@@ -284,7 +345,7 @@
     </div>
 --}}
 
-    <div class="col-lg-12">
+    <div class="col-lg-6">
         <div class="form-group @error('queue_timeout') has-error @enderror">
             {!! Form::label('queue_timeout', __('Queue Timeout'), ['class' => 'control-label']) !!}
 
@@ -305,26 +366,8 @@
         </div>
     </div>
 
-    <div class="col-lg-12">
-        <div class="form-group @error('record') has-error @enderror">
-            {!! Form::label('record', __('Record'), ['class' => 'control-label']) !!}
-
-            <div class="checkbox">
-                <label for='record'>
-                    {!! Form::checkbox('record', '1', old('record', optional($callQueue)->record) == '1' ? true : null, [
-                        'id' => 'record',
-                        'class' => '' . ($errors->has('record') ? ' is-invalid' : null),
-                    ]) !!}
-                    {{ __('Yes') }}
-                </label>
-            </div>
-            @error('record')
-                <p class="help-block  text-danger"> {{ $message }} </p>
-            @enderror
-        </div>
-    </div>
-
-    <div class="col-lg-12">
+    
+    <div class="col-lg-6">
         <div class="form-group @error('retry') has-error @enderror">
             {!! Form::label('retry', __('Retry'), ['class' => 'control-label']) !!}
 
@@ -341,29 +384,8 @@
         </div>
     </div>
 
-    <div class="col-lg-12">
-        <div class="form-group @error('ring_busy_agent') has-error @enderror">
-            {!! Form::label('ring_busy_agent', __('Ring Busy Agent'), ['class' => 'control-label']) !!}
-
-            <div class="checkbox">
-                <label for='ring_busy_agent'>
-                    {!! Form::checkbox(
-                        'ring_busy_agent',
-                        '1',
-                        old('ring_busy_agent', optional($callQueue)->ring_busy_agent) == '1' ? true : null,
-                        ['id' => 'ring_busy_agent', 'class' => '' . ($errors->has('ring_busy_agent') ? ' is-invalid' : null)],
-                    ) !!}
-                    {{ __('Yes') }}
-                </label>
-            </div>
-
-            @error('ring_busy_agent')
-                <p class="help-block  text-danger"> {{ $message }} </p>
-            @enderror
-        </div>
-    </div>
-
-    <!--  <div class="col-lg-12">
+    
+    <!--  <div class="col-lg-6">
         <div class="form-group @error('service_level') has-error @enderror">
             {!! Form::label('service_level', __('Service Level'), ['class' => 'control-label']) !!}
 
@@ -382,7 +404,7 @@
 
 
 
-    <!--   <div class="col-lg-12">
+    <!--   <div class="col-lg-6">
         <div class="form-group @error('timeout_priority') has-error @enderror">
             {!! Form::label('timeout_priority', __('Timeout Priority'), ['class' => 'control-label']) !!}
 
@@ -399,7 +421,7 @@
         </div>
     </div> -->
 
-    <div class="col-lg-12">
+    <div class="col-lg-6">
         <div class="form-group @error('wrap_up_time') has-error @enderror">
             {!! Form::label('wrap_up_time', __('Wrap Up Time'), ['class' => 'control-label']) !!}
 

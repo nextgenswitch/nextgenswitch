@@ -60,7 +60,7 @@ class ExtensionsController extends Controller {
                 "Expires"             => "0",
             ];
 
-            $columns  = ['name', 'username', 'password', 'code', 'status', 'forwarding_number'];
+            $columns  = ['name', 'username', 'password', 'code', 'active', 'forwarding_number','record','call_limit','allowed_ip'];
             $callback = function () use ( $extensions, $columns ) {
                 $file = fopen( 'php://output', 'w' );
                 fputcsv( $file, $columns );
@@ -73,11 +73,15 @@ class ExtensionsController extends Controller {
                             $row[$column] = $extension->sipUser->username;
                         } elseif ( $column == 'password' ) {
                             $row[$column] = $extension->sipUser->password;
-                        }
-                        if($column == 'status') {
-                            $row[$column] = $extension->status ? __('Active') : __('No');
-                        }
-                        else {
+                        }elseif($column == 'allowed_ip') {
+                            $row[$column] = $extension->sipUser->allow_ip;
+                        }elseif($column == 'call_limit') {
+                            $row[$column] = $extension->sipUser->call_limit;
+                        }elseif($column == 'record') {
+                            $row[$column] = $extension->sipUser->record;
+                        }elseif($column == 'active') {
+                            $row[$column] = $extension->status;
+                        }else {
                             $row[$column] = $extension->{$column};
                         }
 
@@ -123,13 +127,20 @@ class ExtensionsController extends Controller {
             foreach ( $csv as $row ) {
                 $assocArr = array_combine( $headers, $row );
 
-                if (  ! Extension::where( 'code', $assocArr['code'] )->exists() ) {
+                if (  ! Extension::where('organization_id',$orid)->where( 'code', $assocArr['code'] )->exists() &&
+                        !SipUser::where('peer',0)->where("organization_id",$orid)->where("username",$assocArr['username'])->exists()
+                ) { // dd($assocArr);
                     $sip = [
                         'organization_id' => $orid,
                         'username'        => $assocArr['username'],
                         'password'        => $assocArr['password'],
+                        'allow_ip'        => $assocArr['allowed_ip'],
+                        'call_limit'      => $assocArr['call_limit'],
+                        'record'          => $assocArr['record'],       
                         'peer'            => '0',
                     ];
+                  
+
 
                     $sip = SipUser::create( $sip );
 
@@ -139,7 +150,8 @@ class ExtensionsController extends Controller {
                         'destination_id'    => $sip->id,
                         'code'              => $assocArr['code'],
                         'forwarding_number' => $assocArr['forwarding_number'],
-                        'status'            => $assocArr['status'],
+                        'status'            => $assocArr['active'],
+                                         
                     ];
                 }
 
@@ -208,7 +220,7 @@ class ExtensionsController extends Controller {
         $data = $this->getData( $request );
         $orid = auth()->user()->organization_id;
 
-        $sip                    = $request->only( ['username', 'password', 'transport'] );
+        $sip                    = $request->only( ['username', 'password', 'transport', 'allow_ip'] );
         $sip['organization_id'] = $orid;
         $sip['peer']            = '0';
         $sip['record']          = isset( $data['record'] ) ? $data['record'] : '0';
@@ -283,7 +295,7 @@ class ExtensionsController extends Controller {
 
         $extension->update( $ext_data );
 
-        $sip_data               = $request->only( ['username', 'password', 'transport', 'record', 'call_limit'] );
+        $sip_data               = $request->only( ['username', 'password', 'transport', 'record', 'call_limit', 'allow_ip'] );
         $sip_data['record']     = isset( $sip_data['record'] ) ? $sip_data['record'] : '0';
         $sip_data['status']     = isset( $ext_data['status'] ) ? $ext_data['status'] : '0';
         $sip_data['call_limit'] = isset( $sip_data['call_limit'] ) ? $sip_data['call_limit'] : '1';
@@ -299,6 +311,9 @@ class ExtensionsController extends Controller {
             ->with( 'success_message', __( 'Extension was successfully updated.' ) );
 
     }
+
+
+
 
     /**
      * Remove the specified extension from the storage.
@@ -434,6 +449,7 @@ class ExtensionsController extends Controller {
             'status'            => 'nullable|min:1',
             'record'            => 'nullable|min:1',
             'forwarding_number' => 'nullable',
+            'allow_ip' => 'nullable',
             'call_limit'        => 'nullable|numeric|min:1',
         ];
 

@@ -21,7 +21,7 @@
                         <td>{{ $channel->location }}</td>
                         <td>{{ $channel->expire }}</td>
                         <td>{{ $channel->ua }}</td>
-                        <td>{{ $channel->created_at }}</td>
+                        <td>{{ date_time_format($channel->created_at) }}</td>
                     </tr>
                 @endforeach
             </tbody>

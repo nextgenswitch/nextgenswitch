@@ -27,6 +27,8 @@ class QueueJob implements ShouldQueue //, ShouldBeUnique
         $this->func_id = $func_id;
     }
 
+    
+
    /*  public function uniqueId(): string
     {
         return "queue_" . $this->call_queue_id;

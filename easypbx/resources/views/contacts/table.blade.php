@@ -1,7 +1,4 @@
-<style>
-    .telNo:hover {cursor: pointer;}
-  </style>
-  <div class="row"><div class="col-sm-12">
+            <div class="row"><div class="col-sm-12">
 
                 <table class="table table-striped ">
                     <thead>
@@ -24,7 +21,11 @@
                             <td>{{ $contact->first_name }}</td>
                             <td>{{ $contact->last_name }}</td>
                             {{-- <td>{{ !empty($contact->cc) ? config('enums.tel_codes')[$contact->cc] : '' }}</td> --}}
-                            <td>{{ $contact->tel_no }} <i tel="{{ $contact->tel_no }}" class="fa fa-phone call-now"></i></td>
+                            <td>
+                                @include('contacts.call_sms_popup', ['tel_no' => $contact->tel_no])
+                                
+                                <!-- <i tel="{{ $contact->tel_no }}" class="fa fa-phone call-now"></i> -->
+                            </td>
 
                             <td>@foreach($contact->contact_groups as  $group_id)
 

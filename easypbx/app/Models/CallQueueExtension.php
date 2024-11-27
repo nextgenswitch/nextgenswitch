@@ -36,7 +36,9 @@ class CallQueueExtension extends Model
                   'call_queue_id',
                   'extension_id',
                   'member_type',
-                  'priority'
+                  'priority',
+                  'last_dial',
+                  'last_ans'
               ];
 
     /**
@@ -44,14 +46,14 @@ class CallQueueExtension extends Model
      *
      * @var array
      */
-    protected $dates = [];
+    protected $dates = ['last_dial','last_ans'];
     
     /**
      * The attributes that should be cast to native types.
      *
      * @var array
      */
-    protected $casts = [];
+    protected $casts = ['last_dial'=>'datetime','last_ans'=>'datetime'];
     
     /**
      * Get the callQueue for this model.

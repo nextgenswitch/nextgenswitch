@@ -12,8 +12,10 @@ class QueueCall extends Model
 
     protected $fillable = [
         'call_id',
-        'organization_id',
-        'queue_name',
         'parent_call_id',
+        'organization_id',
+        'call_queue_id',
+        'extension_id',
+        'status'
     ];
 }

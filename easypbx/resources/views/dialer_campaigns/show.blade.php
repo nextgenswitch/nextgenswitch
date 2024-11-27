@@ -7,7 +7,8 @@
     
     <link rel="stylesheet" type="text/css" href="{{ asset('css/bs.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('css/main.css') }}">
-    <link rel="stylesheet" type="text/css" href="{{ asset('js/font-awesome/css/font-awesome.min.css') }}">
+    <!-- <link rel="stylesheet" type="text/css" href="{{ asset('js/font-awesome/css/font-awesome.min.css') }}"> -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
 </head>
 <body>
@@ -19,8 +20,8 @@
                         <div class="card-body cleartfix">
                             <div class="media align-items-stretch">
                                 <div class="media-body">
-                                    <h4>Authentication Required</h4>
-                                    <span>Please login to dialer first</span>
+                                    <h4>{{ __('Authentication Required') }}</h4>
+                                    <span>{{ __('Please login to dialer first') }}</span>
                                 </div>
                             </div>
                         </div>
@@ -35,8 +36,8 @@
                     <div class="card-body cleartfix">
                         <div class="media align-items-stretch">
                             <div class="media-body">
-                                <h4>Complated</h4>
-                                <span>The campaign has been completed ! Thank you.</span>
+                                <h4>{{ __("Complated") }}</h4>
+                                <span>{{ __("The campaign has been completed ! Thank you.") }}</span>
                             </div>
                         </div>
                     </div>
@@ -50,8 +51,8 @@
                     <div class="card-body cleartfix">
                         <div class="media align-items-stretch">
                             <div class="media-body">
-                                <h4>Schedule</h4>
-                                <span>The current time is not within the specified range.</span>
+                                <h4>{{ __('Schedule') }}</h4>
+                                <span>{{ __('The current time is outside the permitted schedule.') }}</span>
                             </div>
                         </div>
                     </div>

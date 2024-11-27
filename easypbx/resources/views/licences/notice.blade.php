@@ -6,7 +6,7 @@
           
         </div>
         <div class="row">
-            <div class="col-lg-3">License Key</div><div class="col-lg-9">{{ config('licence.uid') }}</div>
+           
             <div class="col-lg-3">License Email</div><div class="col-lg-9">{{ config('licence.email') }}</div>
             <div class="col-lg-3">Call limit</div><div class="col-lg-9">{{ config('licence.call_limit') }}</div>
             <div class="col-lg-3">Multitenancy</div><div class="col-lg-9">{{ (config('licence.multi_tenant') == 1)?"Yes":"No"  }}</div>

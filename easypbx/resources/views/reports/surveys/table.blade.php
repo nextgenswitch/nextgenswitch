@@ -13,8 +13,9 @@
             <tbody>
                 @foreach ($results as $result)
                     <tr>
-                        <td>{{ $result->created_at }}</td>
-                        <td>{{ $result->caller_id }}</td>
+                        <td>{{ date_time_format($result->created_at) }}</td>
+                        <!-- <td>{{ $result->caller_id }}</td> -->
+                        <td> @include('contacts.call_sms_popup', ['tel_no' => $result->caller_id]) </td>
                         <td>
                             @if(isset($keys[$result->pressed_key]))
                                 {{ $keys[$result->pressed_key] }}
@@ -27,8 +28,8 @@
 
                         @if(optional($result)->record_file)
 
-                            <td voice-path="{{optional($result)->record_file }}" class="voice-preview">
-                                <span class="btn btn-outline-primary btn-sm play"><i class="fa fa-play"></i></span>
+                            <td class="voice-preview">
+                                <span src="/storage/{{optional($result)->record_file }}" class="btn btn-outline-primary btn-sm play"><i class="fa fa-play"></i></span>
 
                                 <span class="btn btn-outline-primary btn-sm stop d-none"><i
                                         class="fa fa-stop"></i></span>

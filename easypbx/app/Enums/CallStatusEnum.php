@@ -28,6 +28,34 @@ case Failed       = 7;
 
     }
 
+    public function getCss(): string {
+        return match ( $this ) {
+            CallStatusEnum::Queued => __( "text-info" ),
+            CallStatusEnum::Dialing => __( "text-info" ),
+            CallStatusEnum::Ringing => __( "text-info" ),
+            CallStatusEnum::Established => __( "text-info" ),
+            CallStatusEnum::Disconnected => __( "text-success" ),
+            CallStatusEnum::Busy => __( "text-danger" ),
+            CallStatusEnum::NoAnswer => __( "text-danger" ),
+            CallStatusEnum::Cancelled => __( "text-danger" ),
+            CallStatusEnum::Failed => __( "text-danger" ),
+        };
+
+    }
+    public static function CallStatuses(): array {
+
+        return [
+            '0' => self::Dialing->getText(),
+            '1' => self::Ringing->getText(),
+            '2' => self::Established->getText(),
+            '3' => self::Disconnected->getText(),
+            '4' => self::Busy->getText(),
+            '5' => self::NoAnswer->getText(),
+            '6' => self::Cancelled->getText(),
+            '7' => self::Failed->getText(),
+        ];
+
+    }
     public static function activeCallStatuses(): array {
 
         return [

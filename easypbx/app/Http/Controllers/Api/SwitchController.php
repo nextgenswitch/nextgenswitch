@@ -19,8 +19,10 @@ use App\Http\Controllers\Api\FunctionCall;
 use App\Http\Controllers\Api\Functions\CallHandler;
 use App\Http\Controllers\Api\Functions\QueueWorker;
 use App\Http\Controllers\Api\Functions\SwitchHandler;
+use App\Http\Controllers\Api\Functions\BroadcastWorker;
+use App\Http\Controllers\Api\Functions\CallParkingWorker;
 use App\Http\Controllers\Api\VoiceResponse;
-use Illuminate\Support\Facades\Redis;
+
 
 /* organization specific
 
@@ -35,6 +37,11 @@ class SwitchController extends Controller {
     public function licence(){
         if(config()->has('licence')) return config('licence');
         return [];
+    }
+
+    public function calls(){
+        $response = Http::get( "http://" . config( 'settings.switch.http_listen' ) . "/call/list");
+        return $response->json();
     }
 
     public function index( Request $request ) {
@@ -202,6 +209,8 @@ class SwitchController extends Controller {
     
     public function func_call( $func_id, $dest_id ) {
         $bresponse = new VoiceResponse();
+       // info("on funcion call");
+        //info( request()->all());
         $response = FunctionCall::execute( $func_id, $dest_id, $bresponse, request()->all() );
 
         return ($response)?$response->asXML():$bresponse->asXML();
@@ -245,6 +254,11 @@ class SwitchController extends Controller {
     public function sip_user_outbound() {
        return SwitchHandler::sip_user_outbound([]);
     }
+    public function sip_user_sms() {
+       // info(request()->all());
+        $data  = request()->json()->all();
+        return SwitchHandler::sip_user_sms($data);
+    }
 
     public function sip_user_validate() {
         $data  = request()->json()->all();
@@ -286,13 +300,24 @@ class SwitchController extends Controller {
         return [];
     }
 
-    public function update_campaign_history(Request $request, $campaign_id){
+    public function internal_status_callback(Request $request){
+        //$url = 
+    }
+
+    public function call_parking_worker($id){
+        $parkingWorker = new CallParkingWorker($id);
+        $parkingWorker->timeout();
+        Log::debug("CallPark worker executing");
+        return [];
+    }
+
+    public function update_broadcast_history(Request $request, $campaign_id){
         
         //$campaign = Campaign::find($campaign_id);          
         $data = $request->all();
         // Log::info("---------- Update Campaing call  ---------");
 		// Log::info($data);
-        CampaignCall::where('campaign_id',$campaign_id)->where( 'call_id', $data['call_id'] )->update(['status'=>$data['status-code']] );
+        CampaignCall::where('campaign_id',$campaign_id)->where( 'call_id', $data['call_id'] )->update(['duration'=>$data['duration'],'status'=>$data['status-code']] );
 
         $wsRes = [
             'date' => date('d-m-Y H:i:s'),
@@ -312,6 +337,12 @@ class SwitchController extends Controller {
 
         
 
+    }
+
+
+    public function broadcast_worker(Request $request, $campaign_id){
+        $broadcastWorker = new BroadcastWorker($campaign_id);
+        $broadcastWorker->process();
     }
 
 }

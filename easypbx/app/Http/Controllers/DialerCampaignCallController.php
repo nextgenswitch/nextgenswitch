@@ -9,6 +9,9 @@ use App\Models\Campaign;
 use App\Enums\CallStatusEnum;
 class DialerCampaignCallController extends Controller
 {
+    public function __construct(){
+        config(['menu.group' => 'menu-campaign']);  
+    } 
     public function index( Request $request) {
         
         $campaignId = $request->query('id');

@@ -23,11 +23,14 @@ use App\Enums\CallStatusEnum;
 use App\Http\Controllers\Api\VoiceResponse;
 use App\Http\Controllers\Api\Functions\CallHandler;
 use Carbon\Carbon;
+use Carbon\CarbonInterval;
 
 class DialerCampaignsController extends Controller {
 
     protected $totalContacts = 0;
     protected $totalProccesContacts = 0;
+    protected $totalDuration = 0;
+    protected $totalTalks = 0;
 
     /**
      * Display a listing of the dialer campaigns.
@@ -43,7 +46,7 @@ class DialerCampaignsController extends Controller {
         $perPage        = $request->get( 'per_page' ) ?: 10;
         $filter         = $request->get( 'filter' ) ?: '';
         $sort           = $request->get( 'sort' ) ?: '';
-        $dialerCampaign = DialerCampaign::query();
+        $dialerCampaign = DialerCampaign::where( 'organization_id', auth()->user()->organization_id );
 
         if (  ! empty( $q ) ) {
             $dialerCampaign->where( 'name', 'LIKE', '%' . $q . '%' );
@@ -120,11 +123,12 @@ class DialerCampaignsController extends Controller {
 
         $scripts = Script::where('organization_id', auth()->user()->organization_id)->pluck('name', 'id');
         $forms = CustomForm::where('organization_id', auth()->user()->organization_id)->pluck('name', 'id');
+        $dialerCampaign = new DialerCampaign( ['max_retry' => 1, 'call_limit' => 3, 'start_at' => '08:00:00', 'end_at' => '18:00:00', 'schedule_days' => array_keys( config( 'enums.weekdays' ) )] );
 
         if ( $request->ajax() ) {
             return view( 'dialer_campaigns.form', compact( 'contact_groups', 'agents', 'scripts', 'forms' ) )->with( ['action' => route( 'dialer_campaigns.dialer_campaign.store' ), 'dialerCampaign' => null, 'method' => 'POST'] );
         } else {
-            return view( 'dialer_campaigns.create', compact( 'contact_groups', 'agents', 'scripts', 'forms' ) );
+            return view( 'dialer_campaigns.create', compact('dialerCampaign', 'contact_groups', 'agents', 'scripts', 'forms' ) );
         }
 
     }
@@ -171,6 +175,21 @@ class DialerCampaignsController extends Controller {
             return view( 'dialer_campaigns.form', compact( 'dialerCampaign', 'contact_groups', 'agents', 'scripts', 'forms' ) )->with( ['action' => route( 'dialer_campaigns.dialer_campaign.update', $id ), 'method' => 'PUT'] );
         } else {
             return view( 'dialer_campaigns.edit', compact( 'dialerCampaign', 'contact_groups', 'agents', 'scripts', 'forms' ) );
+        }
+
+    }
+
+    public function clone( $id, Request $request ) {
+        $dialerCampaign = DialerCampaign::findOrFail( $id );
+        $contact_groups = ContactGroup::where( 'organization_id', '=', auth()->user()->organization_id )->pluck( 'name', 'id' )->all();
+        $agents = Extension::where( 'organization_id', '=', auth()->user()->organization_id )->where( 'extension_type', 1 )->pluck( 'name', 'id' )->all();
+        $scripts = Script::where('organization_id', auth()->user()->organization_id)->pluck('name', 'id');
+        $forms = CustomForm::where('organization_id', auth()->user()->organization_id)->pluck('name', 'id');
+
+        if ( $request->ajax() ) {
+            return view( 'dialer_campaigns.form', compact( 'dialerCampaign', 'contact_groups', 'agents', 'scripts', 'forms' ) )->with( ['action' => route( 'dialer_campaigns.dialer_campaign.update', $id ), 'method' => 'PUT'] );
+        } else {
+            return view( 'dialer_campaigns.create', compact( 'dialerCampaign', 'contact_groups', 'agents', 'scripts', 'forms' ) );
         }
 
     }
@@ -295,12 +314,12 @@ class DialerCampaignsController extends Controller {
      */
     protected function getData( Request $request ) {
         $rules = [
-            'agents'         => 'required|array|min:1|max:191',
+            'call_interval'  => 'required|numeric',
             'contact_groups' => 'required|array|min:1|max:100',
             'description'    => 'nullable|string|min:0|max:191',
             'start_at'       => 'required|date_format:H:i',
             'end_at'         => 'required|date_format:H:i',
-            'end_date'       => 'required|date_format:Y-m-d',
+            'end_date'       => 'nullable|date_format:Y-m-d',
             'name'           => 'required|string|min:1|max:191',
             'schedule_days'  => 'required|array|min:1|max:100',
             'timezone'       => 'required|string|min:1|max:100',
@@ -313,6 +332,145 @@ class DialerCampaignsController extends Controller {
         return $data;
     }
 
+    public function getContact($id){
+        $campaign = DialerCampaign::findOrFail( $id );
+        $contact = $this->getCampaignContact($campaign);
+
+        if($contact){
+            $content = optional($campaign->script)->content;
+
+            if($content){
+                $contact->script_content = Script::prepare($content, $contact);
+            }   
+            $campaign->update(['status' => '1']);
+        }else{
+            $campaign->update(['status' => '3']);
+            return response()->json(['cam_status' => $campaign->status]);
+        }
+        return $contact;
+
+    }
+
+   
+
+    public function getStats($campaign){
+        $stats = array();
+        $stats['total_contacts'] = Contact::getContacts($campaign->contact_groups)->count();
+        $stats['processed_contacts'] = DialerCampaignCall::where('dialer_campaign_id' , $campaign->id)->count();
+        $stats['total_duration'] = DialerCampaignCall::where('dialer_campaign_id' , $campaign->id)->sum('duration');
+        $stats['total_successfull'] = DialerCampaignCall::where('dialer_campaign_id' , $campaign->id)->where('status',CallStatusEnum::Disconnected)->count();
+        $stats['in_time'] = DialerCampaign::inTime($campaign);
+        return $stats;    
+    }   
+
+    public function humanReadable($sec){
+        if ( $sec > 0 ) {
+            return CarbonInterval::seconds( $sec )->cascade()->forHumans();
+        }
+
+        return '0 seconds';
+    }
+
+    public function updateCampaignCall($id){
+        $campaign = DialerCampaign::findOrFail( $id );
+        $calldata = request()->input();
+        info("updating campaign call");
+        info($calldata);
+        $data = [
+            'dialer_campaign_id' => $id,
+            'tel' => $calldata['to'],
+            'duration' => isset($calldata['duration'])?$calldata['duration']:0,
+            'status' => $calldata['status-code'],
+            'record_file' => isset($calldata['record_file']) ? $calldata['record_file'] : ''
+        ];
+        unset($calldata['status']);
+        $data = array_merge($data,$calldata);
+        DialerCampaignCall::updateOrCreate(['tel' => $calldata['to'], 'dialer_campaign_id' => $id], $data);
+
+        if($data['status'] >= CallStatusEnum::Disconnected->value )
+            $campaign->update(['status' => '2']);
+        return $this->getStats($campaign);
+    }
+
+    public function run($id){
+       
+        $campaign = DialerCampaign::findOrFail( $id );
+        
+ 
+        return view('dialer_campaigns.run', compact('campaign'))->with([
+            'stats' => $this->getStats($campaign)
+        ]);
+
+
+    }
+
+    
+
+
+
+    public function getCampaignContact( $dCampaign ): array | object | bool {
+        $contacts = Contact::where( 'organization_id', auth()->user()->organization_id );
+
+        foreach ( $dCampaign->contact_groups as $key => $groupId ) {
+            $statement = $key === 0 ? 'whereRaw' : 'orWhereRaw';
+            $contacts->{$statement}( 'FIND_IN_SET(?, contact_groups)', [$groupId] );
+        }
+
+        $contacts = Contact::getContacts($dCampaign->contact_groups )->toArray();
+        $dialerCampaignCallContacts = DialerCampaignCall::where('dialer_campaign_id', $dCampaign->id)->pluck('tel')->toArray();
+   
+        $unUsedContacts = array_diff( $contacts, $dialerCampaignCallContacts );
+        
+        if ( count($unUsedContacts) ){
+            return Contact::find(array_key_first($unUsedContacts));
+        }
+
+        return false;
+        
+    }
+
+    public function formData(Request $request){
+        $data = $request->except(['_token', 'caller_id', 'dcam_id']);
+
+        $dialerCampaignCall = DialerCampaignCall::where('tel', $request->input('caller_id'))
+        ->where('dialer_campaign_id', $request->input('dcam_id'))->first();
+        
+        if($dialerCampaignCall){
+            $dcall = $dialerCampaignCall->update(['form_data' => json_encode($data)]);
+
+            if( $dcall ) return response()->json(['status' => 'success']);   
+        }
+        
+
+        return response()->json(['status' => 'failed']);
+    }
+
+
+    public function updateContact(Request $request){
+        $data = $request->except(["_token", 'caller_id']);
+        
+        $contact = Contact::where('organization_id', auth()->user()->organization_id)->where('id', $request->input('id'))->update($data);
+        
+        $status = $contact ? 'success' : 'failed';
+
+        return response()->json(['status' => $status]);
+    }
+
+    public function sendSms(Request $request){
+        $data = $request->validate([
+            'from' => 'required',
+            'to' => 'required',
+            'body' => 'required'
+        ]);
+
+        $smsProfile = SmsProfile::where('organization_id', auth()->user()->organization_id)->where('default', 1)->first();
+        
+        $data['sms_profile'] = $smsProfile;
+
+        return FunctionCall::send_sms($data);
+
+    }
+/*
 
 
     public function process($campaignId){
@@ -320,8 +478,6 @@ class DialerCampaignsController extends Controller {
         if(session()->has('dialer.call_id.' . auth()->user()->organization_id) == false){
             return view('dialer_campaigns.show')->with('authenticationRequired', true);
         }
-
-        
 
         if(session()->has('dialer.client_id') == false){
             session(['dialer.client_id' => Str::uuid()]);
@@ -345,6 +501,8 @@ class DialerCampaignsController extends Controller {
                 $campaign->script_content = Script::prepare($content, $contact);
             }           
             
+
+
             return view('dialer_campaigns.popup', compact('campaign', 'contact', 'client_id'))->with([
                 'total_contacts' => $this->totalContacts,
                 'total_process_contacts' => $this->totalProccesContacts,
@@ -356,49 +514,6 @@ class DialerCampaignsController extends Controller {
         }
            
     }
-
-    public function inTime($start, $end, $end_date, $days): bool {
-        $now = now();
-        $currentDay = $now->format('D');
-
-        $inTime = $now->between($start, $end);
-    
-        if ($inTime) {
-            $inTime = in_array(strtolower($currentDay), $days);
-        }
-        
-        if ($inTime) {
-            $endDate = Carbon::parse($end_date);
-            $inTime = $now->lte($endDate);
-        }
-    
-        return $inTime;
-    }
-
-    public function formData(Request $request){
-        $data = $request->except(['_token', 'call_id']);
-
-        $dialerCampaignCall = DialerCampaignCall::where('call_id', $request->input('call_id'))->first();
-        $dialerCampaignCall->update(['form_data' => json_encode($data)]);
-
-        return response()->json(['status' => 'success']);
-    }
-
-    public function sendSms(Request $request){
-        $data = $request->validate([
-            'from' => 'required',
-            'to' => 'required',
-            'body' => 'required'
-        ]);
-
-        $smsProfile = SmsProfile::where('organization_id', auth()->user()->organization_id)->where('default', 1)->first();
-        
-        $data['sms_profile'] = $smsProfile;
-
-        return FunctionCall::send_sms($data);
-
-    }
-
     public function dial(){
         $tel_no = request()->query('tel_no');
         $call_id = request()->session()->get('dialer.call_id.' . auth()->user()->organization_id);
@@ -444,30 +559,7 @@ class DialerCampaignsController extends Controller {
     }
 
     
-    public function getCampaignContact( $dCampaign ): array | object | bool {
-        $contacts = Contact::query();
 
-        foreach ( $dCampaign->contact_groups as $key => $groupId ) {
-            $statement = $key === 0 ? 'whereRaw' : 'orWhereRaw';
-            $contacts->{$statement}( 'FIND_IN_SET(?, contact_groups)', [$groupId] );
-        }
-
-        $contacts = $contacts->groupBy( 'tel_no' )->pluck('tel_no', 'id')->toArray();
-
-        $this->totalContacts = count($contacts);
-
-        $dialerCampaignCallContacts = DialerCampaignCall::where('dialer_campaign_id', $dCampaign->id)->pluck('tel', 'id')->toArray();
-        $this->totalProccesContacts = count($dialerCampaignCallContacts) + 1;
-
-        $unUsedContacts = array_diff( $contacts, $dialerCampaignCallContacts );
-        
-        if ( count($unUsedContacts) ){
-            return Contact::find(array_key_first($unUsedContacts));
-        }
-
-        return false;
-        
-    }
 
     public function dialer_connect_response(){
         $voice_response = new VoiceResponse;
@@ -520,7 +612,7 @@ class DialerCampaignsController extends Controller {
                 
             }
 
-            DialerCampaignCall::updateOrCreate(['call_id' => $calldata['call_id']], [
+            DialerCampaignCall::updateOrCreate(['tel' => $calldata['to'], 'dialer_campaign_id' => $calldata['campaign_id'] ], [
                 'dialer_campaign_id' => $calldata['campaign_id'],
                 'call_id' => $calldata['call_id'],
                 'tel' => $calldata['to'],
@@ -536,7 +628,7 @@ class DialerCampaignsController extends Controller {
     }
 
     
-    /*
+    
     public function endCall(Request $request){
 
         $outgoingCall = Call::find($request->input('call_id'));

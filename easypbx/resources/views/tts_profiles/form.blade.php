@@ -25,7 +25,7 @@
             @enderror
         </div>
     </div>
-
+<!-- 
     <div class="col-lg-12">
         <div class="form-group @error('organization_id') has-error @enderror">
             {!! Form::label('organization_id', __('Organization'), ['class' => 'control-label']) !!}
@@ -46,7 +46,7 @@
                 <p class="help-block  text-danger"> {{ $message }} </p>
             @enderror
         </div>
-    </div>
+    </div> -->
 
 
     

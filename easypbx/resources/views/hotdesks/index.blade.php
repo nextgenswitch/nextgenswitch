@@ -192,4 +192,5 @@
 @push('script')
     <script src="{{ asset('js/pass_hide.js') }}"></script>
     <script src="{{ asset('js/index.js') }}"></script>
+    <script src="{{ asset('js/jquery.inputmask.bundle.js') }}"></script>
 @endpush

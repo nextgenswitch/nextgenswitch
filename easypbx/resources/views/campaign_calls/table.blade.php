@@ -6,11 +6,11 @@
                             
                            
                                                    
-                            <th class="sortable" sort-by="tel_no">{{ __('Tel No') }}</th>
+                            <th class="sortable" sort-by="tel">{{ __('Tel No') }}</th>
                             <th class="sortable" sort-by="status">{{ __('Status') }}</th>
                             <th>{{ __('Duration') }}</th>
-                            <th>{{ __('Last Try') }}</th>
-                            <th>{{ __('No of try') }}</th>
+                            <th class="sortable" sort-by="updated_at">{{ __('Last Try') }}</th>
+                            <th class="sortable" sort-by="retry">{{ __('No of try') }}</th>
                             <th>{{ __('Error') }}</th>
                             
 
@@ -20,16 +20,15 @@
                     <tbody>
                     @foreach($campaignCalls as $campaignCall)
                         <tr>
-                            
-                            
-                            <td>{{ $campaignCall->tel }}</td>
-                            <td>{{ ($campaignCall->call)?$campaignCall->call->status->getText():"Failed" }}</td>
-                            <td>{{ ($campaignCall->call)?$campaignCall->call->duration:"" }}</td>
+                            <!-- <td>{{ $campaignCall->tel }}</td> -->
+                            <td> @include('contacts.call_sms_popup', ['tel_no' => $campaignCall->tel]) </td>
+
+                            <td>{{ ($campaignCall->status->value == 3)?"Successfull":$campaignCall->status->getText() }}</td>
+                            <td>{{ duration_format($campaignCall->duration) }}</td>
                             <td>{{ $campaignCall->updated_at }}</td>
                             <td>{{ $campaignCall->retry }}</td>
                             <td>{{ isset(config('enums.error_codes')[$campaignCall->error_code]) ? config('enums.error_codes')[$campaignCall->error_code] : $campaignCall->error_code }}</td>
                             
-                           
                            
                         </tr>
                     @endforeach

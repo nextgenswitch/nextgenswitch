@@ -89,7 +89,7 @@
 
     <div class="col-lg-12 mb-3">
         <div class="card">
-            <div class="card-header"> DTMF Keys</div>
+            <div class="card-header"> {{ __('DTMF Keys') }}</div>
 
 
             <table class="table dynamicForm ajaxForm" id="dynamicFormTable">

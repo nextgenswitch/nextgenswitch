@@ -15,6 +15,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Spatie\Permission\Models\Role;
 
 class OrganizationsController extends Controller {
 
@@ -152,6 +153,11 @@ class OrganizationsController extends Controller {
         $organization = Organization::create( $data );
 
         $user = User::create( ['name' => $data['name'], 'email' => $data['email'], 'password' => Hash::make( $data['password'] ), 'organization_id' => $organization->id] );
+        
+        $role = Role::findByName('Admin');
+        setPermissionsTeamId($organization->id);
+        $user->syncRoles($role);
+
 
         $mail = Mail::send($organization->email, __("Welcome to NextGenSwitch"), $data, 'welcome');
 
@@ -170,9 +176,18 @@ class OrganizationsController extends Controller {
 
     public function login($id){
         //$organization = Organization::findOrFail( $id );
-        $user = User::where("organization_id",$id)->where('role','Admin')->first();
-        Auth::login($user);
-        return redirect('/');
+        //$user = User::where("organization_id",$id)->where('role','Admin')->first();
+        setPermissionsTeamId($id);
+        $user = User::where("organization_id",$id)->role('Admin')->first();
+        
+        if($user){
+            Auth::login($user);
+            return redirect('/');
+        }else{
+            return redirect()->route( 'organizations.organization.index' )
+            ->with( 'error_message', __( 'Organization user not found with admin role' ) );
+        }
+        
     }
 
     /**
@@ -203,11 +218,13 @@ class OrganizationsController extends Controller {
      * @return Illuminate\Http\RedirectResponse | Illuminate\Routing\Redirector
      */
     public function update( $id, Request $request ) {
-
-        $data = $this->getData( $request );
-
         $organization = Organization::findOrFail( $id );
+
+        $user = User::where('email', $organization->email)->first();
+        $data = $this->getData( $request, $id, $user->id );
         $organization->update( $data );
+
+        $user->update(['name' => $data['name'], 'email' => $data['email']]);
 
         if ( $request->ajax() ) {
             return response()->json( ['success' => true] );
@@ -233,6 +250,7 @@ class OrganizationsController extends Controller {
             $sip_users = SipUser::where("organization_id",$id)->count();
             if($extension ||  $sip_users) throw new Exception('Could not delete as tenant has data');
 
+            User::where('organization_id', $organization->id)->delete();
             $organization->delete();
 
             if ( $request->ajax() ) {
@@ -319,17 +337,24 @@ class OrganizationsController extends Controller {
      * @param Illuminate\Http\Request\Request $request
      * @return array
      */
-    protected function getData( Request $request ) {
+    protected function getData( Request $request, $id = 0, $user_id = 0 ) {
         $rules = [
             'plan_id'    => 'nullable',
             'name'       => 'required|string|min:1|max:255',
-            'domain'     => 'required|string|min:1|max:255',
+            'domain'     => 'required|string|min:1|max:255|unique:organizations,domain',
             'contact_no' => 'required|string|min:1|max:255',
-            'email'      => 'required|string|min:1|max:255',
-            'address'    => 'required',
+            'email'      => 'required|string|email|unique:users,email',
+            'address'    => 'required|string|min:1|max:255',
             'password'   => 'nullable|string|min:8|max:30',
         ];
-
+        
+        if ($id > 0) {
+            // Ignore the current user's email by ID on update
+            $rules['email'] = 'required|string|email|unique:users,email,' . $user_id;
+            $rules['domain'] = 'required|string|min:1|max:255|unique:organizations,domain,' . $id;
+        }
+        
+        
         $data = $request->validate( $rules );
 
         return $data;

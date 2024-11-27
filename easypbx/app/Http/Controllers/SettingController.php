@@ -27,12 +27,17 @@ class SettingController extends Controller {
         if($data['group'] == 'firewall'){
             $data['settings']['enable_firewall'] = isset($data['settings']['enable_firewall']) ? 1 : 0;
         }
+        
+        if($data['group'] == 'switch'){
+            // return $data['settings'];
+
+           // Setting::writeIpTables($data['settings']);
+        }
 
         Setting::writeSettings($data['group'], $data['settings']);
         
         return redirect()->route('settings.setting.index',[$data['group']])
                 ->with('success_message', __('Settings was successfully changed.'));
-
 
     }
 

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\VoiceRecord;
 
 class VoiceMail extends Model
 {
@@ -15,13 +16,15 @@ class VoiceMail extends Model
      */
     protected $fillable = [
         'organization_id',
-        'extension_id',
+        'voice_record_id',
         'voice_path',
         'transcript',
         'read',
+        'caller_id',
+        'call_id'
     ];
 
-    public function extension(){
-        return $this->belongsTo(Extension::class, 'extension_id');
+    public function voiceRecord(){
+        return $this->belongsTo(VoiceRecord::class, 'voice_record_id');
     }
 }

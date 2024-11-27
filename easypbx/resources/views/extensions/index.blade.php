@@ -20,11 +20,11 @@
                 @csrf
                 <div class="btn-group btn-group-sm pull-right" role="group">
 
-                    <a href="{{ asset('extension_sample.csv') }}" class="btn btn-primary"
+                   <!--  <a href="{{ asset('extension_sample.csv') }}" class="btn btn-primary"
                         title="{{ __('Sample csv file') }}">
                         <span class="fa fa-download" aria-hidden="true"></span>{{ __('Sample CSV') }}
                     </a>
-                    &nbsp;
+                    &nbsp; -->
                     <div class="btn btn-primary" style="position: relative;overflow: hidden;"><span class="fa fa-upload"
                             aria-hidden="true"></span>{{ __('Import Extension') }}
                         <input style="position: absolute;font-size: 50px;opacity: 0;right: 0;top: 0;" type="file"
@@ -206,6 +206,7 @@
 @push('script')
     <script src="{{ asset('js/pass_hide.js') }}"></script>
     <script src="{{ asset('js/index.js') }}"></script>
+    <script src="{{ asset('js/jquery.inputmask.bundle.js') }}"></script>
     <script>
         $(document).ready(function() {
 
@@ -214,7 +215,7 @@
 
                 if (fileName != '') {
                     var ext = fileName.split('.').pop().toLowerCase();
-                    if (jQuery.inArray(ext, ['csv']) == -1) {
+                    if (jQuery.inArray(ext, ['csv', 'txt']) == -1) {
                         $crud.showToast("Invalid File Format!", false);
                         return false;
                     } else {

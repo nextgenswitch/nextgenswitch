@@ -20,9 +20,13 @@
 
                 @foreach ($calls as $call)
                     <tr data-call-id="{{ $call->call_id }}" data-bridge-call-id="{{ $call->bridge_call_id }}">
-                        <td>{{ $call->created_at }}</td>
-                        <td>{{ $call->call->caller_id }}</td>
-                        <td> {{ $call->call->destination }} <i tel="{{ $call->call->destination }}" class="fa fa-phone call-now"></i></td>
+                        <td>{{ date_time_format($call->created_at) }}</td>
+                        <td>{{ $call->bridgeCall->caller_id }}</td>
+                       
+                        <!-- <td> {{ $call->call->destination }} <i tel="{{ $call->call->destination }}" class="fa fa-phone call-now"></i></td> -->
+
+                        <td> @include('contacts.call_sms_popup', ['tel_no' => $call->bridgeCall->destination]) </td>
+
                         <td>@if($call->bridgeCall) {{ $call->bridgeCall->destination }}  @endif</td>
                         <td>@if($call->bridgeCall) <span title="{{ $call->bridgeCall->channel }}">{{ Str::limit($call->bridgeCall->channel, 10, '...') }}</span>   @endif</td>
                         <td>{{  sprintf('%dm %ds', $call->duration / 60, floor($call->duration ) % 60) }}</td>

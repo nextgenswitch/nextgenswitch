@@ -3,27 +3,33 @@ namespace App\Enums;
 
 enum QueueStatusEnum: Int {
 
-case Queued      = -1;
-case Dialing     = 0;
+case Queued     = 0;
 case Bridging    = 1;
-case Established = 2;
-case Bridged     = 3;
-case Error       = 4;
-case Hangup      = 5;
-case Leave       = 6;
-case QueueFull   = 7;
+case Bridged = 2;
+case Disconnected  = 3;
+case Abandoned       = 4;
+case Timeout      = 5;
 
     public function getText(): string {
         return match ( $this ) {
             QueueStatusEnum::Queued => __( "Queued" ),
-            QueueStatusEnum::Dialing => __( "Dialing" ),
             QueueStatusEnum::Bridging => __( "Bridging" ),
-            QueueStatusEnum::Established => __( "Established" ),
             QueueStatusEnum::Bridged => __( "Bridged" ),
-            QueueStatusEnum::Error => __( "Error" ),
-            QueueStatusEnum::Hangup => __( "Hangup" ),
-            QueueStatusEnum::Leave => __( "Leave" ),
-            QueueStatusEnum::QueueFull => __( "QueueFull" ),
+            QueueStatusEnum::Disconnected => __( "Disconnected" ),
+            QueueStatusEnum::Abandoned => __( "Abandoned" ),
+            QueueStatusEnum::Timeout => __( "Timeout" ),
+        };
+
+    }
+
+    public function getCss(): string {
+        return match ( $this ) {
+            QueueStatusEnum::Queued => __( "text-info" ),
+            QueueStatusEnum::Bridging => __( "text-info" ),
+            QueueStatusEnum::Bridged => __( "text-info" ),
+            QueueStatusEnum::Disconnected => __( "text-success" ),
+            QueueStatusEnum::Abandoned => __( "text-warning" ),
+            QueueStatusEnum::Timeout => __( "text-danger" ),
         };
 
     }

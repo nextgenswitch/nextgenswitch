@@ -4,7 +4,7 @@ namespace App\Tts;
 
 class WitAi {
 
-    private $sttBaseUrl = 'https://api.wit.ai/speech';
+    private $sttBaseUrl = 'https://api.wit.ai/dictation';
     private $ttsBaseUrl = 'https://api.wit.ai/synthesize';
     private $token;
     private $api_version;
@@ -21,24 +21,40 @@ class WitAi {
         if ( is_dir( $audioPath ) || ! file_exists( $audioPath ) ) {
             return false;
         }
+        //info($audioPath);
 
-        $request = curl_init( $this->sttBaseUrl );
+        $params = [
+            'v' =>$this->api_version,
+           
+        ];
+        $queryString = http_build_query($params);
+
+        $request = curl_init( $this->sttBaseUrl . '?' . $queryString);
         curl_setopt( $request, CURLOPT_CUSTOMREQUEST, "POST" );
         curl_setopt( $request, CURLOPT_POSTFIELDS, file_get_contents( $audioPath ) );
         curl_setopt( $request, CURLOPT_HTTPHEADER, $this->prepareHeaders( 0 ) );
         curl_setopt( $request, CURLOPT_RETURNTRANSFER, true );
 
         $response = curl_exec( $request );
-
+        info( $response);
+       
+        $objects = preg_split("/(^{|}\s*{|}$)/", $response);
+        $json = array_pop($objects);
+        //$json = end($objects);
+        $json = "{" . $json . "}";
+        info("final json");
+        info($json);
+        
         if ( curl_errno( $request ) ) {
             $error_msg = curl_error( $request );
-            info( $error_msg );
+           // info( $error_msg );
             return false;
         }
 
 
-        //info( $response);
-        $ret = json_decode( $response, true );
+       
+        $ret = json_decode( $json, true );
+        //info("after json decode");
         //info($ret);
         if ( isset( $ret['text'] ) ) {
             return ['text' => $ret['text'], 'confidence' => isset( $ret['speech']['confidence'] ) ? (string) $ret['speech']['confidence'] : ""];
@@ -97,7 +113,7 @@ class WitAi {
         $this->headers[] = 'Authorization: Bearer ' . $this->token;
         $this->headers[] = $isTts ? 'Content-Type: application/json' : 'Content-Type: audio/wav';
         $this->headers[] = $isTts ? 'Accept: audio/wav' : 'Accept: application/vnd.wit.' . $this->api_version . '+json';
-
+       // if($isTts)  $this->headers[] =  'Content-Type: application/json';
         return $this->headers;
     }
 

@@ -81,19 +81,7 @@
                         </div>
 
 
-                        <div id="sampleTable_filter" class="dataTables_filter btn-group btn-group-sm">
-
-                            <button id="btnFilter" type="button" class="btn btn-outline-secondary "
-                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span
-                                    data-toggle="tooltip" data-placement="left" title="{{ __('Filter By') }}"><i
-                                        class="fa fa-filter"></i></span></button>
-
-                            <div class="dropdown-menu dropdown-menu-right shadow-dropdown" aria-labelledby="btnFilter">
-                                <a class="dropdown-item"
-                                    href="{!! route('campaign_calls.campaign_call.index') !!}?id={{ $campaign->id }}">{{ __('All') }}</a>
-                            </div>
-                        </div>
-
+                    
                         <button id="btn-refreash" type="button" class="btn btn-outline-secondary " data-toggle="tooltip"
                             data-placement="top" title="{{ __('Reload') }}"><span><i
                                     class="fa fa-refresh"></i></span></button>
@@ -145,8 +133,9 @@
 
 @endsection
 
-@push('script')
 
+@push('script')
+<script src="{{ asset('js/play.js') }}"></script>
 
 <script type="text/javascript">
 $(document).ready(function(){
@@ -172,6 +161,10 @@ $(document).ready(function(){
     function capitalizeFirstLetter(string) {
         return string.charAt(0).toUpperCase() + string.slice(1);
     }
+
+    $('#filter_group').change(function() {
+        window.location.href = "{!! route('dialer_campaign_calls.dialer_campaign_call.index') !!}?id=" + $(this).val(); 
+    });
 
 });
 </script>

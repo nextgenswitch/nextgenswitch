@@ -1,7 +1,10 @@
 @extends('layouts.app')
+    @php
+        $title = env('APP_NAME', 'EasyPBX');
+       // if(config('licence.brand_name')) $title = config('licence.brand_name')
+    @endphp
 
-
-@section('title', 'Licence - EasyPBX')
+@section('title', 'Licence - ' . $title)
 
 @push('css')
     <style>
@@ -21,7 +24,8 @@
 @section('content')
     @include('partials.message')
     <div class="card">
-        <div class="card-header tile-title">Activate EasyPBX</div>
+
+        <div class="card-header tile-title">{{ __("Active {$title}") }}</div>
 
         <div class="card-body">
           @include('licences.create_account_form')

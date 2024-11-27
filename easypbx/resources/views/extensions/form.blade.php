@@ -27,17 +27,12 @@
     </div>
     </div>
     
-    </div>
-    
+</div>
 
-    <div class="card mb-2">
-        <div class="card-header">{{ __('SIP User Info') }}</div>
-        <div class="card-body row">
-
-            @php($sip = isset($extension->sipuser) ? $extension->sipuser: null)
-
-            @if(isset($sip->id)) <input type="hidden" name="sip_user_id" value="{{ $sip->id }}"> @endif
-            <div class="col-lg-12">
+@php($sip = isset($extension->sipuser) ? $extension->sipuser: null)
+@if(isset($sip->id)) <input type="hidden" name="sip_user_id" value="{{ $sip->id }}"> @endif
+<div class="row">
+    <div class="col-lg-12">
                 <div class="form-group @error('username') has-error @enderror">
                         {!! Form::label('username',__('Username'),['class' => 'control-label']) !!}
                         <span class="text-required">*</span>
@@ -46,6 +41,8 @@
                         @error('username') <p class="help-block  text-danger"> {{ $message }} </p> @enderror
                 </div>
             </div>
+</div>
+<div class="row">
 
             <div class="col-lg-12">
                 <div class="form-group @error('password') has-error @enderror">
@@ -56,42 +53,46 @@
                         @error('password') <p class="help-block  text-danger"> {{ $message }} </p> @enderror
                 </div>
             </div>
-        </div>
-    </div>
-
-
-
-
-
-<div class="col-lg-6">
-<div class="form-group @error('status') has-error @enderror">
-    {!! Form::label('status', __('Active?'),['class' => 'control-label']) !!}
-    
-
-        <div class="checkbox">
-            <label for='status'>
-                {!! Form::checkbox('status', '1',  (old('status', optional($extension)->status) == '1' ? true : null) , ['id' => 'status', 'class' => ''  . ($errors->has('status') ? ' is-invalid' : null), ]) !!}
-                {{ __('Yes') }}
-            </label>
-        </div>
-
-        @error('status') <p class="help-block  text-danger"> {{ $message }} </p> @enderror
-</div>
 </div>
 
+   
 
-<div class="col-lg-12">
-    <div class="form-group @error('record') has-error @enderror">
-        {!! Form::label('record', __('Record ?'),['class' => 'control-label']) !!}
+ 
+
+
+
+
+<div class="row">
+    <div class="col-lg-6">
+    <div class="form-group @error('status') has-error @enderror">
+        {!! Form::label('status', __('Active?'),['class' => 'control-label']) !!}
+        
 
             <div class="checkbox">
-                <label for='record'>
-                    {!! Form::checkbox('record', '1',  (old('record', (isset($sip->record) && $sip->record == 1) ? true : null)) , ['id' => 'record', 'class' => ''  . ($errors->has('record') ? ' is-invalid' : null), ]) !!}
+                <label for='status'>
+                    {!! Form::checkbox('status', '1',  (old('status', optional($extension)->status) == '1' ? true : null) , ['id' => 'status', 'class' => ''  . ($errors->has('status') ? ' is-invalid' : null), ]) !!}
                     {{ __('Yes') }}
                 </label>
             </div>
 
-            @error('record') <p class="help-block  text-danger"> {{ $message }} </p> @enderror
+            @error('status') <p class="help-block  text-danger"> {{ $message }} </p> @enderror
+    </div>
+    </div>
+
+
+    <div class="col-lg-6">
+        <div class="form-group @error('record') has-error @enderror">
+            {!! Form::label('record', __('Record ?'),['class' => 'control-label']) !!}
+
+                <div class="checkbox">
+                    <label for='record'>
+                        {!! Form::checkbox('record', '1',  (old('record', (isset($sip->record) && $sip->record == 1) ? true : null)) , ['id' => 'record', 'class' => ''  . ($errors->has('record') ? ' is-invalid' : null), ]) !!}
+                        {{ __('Yes') }}
+                    </label>
+                </div>
+
+                @error('record') <p class="help-block  text-danger"> {{ $message }} </p> @enderror
+        </div>
     </div>
 </div>
 
@@ -118,6 +119,22 @@
     </div>
 </div>
 
+<div class="row">
+    <div class="col-lg-12">
+    <div class="form-group">
+        <input type="hidden" name="allow_ip" id="allow_ip_hidden_field" value="{{ old('allow_ip', optional($sip)->allow_ip) }}">
+        <label for="">Allowed IP <small> (Leave blank for allow any IP) </small> </label>
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" placeholder="Enter allow ip address" id="add_allow_ip">
+            <button class="btn btn-primary" type="button" id="btn_add_ip">
+                <i class="fa fa-plus"></i>
+            </button>
+        </div>
+        <div id="ip_contents"></div>
+    </div>
+    </div>
+</div>
+
 
 
 @if(app('request')->ajax())
@@ -127,6 +144,64 @@
 <script type="text/javascript">
     $( document ).ready(function() {
         $('.selectpicker').selectpicker();
+        var ipv4_address = $('#add_allow_ip');
+        ipv4_address.inputmask({
+            alias: "ip",
+            greedy: false 
+        });
+
+
+
+        render()
+        
+        $(document).on('click', '#btn_add_ip', function(){
+            // console.log('clicked add btn');
+            var old = $("#allow_ip_hidden_field").val().trim();
+
+            old = old.length > 0 ? old.split(',') : [];
+            
+            var ip = $("#add_allow_ip").val().trim();
+            // console.log(ip);
+
+            if (ip.length > 0 && !old.includes(ip)) {
+                old.unshift(ip);
+
+                $("#allow_ip_hidden_field").val(old.join(','));
+                render();
+
+                $("#add_allow_ip").val('');
+            }
+
+        })
+
+        $(document).on("click", '.btn-danger', function(){
+            // console.log('click delete btn');
+            
+            var old = $("#allow_ip_hidden_field").val().split(',');
+
+            var val = $(this).prev().val().trim();
+            
+            if(old.includes(val)){
+                old = old.filter(item => item !== val);
+                $("#allow_ip_hidden_field").val(old.join(','));
+            }
+
+            render();
+
+        })
+
+        function render(){
+            var html = '';
+            var old = $("#allow_ip_hidden_field").val().trim();
+            if(old.length > 0 ){
+                old.split(',').forEach((item, index) => {
+                    html += '<div class="input-group mb-1"> <input type="text" value="'+ item +'" readonly class="form-control"> <button class="btn btn-danger" type="button"> <i class="fa fa-times"></i> </button></div>';
+                })
+            }
+            $("#ip_contents").html(html);
+            
+        }
+        
     });
 
 </script>

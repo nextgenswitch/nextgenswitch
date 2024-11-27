@@ -2,6 +2,12 @@
 
 @section('title', __('All Contacts'))
 
+@push('css')
+    
+    <link rel="stylesheet" href="{{ asset('js/jquery-ui/jquery-ui.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/selectize.bootstrap4.min.css') }}">
+@endpush
+
 @section('content')
 
     @include('partials.message')
@@ -16,32 +22,27 @@
             <div class="pull-left">
                 <h4 class="tile-title">{{ __('Contacts') }}</h4>
             </div>
-            <form method="POST" enctype="multipart/form-data" action="{!! route('contacts.contact.upload') !!}">
-                {{ csrf_field() }}
+            
+            
                 <div class="btn-group btn-group-sm pull-right" role="group">
                     <a href="{{ route('contacts.contact.create') }}" class="btn btn-primary btnForm"
                         title="{{ __('Create new contact') }}">
                         <span class="fa fa-plus" aria-hidden="true"></span>{{ __('Create new contact') }}
                     </a>
                     &nbsp;
-                    <a href="{{ asset('contact_sample.csv') }}" class="btn btn-primary"
-                        title="{{ __('Sample Contacts') }}">
-                        <span class="fa fa-download" aria-hidden="true"></span>{{ __('Sample Contacts') }}
-                    </a>
-                    &nbsp;
-                    <div class="btn btn-primary" style="position: relative;overflow: hidden;"><span class="fa fa-upload"
-                            aria-hidden="true"></span>{{ __('Import Contact') }}
-                        <input style="position: absolute;font-size: 50px;opacity: 0;right: 0;top: 0;" type="file"
-                            name="file" accept="csv" />
+          
+                    <div class="btn btn-primary" data-toggle="modal" data-target="#importContactModal">
+                        <span class="fa fa-upload"aria-hidden="true"></span>
+                            {{ __('Import Contact') }}
                     </div>
 
-                    &nbsp;
-                    <a href="{{ route('contacts.contact.create') }}" class="btn btn-primary btnGroup"
-                        title="{{ __('Create contact group') }}">
-                        <span class="fa fa-plus" aria-hidden="true"></span>{{ __('Create Contact Group') }}
-                    </a>
+                     &nbsp;
+                    <a href="{{ route('contact_groups.contact_group.index') }}" class="btn btn-primary"
+                        title="{{ __('Contact groups') }}">
+                        <span class="fa fa-list" aria-hidden="true"></span>{{ __('Contact Groups') }}
+                    </a> 
                 </div>
-            </form>
+            
 
         </div>
 
@@ -248,11 +249,16 @@
             </div>
         </div>
     </div>
+    @include('contacts.import')
+    @include('contacts.sms_modal')
 
 
 @endsection
 
 @push('script')
+
+<script src="{{ asset('js/jquery-ui/jquery-ui.min.js') }}"></script>
+    <script src="{{ asset('js/selectize.min.js') }}"></script>
     <script type="text/javascript">
         $(function() {
 
@@ -352,11 +358,9 @@
 
                 if (fileName != '') {
                     var ext = fileName.split('.').pop().toLowerCase();
-                    if (jQuery.inArray(ext, ['csv']) == -1) {
+                    if (jQuery.inArray(ext, ['csv', 'txt']) == -1) {
                         $crud.showToast("Invalid File Format!", false);
                         return false;
-                    } else {
-                        $(this.form).submit();
                     }
                 }
             });

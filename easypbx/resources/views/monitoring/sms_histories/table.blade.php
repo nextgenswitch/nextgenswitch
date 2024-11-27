@@ -5,7 +5,7 @@
         <table class="table table-striped   " data-resizable="true">
             <thead>
                 <tr>
-                    <th class="sortable" sort-by="created_at">Sent Date</th>
+                    <th class="sortable" sort-by="created_at">{{ __('Sent Date') }}</th>
                     <th class="sortable" sort-by="from">{{ __('From') }}</th>
                     <th class="sortable" sort-by="to">{{ __('To') }}</th>
                     <th>{{ __('Body') }}</th>
@@ -15,7 +15,7 @@
             <tbody>
                 @foreach ($histories as $sms)
                     <tr> 
-                        <td>{{ $sms->created_at }}</td>
+                        <td>{{ date_time_format($sms->created_at) }}</td>
                         <td>{{ $sms->from }}</td>
                         <td>{{ $sms->to }}</td>
                         <td>{{ $sms->body }}</td>

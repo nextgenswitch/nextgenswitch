@@ -4,14 +4,14 @@
 
 <div class="row">
 
-<button type="button" class="btn btn-primary " id="btnlogin">Login</button>
+<button type="button" class="btn btn-primary " id="btnlogin">{{ __('Login') }}</button>
 
 
 
 </div>
 
 <div class="row">
-<button type="button" class="btn btn-primary " id="btndial">Dial</button>
+<button type="button" class="btn btn-primary " id="btndial">{{ __("Dial") }}</button>
 
 
 

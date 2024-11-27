@@ -1,6 +1,6 @@
 <div class="col-lg-6 column">
     <div class="form-group @error('function_id') has-error @enderror">
-        {!! Form::label('function_id', __('Destination'), ['class' => 'control-label']) !!}
+        {!! Form::label('function_id', !isset($label)?__('Destination'):$label, ['class' => 'control-label']) !!}
         <span class="text-required">*</span>
         
         {!! Form::select('function_id', $functions, old('function_id', $func), [

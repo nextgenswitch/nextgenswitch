@@ -99,7 +99,12 @@ class LicenceManagerController extends Controller {
             if ( isset( $response['uid'] ) ) {
                 file_put_contents( storage_path( 'licence.json' ), $response );
                 $response = Http::post( "http://" . config( 'settings.switch.http_listen' ) . config( 'easypbx.set_license' ), $response->json() );
-                 
+                
+                // $name = isset($response['brand_name']) ? $response['brand_name'] : env('APP_NAME');
+
+                // putenv("APP_NAME={$name}");
+                // $_ENV['APP_NAME'] = $name;
+                // config(['app.name' => $name]);
 
                 if ( request()->ajax() ) {
                     return response()->json( [], 200 );

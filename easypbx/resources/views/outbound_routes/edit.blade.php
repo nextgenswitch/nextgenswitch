@@ -34,10 +34,10 @@
             {!! Form::model($outboundRoute, [
                 'method' => 'PUT',
                 'route' => ['outbound_routes.outbound_route.update', $outboundRoute->id],
-                'class' => 'form-horizontal',
+                'class' => 'form-horizontal ajaxForm',
                 'name' => 'edit_outbound_route_form',
                 'id' => 'edit_outbound_route_form',
-                
+                'path' => route('outbound_routes.outbound_route.destinations', $outboundRoute->id)
             ]) !!}
 
             @include ($api == 0 ?  'outbound_routes.form' : 'outbound_routes.api_form', ['outboundRoute' => $outboundRoute,])

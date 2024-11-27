@@ -199,7 +199,7 @@
                                         <td align="left" style="font-size:0px;padding:10px 25px;word-break:break-word;">
 
                                             <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:22px;text-align:left;color:#555;">
-                                                {{ $data['name'] }}!<br></br>
+                                                {{ $body['name'] }}!<br></br>
                                                 Thank you for signing up for {{ 'PBX Solutions' }}. We're really happy to have you! Click the link below to login to your account:
                                             </div>
 
@@ -221,8 +221,11 @@
 
                                             <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:22px;text-align:left;color:#555;">
                                                 <ul>
-                                                    <li><b>Domain</b> - {{ $data['domain'] }}</li>
-                                                    <li><b>Username</b> - {{ $data['email'] }}</li>
+                                                    <li><b>PBX Portal</b> - {{ $body['domain'] }}</li>
+                                                    <li><b>Username</b> - {{ $body['username'] }}</li>
+                                                    <li><b>Password</b> - {{ $body['password'] }}</li>
+                                                    <li><b>Sip Server</b> - {{ $body['sip_server'] }}</li>
+                                                    <li><b>Sip Port</b> - {{ $body['sip_port'] }}</li>
                                                 </ul>
                                             </div>
 
@@ -235,7 +238,7 @@
                                             <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:separate;line-height:100%;">
                                                 <tr>
                                                     <td align="center" bgcolor="#0b8c8c" role="presentation" style="border:none;border-radius:3px;color:#ffffff;cursor:auto;padding:15px 25px;" valign="middle">
-                                                        <a style="text-decoration: none" href="http://sg.nextgenswitch.com">
+                                                        <a style="text-decoration: none" href="{{ $body['url'] }}">
                                                             <p style="background:#0b8c8c;color:#ffffff;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:normal;line-height:120%;Margin:0;text-decoration:none;text-transform:none;">
                                                                 Login to Your Account
                                                             </p>

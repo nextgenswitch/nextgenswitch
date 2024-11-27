@@ -28,11 +28,11 @@
                             <td>{{ $callLeg->channel }}</td>
                             <td>{{ optional($callLeg->sipUser)->id }}</td>
                             <td>{{ $callLeg->call_status }}</td>
-                            <td>{{ $callLeg->connect_time }}</td>
-                            <td>{{ $callLeg->ringing_time }}</td>
-                            <td>{{ $callLeg->establish_time }}</td>
-                            <td>{{ $callLeg->disconnect_time }}</td>
-                            <td>{{ $callLeg->duration }}</td>
+                            <td>{{ date_time_format($callLeg->connect_time) }}</td>
+                            <td>{{ date_time_format($callLeg->ringing_time) }}</td>
+                            <td>{{ date_time_format($callLeg->establish_time) }}</td>
+                            <td>{{ date_time_format($callLeg->disconnect_time) }}</td>
+                            <td>{{ duration_format($callLeg->duration) }}</td>
 
                             <td>
                                   

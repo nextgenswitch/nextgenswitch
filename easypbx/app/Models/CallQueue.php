@@ -24,6 +24,7 @@ class CallQueue extends Model {
     protected $fillable = [
         'name',
         'extension_id',
+        'join_extension_id',
         'agent_announcemnet',
         'cid_name_prefix',
         'description',
@@ -46,7 +47,6 @@ class CallQueue extends Model {
         'destination_id',
         'agent_function_id',
         'agent_destination_id',
-        'last_ans'
     ];
 
 
@@ -81,6 +81,11 @@ class CallQueue extends Model {
         return $this->belongsTo('App\Models\Extension','extension_id');
     }
 
+    public function joinExtension()
+    {
+        return $this->belongsTo('App\Models\Extension','join_extension_id');
+    }
+
     public function joinAnnouncement()
     {
         return $this->belongsTo('App\Models\VoiceFile','join_announcement');
@@ -100,12 +105,19 @@ class CallQueue extends Model {
         $extensionlist = CallQueueExtension::where("call_queue_id",$this->id)->get();
         $extensions = [];        
         foreach($extensionlist as $qextension){
+            info($qextension);
             $qextension->extension->allow_diversion = $qextension->allow_diversion;
-            if($qextension->member_type == 1 || $qextension->extension->dynamic_queue == 1)
-            $extensions[] = $qextension->extension;                   
+            $qextension->extension->last_ans = ($qextension->last_ans)?$qextension->last_ans->diffInSeconds(now()):1000;
+            $qextension->extension->last_dial = ($qextension->last_dial)?$qextension->last_dial->diffInSeconds(now()):1000;
+            
+            if($qextension->member_type == 1 || $qextension->dynamic_queue == 1)
+                $extensions[] = $qextension->extension;                   
         }
         return $extensions;
     }
+
+
+    
     
  
 

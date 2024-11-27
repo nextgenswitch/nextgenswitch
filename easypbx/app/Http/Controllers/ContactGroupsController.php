@@ -89,6 +89,7 @@ class ContactGroupsController extends Controller
 
         
                 
+        
 
         if($request->ajax()){
             return view('contact_groups.table', compact('contactGroups'));

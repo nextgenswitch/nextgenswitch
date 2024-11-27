@@ -36,7 +36,7 @@
                             @endif
 
                         </td>
-                        <td>{{ $result->created_at }}</td>
+                        <td>{{ date_time_format($result->created_at) }}</td>
 
                     </tr>
                 @endforeach

@@ -33,12 +33,12 @@
                 <tr>
                     <td>{{ optional($extension)->name }}</td>
                     
-                    <td>{{ isset($inCalls[$key]) ? $inCalls[$key]->human_readable_duration : '' }}</td>
+                    <td>{{ isset($inCalls[$key]) ? duration_format($inCalls[$key]->duration) : '' }}</td>
                     <td>{{ isset($inCalls[$key]) ? $inCalls[$key]->success : '' }}</td>
                     <td>{{ isset($inCalls[$key]) ? $inCalls[$key]->failed : '' }}</td>
 
 
-                    <td>{{ isset($outCalls[$key]) ? $outCalls[$key]->human_readable_duration : '' }}</td>
+                    <td>{{ isset($outCalls[$key]) ? duration_format($outCalls[$key]->duration) : '' }}</td>
                     <td>{{ isset($outCalls[$key]) ? $outCalls[$key]->success : '' }}</td>
                     <td>{{ isset($outCalls[$key]) ? $outCalls[$key]->failed : '' }}</td>
                 </tr>

@@ -5,16 +5,20 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\SipUser;
 use App\Models\Call;
+use App\Models\Func;
 use App\Models\CallHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Api\FunctionCall;
+use App\Http\Traits\FuncTrait;
 use App\Enums\CallStatusEnum;
 use App\Http\Controllers\Api\VoiceResponse;
 use App\Http\Controllers\Api\Functions\CallHandler;
 
 class DialerController extends Controller {
+    use FuncTrait;
+
     public function login( Request $request ) {
 
         if ( $request->ajax() ) {
@@ -94,23 +98,27 @@ class DialerController extends Controller {
     public function index(){
         if(request()->session()->has('dialer.login.' . auth()->user()->organization_id)){
             $call_id = request()->session()->get('dialer.call_id.' . auth()->user()->organization_id);
-            
+            //info("dialer outgoing call id on index " . session('dialer.outgoing.call_id'));
 
             $outgoingCall = [];
-            if(session()->has('dialer.outgoing.call_id')){
-                $outgoingCall = Call::find(session('dialer.outgoing.call_id'));
-            
-                $outgoingCall =CallHandler::prepare_call_json($outgoingCall);
-
+            $oCall = Call::where('parent_call_id',$call_id)->where('status','<',CallStatusEnum::Disconnected->value)->first();
+            //info("on index");
+            //info($oCall);
+            if($oCall){
+                
+                $outgoingCall = CallHandler::prepare_call_json($oCall);
+                //info($outgoingCall);
                 if( count($outgoingCall) > 0 && $outgoingCall['status-code'] >= CallStatusEnum::Disconnected->value ){
                     $outgoingCall = [];
-                    session()->forget('dialer.outgoing.call_id');
+                    //session()->forget('dialer.outgoing.call_id');
                 }
             }
             
             $call = Call::find($call_id);
-            if($call && $call->status->value < CallStatusEnum::Disconnected->value)
-                return view('dialer.index',['outgoingCall' => $outgoingCall , 'call_id'=>$call_id,'login'=>session()->get('dialer.login.' . auth()->user()->organization_id)]);
+            if($call && $call->status->value < CallStatusEnum::Disconnected->value){
+                $dialer_functions = Func::getFuncList();
+                return view('dialer.index',['dialer_functions' => $dialer_functions, 'outgoingCall' => $outgoingCall , 'call_id'=>$call_id,'login'=>session()->get('dialer.login.' . auth()->user()->organization_id)]);
+            }
             else    
                 $this->logout();
 
@@ -120,12 +128,26 @@ class DialerController extends Controller {
 
     }
 
-    public function dial(){
+    public function destinations($function){
+
+        if ( request()->ajax() ) {
+            return $this->dist_by_function( $function );
+        }           
+
+        die();
+
+    }
+
+
+    /*  public function dial(){
+        
         $tel_no = request()->query('tel_no');
         $call_id = request()->session()->get('dialer.call_id.' . auth()->user()->organization_id);
-        $call = FunctionCall::send_call(['to'=>$tel_no,'response'=>route('webdialer.response'),'statusCallback'=>route('webdialer.responseCallback', ['client_id' => $call_id, 'organization_id' => auth()->user()->organization_id])]);
+        $dialercall = Call::find($call_id);
+        info($dialercall);
+        $call = FunctionCall::send_call(['to'=>$tel_no,'from'=>$dialercall->destination,'response'=>route('webdialer.response'),'statusCallback'=>route('webdialer.responseCallback', ['client_id' => $call_id, 'organization_id' => auth()->user()->organization_id])]);
         if(isset($call['error'])){ 
-            FunctionCall::send_to_websocket($call_id,['type'=>1,'data'=>['status'=>'Failed','call_id'=>'','status-code'=>3]]);
+            FunctionCall::send_to_websocket($call_id,['type'=>1,'data'=>['status'=>'Failed','call_id'=>'','status-code'=> CallStatusEnum::Failed]]);
             return $call;
         }
         
@@ -137,58 +159,53 @@ class DialerController extends Controller {
         FunctionCall::modify_call($call_id,['responseXml'=>$voice_response->xml()]);
         $call['error'] = false;
         return $call;
-    }
+    }  */
+   
+    public function dial(){
+        $tel_no = request()->query('tel_no');
+        $record = request()->query('record',true);
+        $call_id = request()->session()->get('dialer.call_id.' . auth()->user()->organization_id);
+        $call = Call::find($call_id);
+        $voice_response = new VoiceResponse;
+       // session(['dialer.outgoing.tel_no' => $tel_no]);
+        $voice_response->dial($tel_no,['record'=>$record,'callerId'=>$call->destination,'action'=>route('webdialer.statusCallback',['client_id' => $call_id]),'statusCallback'=>route('webdialer.responseCallback', ['client_id' => $call_id, 'tel_no' => $tel_no])]);
+        $voice_response->redirect(route('webdialer.response'));
+        FunctionCall::modify_call($call_id,['responseXml'=>$voice_response->xml()]);
+        return ['success'=>true];
+    } 
 
     public function hangup(){
         $response = new VoiceResponse();
-        $response->hangup();
-        return FunctionCall::modify_call(request()->get('call_id'),['responseXml'=>$response->xml()]);
+        //$response->hangup();
+        $call_id = request()->session()->get('dialer.call_id.' . auth()->user()->organization_id);
+        $response->redirect(route('webdialer.response'));
+        return FunctionCall::modify_call($call_id,['responseXml'=>$response->xml()]);
     }
 
-    // public function endCall($outgoing_call_id, $dialer_call_id){
+    
 
-    //     $outgoingCall = Call::find($outgoing_call_id);
-    //     Log::info('outgoing------------');
-    //     Log::info($outgoingCall);
-
-    //     if(!CallHistory::where('call_id', $outgoingCall->id)->exists()){
-            
-    //         $callHistory = CallHistory::create([
-    //             'organization_id'=> $outgoingCall->organization_id,
-    //             'call_id'=>$outgoingCall->id,
-    //             'bridge_call_id' => isset($outgoingCall->bridge_call_id) ? $outgoingCall->bridge_call_id : "",
-    //             'duration' => $outgoingCall->duration,
-    //             'record_file' => $outgoingCall->record_file,
-    //             'status' => $outgoingCall->status
-    //         ]);
-    //     }
-
-        
-    //     $call = Call::find($dialer_call_id);
-    //     Log::info('dialer call ------------');
-    //     Log::info($call);
-        
-    //     if(!CallHistory::where('call_id', $call->id)->exists()){
-    //         CallHistory::create([
-    //             'organization_id'=>$call->organization_id,
-    //             'call_id'=>$call->id,
-    //             'bridge_call_id' => isset($call->bridge_call_id) ? $call->bridge_call_id : "",
-    //             'duration' => $call->duration,
-    //             'record_file' => $call->record_file,
-    //             'status' => $call->status
-    //         ]);
-
-    //     }
-
-    //     return response()->json(['status' => 'success']);
-
-    // }
-
-    public function forward(){
+    public function forward(Request $request){
         $response = new VoiceResponse();
-        $response->dial(request()->query('forward'));
+
+        if($request->has('forward')){
+            $response->dial($request->input('forward'));
+        }
+
+        else if( $request->has('function_id') && $request->has('destination_id')){
+            $func = Func::select('id')->where('func', $request->input('function_id'))->first();
+
+            $response->redirect(route('api.func_call',[
+                'func_id'=> $func->id,
+                'dest_id'=>$request->input('destination_id')
+            ]));    
+        }
+        
         $response->hangup();
-        return FunctionCall::modify_call(request()->get('call_id'),['responseXml'=>$response->xml()]);
+        FunctionCall::modify_call(request()->get('call_id'),['responseXml'=>$response->xml()]);
+
+        
+        
+        //FunctionCall::send_to_websocket(request()->session()->get('dialer.call_id.' . auth()->user()->organization_id),['type'=>1,'data'=>['status'=>'Disconnected','call_id'=>'','status-code'=>3]]);
     }
 
     public function getErrors( $validationErrors ) {
@@ -208,6 +225,8 @@ class DialerController extends Controller {
     }
 
     public function dialer_connect_response(){
+        //info("dialer connect response");
+        //info(request()->input());
         $voice_response = new VoiceResponse;
         $voice_response->pause(10);
         $voice_response->redirect(route('webdialer.response'));
@@ -216,12 +235,33 @@ class DialerController extends Controller {
 
     public function dial_status_callback($client_id){
         $calldata = request()->input();
-        //info($calldata);
+        info("dialer action  callback " . $client_id);
+        $call = Call::find($calldata['call_id']);
+       
+
         if($calldata['bridge_call_id'] != ''){
+            $call_history = [
+                'organization_id'=> $call->organization_id,
+                'call_id'=>$calldata['call_id'],
+                'bridge_call_id' => $calldata['bridge_call_id'],
+                'duration' => $calldata['duration'],
+                'record_file' => isset($calldata['record_file']) ? $calldata['record_file'] : '',
+                'status' => ($calldata['dial_status'] == 1)?CallStatusEnum::Disconnected->value:CallStatusEnum::Failed->value
+            ];
+            CallHistory::create(
+               $call_history
+            );
+ 
             $call = Call::find( $calldata['bridge_call_id'] );
-            FunctionCall::send_to_websocket($client_id,['type'=>1,'data'=>CallHandler::prepare_call_json( $call,false )]);        
+            $call_resp = CallHandler::prepare_call_json( $call,false );
+            $call_resp['duration'] = $calldata['duration'];
+            $call_resp['status-code'] = $call_history['status'];
+            $call_resp['status'] = ($calldata['dial_status'] == 1)?CallStatusEnum::Disconnected->getText():CallStatusEnum::Failed->getText();
+            $call_resp['record_file'] = isset($calldata['record_file']) ? $calldata['record_file'] : '';
+            FunctionCall::send_to_websocket($client_id,['type'=>1,'data'=>$call_resp]);        
         }else
             FunctionCall::send_to_websocket($client_id,['type'=>1,'data'=>['status'=>'Failed','call_id'=>'','status-code'=>3]]);
+        
         
         return $this->dialer_connect_response();
     }
@@ -229,7 +269,8 @@ class DialerController extends Controller {
 
     public function dialer_response_callback($client_id){
         $calldata = request()->input();
-        // Log::info($client_id);
+      
+        info("dialer response callback");
         Log::info($calldata);
     
 
@@ -244,22 +285,7 @@ class DialerController extends Controller {
 
         }
 
-
-        if($type == 1 && $calldata['status-code'] >= CallStatusEnum::Disconnected->value){
-
-            if(!CallHistory::where('bridge_call_id', $calldata['call_id'])->exists()){
-            
-                CallHistory::create([
-                    'organization_id'=> $calldata['organization_id'],
-                    'call_id'=>$calldata['call_id'],
-                    'bridge_call_id' => $client_id,
-                    'duration' => $calldata['duration'],
-                    'record_file' => isset($calldata['record_file']) ? $calldata['record_file'] : '',
-                    'status' => CallStatusEnum::fromKey($calldata['status-code'])
-                ]);
-                
-            }
-        }
+ 
 
         $data = ['type'=>$type,'data'=>$calldata];
         FunctionCall::send_to_websocket($client_id,$data);

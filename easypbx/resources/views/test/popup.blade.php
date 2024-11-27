@@ -14,7 +14,8 @@
     <link rel="stylesheet" type="text/css" href="{{ asset('css/bootstrap-toaster.min.css') }}">
     <!-- Font-icon css-->
     
-    <link rel="stylesheet" type="text/css" href="{{ asset('js/font-awesome/css/font-awesome.min.css') }}">
+    <!-- <link rel="stylesheet" type="text/css" href="{{ asset('js/font-awesome/css/font-awesome.min.css') }}"> -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         .text-required {
             font-size: 18px;
@@ -60,10 +61,14 @@
     <div class="container-fluid text-center bg-primary">
         <h6 class="text-light py-2">You are now connected</h6>
     </div>
+    @php
+        $title = env('APP_NAME', 'EasyPBX');
+        if(config('licence.brand_name')) $title = config('licence.brand_name')
+    @endphp
 
     <div class="row px-3">
         <div class="col-md-6">
-            <h4 class="brand-logo">EasyPBX</h4>
+            <h4 class="brand-logo">{{ $title }}</h4>
         </div>
         <div class="col-md-6 text-right">
             <div class="btn-group" role="group">

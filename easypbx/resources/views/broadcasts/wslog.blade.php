@@ -98,8 +98,16 @@ $(document).ready(function(){
     }
 
     function displayLog(data) {
-        var tr = '<tr> <td>' + data.date + '</td> <td>' + data.contact + '</td><td>' + data.status + '</td> </tr>';
-        $("#logContent").prepend(tr);
+
+        if($("#log_" + data.contact).length > 0 ){
+            var td = '<td>' + data.date + '</td> <td>' + data.contact + '</td><td>' + data.status + '</td>';
+            $("#log_" + data.contact).html(td);
+        }
+        else{
+            var tr = '<tr id="log_'+ data.contact +'"> <td>' + data.date + '</td> <td>' + data.contact + '</td><td>' + data.status + '</td> </tr>';
+            $("#logContent").prepend(tr);
+        }
+        
     }
 
     function clearLog(){

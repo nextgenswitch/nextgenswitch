@@ -29,7 +29,7 @@
                             {!! Form::label('to', __('To'), ['class' => 'control-label']) !!}
 
                             <input type="number" name="to" id="to" class="form-control" required
-                                placeholder="Enter Agent" value="{{ old('to') }}">
+                                placeholder="{{ __('Enter Agent') }}" value="{{ old('to') }}">
                             @error('to')
                                 <p class="help-block  text-danger"> {{ $message }} </p>
                             @enderror
@@ -41,7 +41,7 @@
                             {!! Form::label('from', __('From'), ['class' => 'control-label']) !!}
 
                             <input type="number" name="from" id="from" class="form-control" required
-                                placeholder="Enter from agent" value="{{ old('from') }}">
+                                placeholder="{{ __('Enter from agent') }}" value="{{ old('from') }}">
                             @error('from')
                                 <p class="help-block  text-danger"> {{ $message }} </p>
                             @enderror

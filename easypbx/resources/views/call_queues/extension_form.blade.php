@@ -46,10 +46,10 @@
             </td>
 
             <td>
-                {!! Form::number('extensions[priority][]', old('priority', optional($ext)->priority), [
+                {!! Form::select('extensions[priority][]', [0,1,2,3,4,5,6,7,8,9,10], old('priority', optional($ext)->priority), [
                         'class' => 'form-control' . ($errors->has('priority') ? ' is-invalid' : null),
                         'min' => '0',
-                        'max' => '2147483647',
+                        'max' => '10',
                         'required' => false,
                         'placeholder' => __('Enter priority here...'),
                     ]) !!}
@@ -119,10 +119,10 @@
     </td>
 
     <td>
-        {!! Form::number('extensions[priority][]', old('priority', optional($callQueueExtension)->priority), [
+        {!! Form::select('extensions[priority][]', [0,1,2,3,4,5,6,7,8,9,10], old('priority', optional($callQueueExtension)->priority ?  optional($callQueueExtension)->priority : '1'), [
                 'class' => 'form-control' . ($errors->has('priority') ? ' is-invalid' : null),
                 'min' => '0',
-                'max' => '2147483647',
+                'max' => '10',
                 'required' => false,
                 'placeholder' => __('Enter priority here...'),
             ]) !!}

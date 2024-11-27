@@ -22,8 +22,8 @@ class TtsProfilesController extends Controller {
         $perPage    = $request->get( 'per_page' ) ?: 10;
         $filter     = $request->get( 'filter' ) ?: '';
         $sort       = $request->get( 'sort' ) ?: '';
-        //$ttsProfile = TtsProfile::where( 'organization_id', auth()->user()->organization_id );
-        $ttsProfile = TtsProfile::latest();
+        $ttsProfile = TtsProfile::where( 'organization_id', auth()->user()->organization_id );
+       // $ttsProfile = TtsProfile::latest();
         if (  ! empty( $q ) ) {
             $ttsProfile->where( 'name', 'LIKE', '%' . $q . '%' );
         }
@@ -154,7 +154,7 @@ class TtsProfilesController extends Controller {
     public function store( Request $request ) {
 
         $data = $this->getData( $request );
-        // $data['organization_id'] = auth()->user()->organization_id;
+         $data['organization_id'] = auth()->user()->organization_id;
 
         $request->validate( [$data['provider'] . '.*' => 'required'] );
 
@@ -231,8 +231,8 @@ class TtsProfilesController extends Controller {
             $data['config'] = json_encode( $request->input($data['provider']) );
         }
 
-        if($data['organization_id'] == '') $data['organization_id'] = 0;
-        
+       // if($data['organization_id'] == '') $data['organization_id'] = 0;
+       $data['organization_id'] = auth()->user()->organization_id;
         $data['is_default'] = $request->has('is_default') ? 1 : null;
 
         $ttsProfile->update( $data );

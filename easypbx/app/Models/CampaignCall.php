@@ -11,7 +11,7 @@ class CampaignCall extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['campaign_id', 'call_id', 'tel', 'retry', 'status', 'duration', 'completed'];
+    protected $fillable = ['campaign_id', 'call_id', 'tel', 'retry', 'status', 'duration', 'sms_history_id'];
 
 
     protected static function boot() {
@@ -31,8 +31,27 @@ class CampaignCall extends Model
         return $this->belongsTo(Campaign::class, 'campaign_id');
     }
 
+
+
     protected $casts = [
         'status' => CallStatusEnum::class
     ];
+
+
+    public static function getProcessedCoctacts($campaign){
+        return   self::where( 'campaign_id', $campaign->id )
+            ->pluck( 'tel' );
+    }
+
+    public static function getRetryCoctacts($campaign){
+        return   self::where( 'campaign_id', $campaign->id )
+        ->where( 'retry', '<', $campaign->max_retry )
+        ->where( 'status', '>', CallStatusEnum::Disconnected->value )
+        ->pluck( 'tel' )->toArray();
+    }
+
+    public static function activeCallCount($campaign){
+        return self::where( 'campaign_id', $campaign->id )->where( 'status', '<', CallStatusEnum::Disconnected->value )->count();
+    }
     
 }

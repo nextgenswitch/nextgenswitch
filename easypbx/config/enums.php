@@ -19,9 +19,16 @@ return [
         2 => 'Ring Group',
         3 => 'Application',
         4 => 'Call Queue',
+        5 => 'Call Parking',
+    ],
+    'ticket_status' => [
+        1 => 'Open',
+        2 => 'Working',
+        3 => 'Closed'
     ],
     'transport'             => ['udp', 'tcp', 'tls'],
     'algorithm'             => ['a' => 'A', 'b' => 'B'],
+    
     'funcs'                 => [
         'extension'       => 'EXTENSION',
         // 'groupcall' => 'GROUP CALL',
@@ -74,6 +81,13 @@ return [
                 'apikey'   => '10c07494ae22610afce69dfd9f525973',
                 'senderId' => '96215483245',
                 'acode' => 'Account Code'
+            ],
+        ],
+        'Telegram' => [
+            'name'    => 'Telegram',
+            'options' => [
+                'token'   => '10c07494ae22610afce69dfd9f525973',
+                'chatId' => '96215483245',
             ],
         ],
     ],
@@ -131,29 +145,6 @@ return [
         '90' => 90,
     ],
     'subnet' => [
-        "1" => "/1",
-        "2" => "/2",
-        "3" => "/3",
-        "4" => "/4",
-        "5" => "/5",
-        "6" => "/6",
-        "7" => "/7",
-        "8" => "/8",
-        "9" => "/9",
-        "10" => "/10",
-        "11" => "/11",
-        "12" => "/12",
-        "13" => "/13",
-        "14" => "/14",
-        "15" => "/15",
-        "16" => "/16",
-        "17" => "/17",
-        "18" => "/18",
-        "19" => "/19",
-        "20" => "/20",
-        "21" => "/21",
-        "22" => "/22",
-        "23" => "/23",
         "24" => "/24",
         "25" => "/25",
         "26" => "/26",
@@ -189,13 +180,14 @@ return [
         '7'  => 'QueueFull',
     ],
     'member_type'           => [
-        '0' => 'Dynamic',
         '1' => 'Static',
+        '0' => 'Dynamic',        
     ],
 
     'user_roles'            => [
         'Admin' => 'Admin',
         'Manager' => 'Manager',
+        'Agent' => 'Agent'
     ],
     'permissions' => [
         'Admin' => [
@@ -212,6 +204,11 @@ return [
             'admin.report.*',
             'admin.custom_function.*',
             'admin.application.*'
+        ],
+        'Agent' => [
+            'admin.dashboard.*',
+            'admin.monitoring.*',
+            'admin.campaign.*',
         ],
     ],
     'genders' => [
@@ -618,7 +615,20 @@ return [
         'nov' => 'November',
         'dec' => 'December',
     ],
-
+    'notification'=>[
+        'General',
+        'Warning',
+        'Error'
+        ],
+   
+       'notification_codes'=>[
+         101=>'Campaign start processing',
+         102=>'Campaign processed',
+         301=>'Not have enough Balance to send call',
+         303=>'Telno not supported',
+         304=>'Service provider err',
+       ],
+       
     'timezones'             => [
         'Pacific/Midway'       => '(GMT-11:00) Midway Island',
         'US/Samoa'             => '(GMT-11:00) Samoa',

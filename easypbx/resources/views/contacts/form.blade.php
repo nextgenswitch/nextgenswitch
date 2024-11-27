@@ -46,7 +46,7 @@
             {!! Form::select('gender', config('enums.genders'), old('gender', optional($contact)->gender), [
                 'class' => 'form-control',
                 'required' => false,
-                'placeholder' => 'Select gender',
+                'placeholder' => __('Select gender'),
             ]) !!}
             @error('gender')
                 <p class="help-block  text-danger"> {{ $message }} </p>
@@ -104,13 +104,24 @@
         <div class="form-group @error('contact_groups') has-error @enderror">
             {!! Form::label('contact_groups', __('Contact Group'), ['class' => 'control-label']) !!}
 
-            {!! Form::select('contact_groups', $contact_groups, old('contact_groups', optional($contact)->contact_groups), [
+            <!-- {!! Form::select('contact_groups', $contact_groups, old('contact_groups', optional($contact)->contact_groups), [
                 'multiple' => 'multiple',
                 'name' => 'contact_groups[]',
                 'class' => 'form-control selectpicker' . ($errors->has('contact_groups') ? ' is-invalid' : null),
                 'maxlength' => '100',
                 'data-actions-box' => 'true',
+            ]) !!} -->
+
+            {!! Form::select('contact_groups', $contact_groups, old('contact_groups', optional($contact)->contact_groups), [
+                'multiple' => 'multiple',
+                'name' => 'contact_groups[]',
+                'class' => 'form-control ' . ($errors->has('contact_groups') ? ' is-invalid' : null),
+                'maxlength' => '100',
+                'required' => true,
+                'data-actions-box' => 'true',
             ]) !!}
+
+
             @error('contact_groups')
                 <p class="help-block  text-danger"> {{ $message }} </p>
             @enderror
@@ -230,6 +241,32 @@
     <script type="text/javascript">
         $(document).ready(function() {
             $('.selectpicker').selectpicker();
+
+            $("#contact_groups").selectize({
+                delimiter: ",",
+                persist: false,
+                maxItems: null,
+                create: function (input) {
+                    return {
+                        value: input,
+                        text: input,
+                        };
+
+                    
+                }
+            });
+
+            $("#contact_group").selectize({
+                delimiter: ",",
+                persist: false,
+                create: function (input) {
+                    return {
+                        value: input,
+                        text: input,
+                    };
+                },
+            });
+        
         });
     </script>
 @endif

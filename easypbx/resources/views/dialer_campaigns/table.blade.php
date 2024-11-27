@@ -10,6 +10,8 @@
                       <th>{{ __('Start At') }}</th>
                       <th>{{ __('End At') }}</th>
                       <th>{{ __('End Date') }}</th>
+                      <th>{{ __('Status') }}</th>
+                      
                       <th></th>
                   </tr>
               </thead>
@@ -23,6 +25,10 @@
                           <td>{{ $dialerCampaign->end_at }}</td>
                           <td>{{ $dialerCampaign->end_date }}</td>
                           <td>
+
+                          <span class="badge badge-pill badge-light"><a href="{{ route('dialer_campaigns.dialer_campaign.run', $dialerCampaign->id ) }}"> {{ config('enums.campaign_status')[$dialerCampaign->status] }} </a></span> 
+                          </td>
+                          <td>
                               <div class="dropdown">
                                   <form method="POST" action="{!! route('dialer_campaigns.dialer_campaign.destroy', $dialerCampaign->id) !!}" accept-charset="UTF-8"
                                       class="deleteFrm">
@@ -33,8 +39,8 @@
                                       <ul class="dropdown-menu shadow-dropdown action-dropdown-menu"
                                           aria-labelledby="dropdownMenuButton1">
                                           @if($dialerCampaign->status == 0)
-                                            <li><a class="dropdown-item campaign-start" camp_id="{{  $dialerCampaign->id }}"  href="javascript:void(0)">
-                                                    <i class="fa fa-play"></i> {{ __('Start') }}
+                                            <li><a class="dropdown-item"  href="{{ route('dialer_campaigns.dialer_campaign.run', $dialerCampaign->id) }}">
+                                                    <i class="fa fa-play"></i> {{ __('Start Dialing') }}
                                                 </a>
                                             </li>
                                           @endif
@@ -45,10 +51,16 @@
                                           </li>
                                         
                                           
-                                          <li><a title="Edit Dialer Campaign #{{ $dialerCampaign->id }}"
+                                          <li><a title="Edit  Campaign #{{ $dialerCampaign->id }}"
                                                   class="dropdown-item"
                                                   href="{{ route('dialer_campaigns.dialer_campaign.edit', $dialerCampaign->id) }}">
                                                   <i data-feather="edit"></i> {{ __('Edit') }}
+                                              </a>
+                                          </li>
+                                          <li><a title="Clone  Campaign #{{ $dialerCampaign->id }}"
+                                                  class="dropdown-item"
+                                                  href="{{ route('dialer_campaigns.dialer_campaign.clone', $dialerCampaign->id) }}">
+                                                  <i data-feather="copy"></i> {{ __('Clone') }}
                                               </a>
                                           </li>
                                           @if($dialerCampaign->status < 2)

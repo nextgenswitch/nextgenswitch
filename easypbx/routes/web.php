@@ -17,6 +17,7 @@ use App\Http\Controllers\TrunksController;
 use App\Http\Controllers\CallingController;
 use App\Http\Controllers\ScriptsController;
 use App\Http\Controllers\SettingController;
+use App\Notifications\PushNotification;
 use App\Http\Controllers\SurveysController;
 use function PHPUnit\Framework\returnValue;
 use App\Http\Controllers\ContactsController;
@@ -47,18 +48,22 @@ use App\Http\Controllers\AnnouncementsController;
 use App\Http\Controllers\CampaignCallsController;
 use App\Http\Controllers\ContactGroupsController;
 use App\Http\Controllers\InboundRoutesController;
+use App\Http\Controllers\NotificationsController;
 use App\Http\Controllers\OrganizationsController;
 use App\Http\Controllers\LicenceManagerController;
 use App\Http\Controllers\OutboundRoutesController;
+use App\Http\Controllers\VoiceRecordsController;
 use App\Http\Controllers\TimeConditionsController;
 use App\Http\Controllers\DialerCampaignsController;
 use App\Http\Controllers\DialerCampaignCallController;
+use App\Http\Controllers\TicketsController;
 use App\Http\Controllers\PlansController;
+use App\Http\Controllers\CallParkingsController;
 use App\Http\Controllers\ExtensionGroupsController;
 use App\Http\Controllers\Agent\Auth\LoginController;
 use Illuminate\Support\Facades\Http;
 use App\Models\SmsProfile;
-
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CallQueueExtensionsController;
 use App\Http\Controllers\Agent\DashboardController as AgentDashboardController;
 
@@ -97,6 +102,7 @@ Route::get( '/', function () {
 } );
 
 Auth::routes();
+Route::get('reg-information', [RegisterController::class, 'regInfo'])->name('reg.info');
 
 Route::group( [ 'middleware' => 'auth'], function () {
     Route::group( [ 'middleware' => 'permission:su.*'], function () {
@@ -196,9 +202,10 @@ Route::group( [ 'middleware' => 'auth'], function () {
             'prefix' => 'monitoring',
         ], function () {
             Route::get( '/active-call', [MonitoringController::class, 'activeCall'] )->name( 'monitoring.active.call' );
-            Route::get( '/call-histories', [MonitoringController::class, 'callHistories'] )->name( 'monitoring.call.history' );
+            Route::get( '/bridge-calls', [MonitoringController::class, 'callHistories'] )->name( 'monitoring.call.history' );
 
             Route::get( '/queue-call', [MonitoringController::class, 'queueCall'] )->name( 'monitoring.queue.call' );
+            
             Route::get( '/record-preview/{id}', [MonitoringController::class, 'preview'] )
                 ->name( 'monitoring.record.preview' );
             Route::get( '/history-record-preview/{id}', [MonitoringController::class, 'history_preview'] )
@@ -206,25 +213,28 @@ Route::group( [ 'middleware' => 'auth'], function () {
             Route::get( '/call-log', [MonitoringController::class, 'callLog'] )->name( 'monitoring.log.call' );
             Route::get( '/active-channels', [MonitoringController::class, 'activeChannels'] )->name( 'monitoring.active.sip' );
 
-            Route::get( '/voice-mails', [VoiceMailController::class, 'index'] )->name( 'monitoring.voice_mails.index' );
+            Route::get( '/voice-record-logs', [VoiceMailController::class, 'index'] )->name( 'monitoring.voice_mails.index' );
             Route::get( '/voice-mails/preview/{id}', [VoiceMailController::class, 'preview'] )
                 ->name( 'monitoring.voice_mails.preview' );
 
             Route::get( '/sms-histories', [MonitoringController::class, 'smsHistory'] )->name( 'monitoring.sms.histories' );
             Route::get( '/trunk-logs', [MonitoringController::class, 'trunkLog'] )->name( 'monitoring.trunk.log' );
+            Route::get( '/surveys', [ReportController::class, 'survey'] )->name( 'monitoring.surveys' );
+
+            Route::get('/active-parking-calls', [MonitoringController::class, 'activeParkingCalls'])->name('monitoring.active.parking.calls');
 
         } );
 
         Route::group( [
-            'prefix' => 'monitoring/broadcast_calls',
+            'prefix' => 'monitoring/broadcast_history',
         ], function () {
             Route::get( '/', [CampaignCallsController::class, 'index'] )
-                ->name( 'campaign_calls.campaign_call.index' );
-            Route::put( 'field/{campaignCall}', [CampaignCallsController::class, 'updateField'] )
+                ->name( 'broadcast_calls.broadcast_call.index' );
+           /*  Route::put( 'field/{campaignCall}', [CampaignCallsController::class, 'updateField'] )
                 ->name( 'campaign_calls.campaign_call.updateField' );
             
             Route::put( '/bulk/{campaign}', [CampaignCallsController::class, 'bulkAction'] )
-                ->name( 'campaign_calls.campaign_call.bulk' );
+                ->name( 'campaign_calls.campaign_call.bulk' ); */
         } );
 
         Route::group( [
@@ -265,6 +275,7 @@ Route::group( [ 'middleware' => 'auth'], function () {
                 ->name( 'extensions.extension.bulk' );
             Route::post( '/upload', [ExtensionsController::class, 'import'] )
                 ->name( 'extensions.extension.import' );
+
         } );
 
         Route::group( [
@@ -606,6 +617,8 @@ Route::group( [ 'middleware' => 'auth'], function () {
                 ->name( 'dialer_campaigns.dialer_campaign.show' );
             Route::get( '/{dialerCampaign}/edit', [DialerCampaignsController::class, 'edit'] )
                 ->name( 'dialer_campaigns.dialer_campaign.edit' );
+            Route::get( '/{dialerCampaign}/clone', [DialerCampaignsController::class, 'clone'] )
+                ->name( 'dialer_campaigns.dialer_campaign.clone' );    
             Route::post( '/', [DialerCampaignsController::class, 'store'] )
                 ->name( 'dialer_campaigns.dialer_campaign.store' );
             Route::put( 'dialer_campaign/{dialerCampaign}', [DialerCampaignsController::class, 'update'] )
@@ -618,13 +631,21 @@ Route::group( [ 'middleware' => 'auth'], function () {
                 ->name( 'dialer_campaigns.dialer_campaign.bulk' );
             Route::get( '/dialer_campaign/process/{campaignId}', [DialerCampaignsController::class, 'process'] )
                 ->name( 'dialer_campaigns.dialer_campaign.process' );
+            Route::get( '/dialer_campaign/run/{id}', [DialerCampaignsController::class, 'run'] )
+                ->name( 'dialer_campaigns.dialer_campaign.run' );
+            Route::get( '/dialer_campaign/get_contact/{id}', [DialerCampaignsController::class, 'getContact'] )
+                ->name( 'dialer_campaigns.dialer_campaign.get_contact' );    
+            Route::post('/dialer_campaign/update_campaign_call/{id}',[DialerCampaignsController::class, 'updateCampaignCall'] )
+                ->name( 'dialer_campaigns.dialer_campaign.update_campaign_call' );    
 
+            Route::post('/dialer_campaign/update_contact',[DialerCampaignsController::class, 'updateContact'] )
+                ->name( 'dialer_campaigns.dialer_campaign.update_contact' );    
+            
             Route::post('/dialer_campaign/form-data', [DialerCampaignsController::class, 'formData'])->name('dialer_campaigns.dialer_campaign.form_data');
             Route::get( '/dial', [DialerCampaignsController::class, 'dial'] )->name( 'dialer_campaigns.dialer_campaign.dial' );
             Route::get( '/hangup', [DialerCampaignsController::class, 'hangup'] )->name( 'dialer_campaigns.dialer_campaign.hangup' );
             Route::get( '/forward', [DialerCampaignsController::class, 'forward'] )->name( 'dialer_campaigns.dialer_campaign.forward' );
             Route::get('/send-sms', [DialerCampaignsController::class, 'sendSms'])->name('dialer_campaigns.dialer_campaign.send.sms');
-
         } );
 
         Route::group( [
@@ -731,6 +752,9 @@ Route::group( [ 'middleware' => 'auth'], function () {
                 ->name( 'contacts.contact.bulk' );
             Route::post( '/upload', [ContactsController::class, 'upload'] )
                 ->name( 'contacts.contact.upload' );
+
+            Route::get('/send-sms', [ContactsController::class, 'sendSms'] )
+            ->name( 'contacts.contact.send_sms' );
         } );
 
         Route::group( [
@@ -744,6 +768,8 @@ Route::group( [ 'middleware' => 'auth'], function () {
                 ->name( 'broadcasts.broadcast.show' )->where( 'id', '[0-9]+' );
             Route::get( '/{campaign}/edit', [BroadcastsController::class, 'edit'] )
                 ->name( 'broadcasts.broadcast.edit' )->where( 'id', '[0-9]+' );
+            Route::get( '/{campaign}/clone', [BroadcastsController::class, 'clone'] )
+                ->name( 'broadcasts.broadcast.clone' )->where( 'id', '[0-9]+' );    
             Route::post( '/', [BroadcastsController::class, 'store'] )
                 ->name( 'broadcasts.broadcast.store' );
             Route::put( 'campaign/{campaign}', [BroadcastsController::class, 'update'] )
@@ -756,6 +782,10 @@ Route::group( [ 'middleware' => 'auth'], function () {
                 ->name( 'broadcasts.broadcast.bulk' );
             Route::get( 'distinations/{function}', [BroadcastsController::class, 'destinations'] )
                 ->name( 'broadcasts.broadcast.destinations' );
+            Route::get( 'stats/{id}', [BroadcastsController::class, 'stats'] )
+                ->name( 'broadcasts.broadcast.stats' );
+            Route::post( 'stats/{id}', [BroadcastsController::class, 'run'] )
+                ->name( 'broadcasts.broadcast.run' );    
         } );
 
         Route::group( [
@@ -845,10 +875,9 @@ Route::group( [ 'middleware' => 'auth'], function () {
         Route::group( [
             'prefix' => 'report',
         ], function () {
-
+            Route::get( '/queue-stats', [ReportController::class, 'queueStats'] )->name( 'report.queue.stats' );
             Route::get( 'extensions/summery', [ReportController::class, 'extensionSummery'] )->name( 'report.extensions.summery' );
             Route::get( 'trunks/summery', [ReportController::class, 'trunkSummery'] )->name( 'report.trunks.summery' );
-            Route::get( 'surveys/{survey?}', [ReportController::class, 'survey'] )->name( 'report.surveys' );
             Route::get( 'campaign', [ReportController::class, 'campaign'] )->name( 'report.campaign' );
 
         } );
@@ -884,6 +913,32 @@ Route::group( [ 'middleware' => 'auth'], function () {
             ->name( 'applications.application.bulk' );
     } );
 
+    Route::group([
+		'prefix' => 'call_parkings',
+        'middleware' => 'permission:admin.application.*'
+	], function () {
+		Route::get('/', [CallParkingsController::class, 'index'])
+			 ->name('call_parkings.call_parking.index');
+		Route::get('/create', [CallParkingsController::class, 'create'])
+			 ->name('call_parkings.call_parking.create');
+		Route::get('/show/{callParking}',[CallParkingsController::class, 'show'])
+			 ->name('call_parkings.call_parking.show');
+		Route::get('/{callParking}/edit',[CallParkingsController::class, 'edit'])
+			 ->name('call_parkings.call_parking.edit');
+		Route::post('/', [CallParkingsController::class, 'store'])
+			 ->name('call_parkings.call_parking.store');
+		Route::put('call_parking/{callParking}', [CallParkingsController::class, 'update'])
+			 ->name('call_parkings.call_parking.update');
+		Route::delete('/call_parking/{callParking}',[CallParkingsController::class, 'destroy'])
+			 ->name('call_parkings.call_parking.destroy');
+		Route::put('field/{callParking}', [CallParkingsController::class, 'updateField'])
+			 ->name('call_parkings.call_parking.updateField'); 
+		Route::put('/bulk', [CallParkingsController::class, 'bulkAction'])
+			 ->name('call_parkings.call_parking.bulk');  
+        Route::get('distinations/{function}', [CallParkingsController::class, 'destinations'] )
+             ->name( 'call_parkings.call_parking.destinations' );          
+	});
+
     Route::group( [
         'prefix' => 'custom_funcs',
         'middleware' => 'permission:admin.custom_function.*'
@@ -910,6 +965,22 @@ Route::group( [ 'middleware' => 'auth'], function () {
 
     Route::get( 'dashboard', [DashboardController::class, 'index'] )->name( 'dashboard' )->middleware('permission:admin.dashboard.*');
 
+
+    Route::group( [
+        'prefix' => 'dialer',
+    ], function () {
+        Route::post( '/login', [DialerController::class, 'login'] )->name( 'dialer.login' );
+        Route::get( '/logout', [DialerController::class, 'logout'] )->name( 'dialer.logout' );
+        Route::get( '/login', [DialerController::class, 'loginForm'] )->name( 'dialer.login.form' );
+        Route::get( '/', [DialerController::class, 'index'] )->name( 'dialer.index' );
+        Route::get( '/dial', [DialerController::class, 'dial'] )->name( 'dialer.dial' );
+        Route::get( '/hangup', [DialerController::class, 'hangup'] )->name( 'dialer.hangup' );
+        Route::get( '/forward', [DialerController::class, 'forward'] )->name( 'dialer.forward' );
+        Route::get( '/distinations/{function}', [DialerController::class, 'destinations'] )->name( 'dialer.destinations' );
+        // Route::get('/end-call', [DialerController::class, 'endCall'])->name('dialer.end.call');
+        
+    });
+    
     Route::group( ['middleware' => 'permission:admin.*'], function () {
         
         Route::group( [
@@ -1212,6 +1283,13 @@ Route::group( [ 'middleware' => 'auth'], function () {
         })->name('test.popup');
     
         Route::get( 'test', function () {
+
+            auth()->user()->notify(new PushNotification([
+                'type' => 0,
+                'msg' => 'New notification added into queue'
+            ]));
+
+
             // FunctionCall::send_to_websocket('campaign_51', ['status' => true]);
             
             // $playload = [
@@ -1227,38 +1305,104 @@ Route::group( [ 'middleware' => 'auth'], function () {
 
             // $res = Http::post('https://api.rtcom.xyz/onetomany', $playload);
 
-            $smsProfile = SmsProfile::where('organization_id', auth()->user()->organization_id)->where('default', 1)->first();
+            // $smsProfile = SmsProfile::where('organization_id', auth()->user()->organization_id)->where('default', 1)->first();
             // return $smsProfile;
-            $data = [
-                'from' => 'EasyPbx',
-                'to' => '+8801518307641',
-                'body' => 'hello are you there',
-                'sms_profile' => $smsProfile
-            ];
-            $response = FunctionCall::send_sms($data);
+            // $data = [
+            //     'from' => 'EasyPbx',
+            //     'to' => '+8801518307641',
+            //     'body' => 'hello are you there',
+            //     'sms_profile' => $smsProfile
+            // ];
+            // $response = FunctionCall::send_sms($data);
 
 
-            return $response;
+            // return $response;
     
         } );
     
-        Route::group( [
-            'prefix' => 'dialer',
-        ], function () {
-            Route::post( '/login', [DialerController::class, 'login'] )->name( 'dialer.login' );
-            Route::get( '/logout', [DialerController::class, 'logout'] )->name( 'dialer.logout' );
-            Route::get( '/login', [DialerController::class, 'loginForm'] )->name( 'dialer.login.form' );
-            Route::get( '/', [DialerController::class, 'index'] )->name( 'dialer.index' );
-            Route::get( '/dial', [DialerController::class, 'dial'] )->name( 'dialer.dial' );
-            Route::get( '/hangup', [DialerController::class, 'hangup'] )->name( 'dialer.hangup' );
-            Route::get( '/forward', [DialerController::class, 'forward'] )->name( 'dialer.forward' );
-            // Route::get('/end-call', [DialerController::class, 'endCall'])->name('dialer.end.call');
-            
-        });
-    
-        
+ 
     } );
 
+    Route::group([
+        'prefix' => 'notifications',
+    ], function () {
+        Route::get('/', [NotificationsController::class, 'index'])
+             ->name('notifications.notification.index');
+
+         Route::get('/seen/{ids}', [NotificationsController::class, 'seenNotification'])
+             ->name('notifications.notification.seen');
+
+
+       // Route::get('/create', [NotificationsController::class, 'create'])
+       //      ->name('notifications.notification.create');
+       // Route::get('/show/{notification}',[NotificationsController::class, 'show'])
+       //      ->name('notifications.notification.show');
+       // Route::get('/{notification}/edit',[NotificationsController::class, 'edit'])
+       //      ->name('notifications.notification.edit');
+       // Route::post('/', [NotificationsController::class, 'store'])
+       //      ->name('notifications.notification.store');
+       // Route::put('notification/{notification}', [NotificationsController::class, 'update'])
+       //      ->name('notifications.notification.update');
+        Route::delete('/notification/{notification}',[NotificationsController::class, 'destroy'])
+             ->name('notifications.notification.destroy');
+        Route::put('field/{notification}', [NotificationsController::class, 'updateField'])
+             ->name('notifications.notification.updateField');
+        Route::put('/bulk', [NotificationsController::class, 'bulkAction'])
+             ->name('notifications.notification.bulk');
+    });
+
+
+    Route::group([
+        'prefix' => 'voice_records',
+    ], function () {
+        Route::get('/', [VoiceRecordsController::class, 'index'])
+             ->name('voice_records.voice_record.index');
+        Route::get('/create', [VoiceRecordsController::class, 'create'])
+             ->name('voice_records.voice_record.create');
+        Route::get('/show/{voiceRecord}',[VoiceRecordsController::class, 'show'])
+             ->name('voice_records.voice_record.show');
+        Route::get('/{voiceRecord}/edit',[VoiceRecordsController::class, 'edit'])
+             ->name('voice_records.voice_record.edit');
+        Route::post('/', [VoiceRecordsController::class, 'store'])
+             ->name('voice_records.voice_record.store');
+        Route::put('voice_record/{voiceRecord}', [VoiceRecordsController::class, 'update'])
+             ->name('voice_records.voice_record.update');
+        Route::delete('/voice_record/{voiceRecord}',[VoiceRecordsController::class, 'destroy'])
+             ->name('voice_records.voice_record.destroy');
+        Route::put('field/{voiceRecord}', [VoiceRecordsController::class, 'updateField'])
+             ->name('voice_records.voice_record.updateField'); 
+        Route::put('/bulk', [VoiceRecordsController::class, 'bulkAction'])
+             ->name('voice_records.voice_record.bulk');            
+    });
+
+    
+    Route::group([
+        'prefix' => 'tickets',
+    ], function () {
+        Route::get('/', [TicketsController::class, 'index'])
+             ->name('tickets.ticket.index');
+        Route::get('/create', [TicketsController::class, 'create'])
+             ->name('tickets.ticket.create');
+        Route::get('/show/{ticket}',[TicketsController::class, 'show'])
+             ->name('tickets.ticket.show');
+        Route::get('/{ticket}/edit',[TicketsController::class, 'edit'])
+             ->name('tickets.ticket.edit');
+        Route::post('/', [TicketsController::class, 'store'])
+             ->name('tickets.ticket.store');
+        Route::put('ticket/{ticket}', [TicketsController::class, 'update'])
+             ->name('tickets.ticket.update');
+        Route::delete('/ticket/{ticket}',[TicketsController::class, 'destroy'])
+             ->name('tickets.ticket.destroy');
+        Route::put('field/{ticket}', [TicketsController::class, 'updateField'])
+             ->name('tickets.ticket.updateField'); 
+        Route::put('/bulk', [TicketsController::class, 'bulkAction'])
+             ->name('tickets.ticket.bulk');        
+             
+        Route::post('/ticket/follow_up/{ticket}', [TicketsController::class, 'followUp'])->name('tickets.follow_up.store');
+    });
+
+    
+    
 });
 
 

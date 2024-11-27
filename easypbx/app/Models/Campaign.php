@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Models\Func;
+use App\Models\Contact;
+use App\Models\CampaignCall;
 use Illuminate\Database\Eloquent\Model;
 
 class Campaign extends Model
@@ -44,7 +46,9 @@ class Campaign extends Model
                   'function_id',
                   'destination_id',
                   'total_successfull',
-                  'total_failed'
+                  'total_failed',
+                  'sms_history_id',
+                  'on_queue'
               ];
 
     /**
@@ -146,5 +150,48 @@ class Campaign extends Model
         $function = Func::find( $this->function_id );
         return $function->func == 'sms' ? true : false;
     }
+
+
+    public static function inTime( $campaign ) {
+        $start = $campaign->start_at;
+        $end = $campaign->end_at;
+        $timezone = $campaign->timezone;
+        $days = $campaign->schedule_days;
+
+        
+        $convertedDateTime = now()->tz( $timezone );
+       
+        $currentDay = $convertedDateTime->format( 'D' );
+
+        $inTime = $convertedDateTime->between( $start, $end );
+
+        if ( $inTime && $days != null ) {
+            $inTime = in_array( strtolower( $currentDay ), $days );
+        }
+
+      //  $inTime = self::inTime( $campaign1->start_at, $campaign1->end_at, $campaign1->timezone, $campaign1->schedule_days );
+      
+        return $inTime;
+    }
+
+    function inTimeCheck( $start, $end, $timezone, $days = null ): bool {
+        $convertedDateTime = now()->tz( $timezone );
+
+        $currentDay = $convertedDateTime->format( 'D' );
+
+        $inTime = $convertedDateTime->between( $start, $end );
+
+        if ( $inTime && $days != null ) {
+            $inTime = in_array( strtolower( $currentDay ), $days );
+        }
+
+        return $inTime;
+    }
+
+    public static function  getCallContacts( $campaign ): array | object {
+        return array_values( array_diff( Contact::getContacts($campaign->contact_groups)->toArray(), CampaignCall::getProcessedCoctacts($campaign)->toArray() ) );      
+    }
+
+    
 
 }

@@ -10,6 +10,7 @@ use App\Models\RingGroup;
 use App\Models\Sms;
 use App\Models\TimeCondition;
 use App\Models\Survey;
+use App\Models\VoiceRecord;
 
 trait FuncTrait {
 
@@ -34,9 +35,9 @@ trait FuncTrait {
         } elseif ( $func == 'ivr' ) {
             $data = Ivr::where( 'organization_id', $orid )->pluck( 'name', 'id' )->toArray();
             $html = '<option value=""> Select ivr </option>';
-        } elseif ( $func == 'voice_mail' ) {
-            $data = Extension::where( 'organization_id', $orid )->where( 'extension_type', '1' )->pluck( 'name', 'id' )->toArray();
-            $html = '<option value=""> Select Extension(voice mail)</option>';
+        } elseif ( $func == 'voice_record' ) {
+            $data = VoiceRecord::where( 'organization_id', $orid )->pluck( 'name', 'id' )->toArray();
+            $html = '<option value=""> Select Voice Record Profile </option>';
         } elseif ( $func == 'custom_function' ) {
             $data = CustomFunc::where( 'organization_id', $orid )->pluck( 'name', 'id' )->toArray();
             $html = '<option value=""> Select custom function </option>';
@@ -52,6 +53,9 @@ trait FuncTrait {
         }elseif ( $func == 'call_survey' ) {
             $data = Survey::where( 'organization_id', $orid )->pluck( 'name', 'id' )->toArray();
             $html = '<option value=""> Select Call Survey</option>';
+        }elseif ( $func == 'call_parking' ) {
+            $data = CallParking::where( 'organization_id', $orid )->pluck( 'name', 'id' )->toArray();
+            $html = '<option value=""> Select Call Parking</option>';
         }
 
 

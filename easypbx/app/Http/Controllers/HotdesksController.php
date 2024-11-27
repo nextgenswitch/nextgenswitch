@@ -126,7 +126,7 @@ class HotdesksController extends Controller {
         $data = $this->getData( $request );
 
         $orid                   = auth()->user()->organization_id;
-        $sip                    = $request->only( ['username', 'password', 'transport'] );
+        $sip                    = $request->only( ['username', 'password', 'allow_ip'] );
         $sip['organization_id'] = $orid;
         $sip['peer']            = '0';
         $sip['call_limit']      = isset( $data['call_limit'] ) ? $data['call_limit'] : '1';
@@ -190,7 +190,7 @@ class HotdesksController extends Controller {
 
         $hotdesk->update( ['name' => $data['name']] );
 
-        $sip_data = $request->only( ['username', 'password', 'transport'] );
+        $sip_data = $request->only( ['username', 'password','allow_ip'] );
         $sip_data['call_limit']      = isset( $data['call_limit'] ) ? $data['call_limit'] : '1';
         SipUser::where( 'id', $hotdesk->sip_user_id )->update( $sip_data );
 
@@ -321,7 +321,8 @@ class HotdesksController extends Controller {
             'username' => ['required', 'string', 'min:3', 'max:100', $username_unique_rule],
             'password' => 'required|string|min:6|max:32',
             // 'transport' => 'required|numeric|min:0|max:2'
-            'call_limit' => 'nullable|numeric|min:1'
+            'call_limit' => 'nullable|numeric|min:1',
+            'allow_ip' => 'nullable'
         ];
 
         $data = $request->validate( $rules );

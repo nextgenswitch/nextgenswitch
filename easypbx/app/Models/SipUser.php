@@ -9,7 +9,7 @@ class SipUser extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['organization_id', 'username', 'password', 'host', 'port', 'transport', 'peer', 'record','status', 'call_limit'];
+    protected $fillable = ['organization_id', 'username', 'password', 'host', 'port', 'transport', 'peer', 'record','status', 'call_limit', 'allow_ip'];
     /**
      * Get the organization for this model.
      *

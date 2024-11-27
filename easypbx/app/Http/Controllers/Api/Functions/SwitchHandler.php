@@ -12,6 +12,7 @@ use App\Models\Organization;
 use App\Models\Call;
 use App\Models\CallRecord;
 use App\Models\Trunk;
+use App\Models\Func;
 use App\Models\Setting;
 use App\Models\SipUser;
 use App\Models\SipChannel;
@@ -25,6 +26,7 @@ use Exception;
 
 class SwitchHandler{
     public static function sip_user_validate($data){
+
         $organization = Organization::where( "domain", $data['domain'] )->first();
 
         if (  ! $organization ) {
@@ -35,6 +37,14 @@ class SwitchHandler{
             $sip_user = SipUser::where( "username", $data['user'] )->where('status',1)->where('peer',0)->where( "organization_id", $organization->id )->first();
 
             if ( $sip_user ) {
+                if($sip_user->allow_ip){
+                    $allowIpArr = explode(',', $sip_user->allow_ip);
+
+                    if( in_array($data['srcip'], $allowIpArr) == false){
+                        return ['error'=>true];
+                    }
+                }
+
                 return ['id' => $sip_user->id, 'password' => $sip_user->password, 'host' => $organization->domain, 'md5_hash' => base64_encode( md5( $data['user'] . ":" . $data['realm'] . ":" . $sip_user->password, true ) )];
             }
 
@@ -71,6 +81,16 @@ class SwitchHandler{
         }
 
         return ['error' => false];
+    }
+
+    public static function sip_user_sms($data){
+        //info("new sms request came");
+        //info($data);
+        $sip_channel = SipUser::find( $data['channel_id'] );
+        if(!$sip_channel) ['success' => false];
+        $data['organization_id'] =$sip_channel->organization_id; 
+        FunctionCall::send_sms($data);
+        return ['success' => true];
     }
 
     public static function sip_user_channel_notify($data) {
@@ -177,8 +197,10 @@ class SwitchHandler{
         $response = new VoiceResponse();
         $response->bridge( $data['call_id'] );
         
-        $dial = ['to' => $data['to'], 'channel_id' => $data['channel_id'], "domain" => $call->organization->domain, 'from' => $data['from'], 'responseXml' => $response->xml()];
+        $dial = ['to' => $data['to'], "organization_id" => $call->organization->id, 'from' => $data['from'], 'responseXml' => $response->xml()];
+        if(isset($data['channel_id'])) $dial['channel_id'] = $data['channel_id'];
         if(isset($data['statusCallback']))  $dial['statusCallback'] = $data['statusCallback'];
+        if(isset($data['callerId']))  $dial['from'] = $data['callerId'];
         //info($dial);
         $call_data = FunctionCall::send_call($dial);
         //info('dial result');
@@ -273,6 +295,8 @@ class SwitchHandler{
             $call->duration = $data['disconnect_time'] - $data['establish_time'];
         }
 
+        $call->save();
+
         $statusCallback = Cache::get("CallStatusCallback:" .$call->id,[]);
         if(isset($statusCallback['method']) && isset($statusCallback['url'])){
           $post = CallHandler::prepare_call_json($call);
@@ -281,7 +305,7 @@ class SwitchHandler{
           if($call->status->value >= CallStatusEnum::Disconnected->value) Cache::forget("CallStatusCallback:" .$call->id);
         }
 
-        $call->save();
+        
 
         return ['error' => false];
         out:
@@ -366,12 +390,16 @@ class SwitchHandler{
         return ['error' => true];
     }
     public static function worker_run($data) {
+       // info("on worker run");
+        //info($data);
         $url    = $data['url'];
+        $timeout = intval(isset($data['timeout'])?$data['timeout']:60);
+       // info('timeout val ' . $timeout);
         $method = isset( $data['method'] ) ? $data['method'] : "POST";
         if ( strtoupper( $method ) == 'POST' ) {
-            $response = Http::asForm()->post( $url,  isset($data['data'] )?$data['data']:[] );
+            $response = Http::timeout($timeout)->asForm()->post( $url,  isset($data['data'] )?$data['data']:[] );
         } else {
-            $response = Http::get( $url,isset($data['data'] )?$data['data']:[]);
+            $response = Http::timeout($timeout)->get( $url,isset($data['data'] )?$data['data']:[]);
         }
         if ( $response->failed() )
             return ['error'=>true];
@@ -380,9 +408,13 @@ class SwitchHandler{
     }
 
     public static function config($data) {
+        Func::truncate();
+        //dd(config('easypbx.core_functions'));
+        Func::insert(config('easypbx.core_functions'));
+        
         $config = Setting::getSettings( 'switch' );
         SipChannel::truncate();
-        Queue::where( "status", "<", QueueStatusEnum::Bridged->value )->update( ['status' => QueueStatusEnum::Hangup] );
+       // Queue::where( "status", "<", QueueStatusEnum::Bridged->value )->update( ['status' => QueueStatusEnum::Hangup] );
         Call::where( "status", "<", CallStatusEnum::Disconnected->value )->update( ['status' => CallStatusEnum::Failed] );
         $config['license'] = config('licence');
         return $config;

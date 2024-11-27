@@ -62,6 +62,11 @@
                                     <a class="dropdown-item" href="#" id="printTable">{{ __('Print') }}</a>
                                 </div>
 
+                                <a href="{{ route('monitoring.surveys', ['survey_id' => $survey->id, 'clear' => '1']) }}" class="btn btn-outline-secondary" id="clearSurvey">
+                                    <i class="fa fa-times"></i>
+                                    {{ __('Clear') }}
+                                </a>
+
                             </div>
 
                         </div>
@@ -81,6 +86,7 @@
 
         </div>
     </div>
+    @include('contacts.sms_modal')
 @endsection
 
 @push('script')
@@ -88,9 +94,18 @@
 
     
     <script>
+        $crud = $('#crud_contents').crud();
+
         $(document).ready(function(){
+            $("#clearSurvey").click(function(e){
+                if (confirm("Are you sure you want to clear all survey results?") == false) {
+                    e.preventDefault();
+                }
+            });           
+            
+
             $('#filter_group').change(function() {
-                window.location.href = "{!! route('report.surveys') !!}/" + $(this).val(); 
+                window.location.href = "{!! route('monitoring.surveys') !!}/?survey_id=" + $(this).val(); 
             });
         })
     </script>

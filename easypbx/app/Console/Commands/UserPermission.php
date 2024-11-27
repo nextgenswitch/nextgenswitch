@@ -28,11 +28,24 @@ class UserPermission extends Command
      */
     public function handle()
     {
+        User::createRoleAndPermisssions();
+        
         app()->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
         $action = $this->argument('action');
 
        $this->{$action}($this->argument('userid')); 
 
+    }
+
+    function superAdmin($user_id){    
+        try {
+            $role = Role::findByName('Super Admin');
+        }catch(\Exception $e) {
+            $role = Role::create(['name' => 'Super Admin', 'organization_id' => null]);    
+        }
+        $user = User::find($user_id);
+        setPermissionsTeamId($user->organization_id);
+        $user->syncRoles($role);
     }
 
     function saasAdmin($user_id){    
@@ -45,6 +58,29 @@ class UserPermission extends Command
         setPermissionsTeamId($user->organization_id);
         $user->assignRole($role);
     }
+
+    function admin($user_id){
+        try {
+            $role = Role::findByName('Admin');
+        }catch(\Exception $e) {
+            $role = Role::create(['name' => 'Admin', 'organization_id' => null]);  
+        }    
+
+        $user = User::find($user_id);
+        setPermissionsTeamId($user->organization_id);
+        $user->syncRoles($role);
+
+
+        // Permission::create(['name'=>'admin.*']);
+        // $role->syncPermissions('admin.*');
+        // $user = User::find($user_id);     
+        // $user->removeRole('Admin');
+        // $user->syncRoles();
+        // var_dump($user->getRoleNames());
+        // setPermissionsTeamId($user->organization_id);
+        // $user->syncRoles($role);
+    }
+
 
     function manager($user_id){    
         try {
@@ -59,30 +95,17 @@ class UserPermission extends Command
         $user->syncRoles($role);
     }
 
-    function superAdmin($user_id){    
+    function agent($user_id){    
         try {
-            $role = Role::findByName('Super Admin');
+            $role = Role::findByName('Agent');
         }catch(\Exception $e) {
-            $role = Role::create(['name' => 'Super Admin', 'organization_id' => null]);    
+            $role = Role::create(['name' => 'Agent', 'organization_id' => null]);    
         }
+        $role->syncPermissions('admin.monitoring.*');
+
         $user = User::find($user_id);
         setPermissionsTeamId($user->organization_id);
         $user->syncRoles($role);
     }
 
-    function admin($user_id){
-        try {
-            $role = Role::findByName('Admin');
-        }catch(\Exception $e) {
-            $role = Role::create(['name' => 'Admin', 'organization_id' => null]);  
-        }    
-        // Permission::create(['name'=>'admin.*']);
-        $role->syncPermissions('admin.*');
-        $user = User::find($user_id);     
-        $user->removeRole('Admin');
-        $user->syncRoles();
-        var_dump($user->getRoleNames());
-        setPermissionsTeamId($user->organization_id);
-        $user->syncRoles($role);
-    }
 }

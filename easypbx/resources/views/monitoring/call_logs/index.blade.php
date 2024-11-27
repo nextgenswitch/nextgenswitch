@@ -16,7 +16,7 @@
         <div class="panel-heading clearfix">
 
             <div class="pull-left">
-                <h4 class="tile-title">{{ __('Call Logs') }}</h4>
+                <h4 class="tile-title">{{ __('All Calls') }}</h4>
             </div>
 
         </div>
@@ -93,6 +93,8 @@
             </div>
         </div>
     </div>
+    
+    @include('contacts.sms_modal')
 @endsection
 
 @push('script')

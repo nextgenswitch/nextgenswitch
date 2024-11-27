@@ -6362,9 +6362,14 @@ padding-left: 10px;
   background-color: var(--hover-bg);
   border-color: var(--hover-bg);
 }
-
+.register-content .login-form{
+  position: relative !important;
+}
 .register-content{
-  min-height: 360px !important;
+  margin-top: 30px !important;
+  margin-bottom: 30px !important;
+  min-height: 540px !important;
+  display: block !important;
 }
 
 .table thead th{

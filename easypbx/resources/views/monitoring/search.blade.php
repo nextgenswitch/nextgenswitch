@@ -7,29 +7,39 @@
                 'style' => 'width:90px',
             ]) !!}
         </div>
+        @if ($type == 'voiceRecord')
+            {!! Form::select('filter_group',$voiceRecordProfiles, null, ['placeholder'=>'Select any voice record profile','id'=>"filter_group",'class' => 'form-control form-control-sm ']) !!}
+        @endif
+
         @if ($type == 'callQueue')
-            <input type="search" name="name" id="name" value="{{ app('request')->input('name') }}"
-                class="form-control app-search__input form-control-sm" placeholder="{{ __('Queue name') }}">
+            <!-- <input type="search" name="name" id="que_name" value="{{ app('request')->input('name') }}"
+                class="form-control app-search__input form-control-sm" placeholder="{{ __('Queue name') }}"> -->
+                
+                {!! Form::select('call_queue_id', $queueList, app('request')->input('call_queue_id'), [
+                    'id' => 'call_queue_id',
+                    'class' => 'form-control form-control-sm ',
+                ]) !!}
+
         @endif
 
         @if ($type == 'callHistory' || $type == 'trunkLog')
             <input type="search" name="from" id="from" value="{{ app('request')->input('from') }}"
-                class="form-control app-search__input form-control-sm" placeholder="From">
+                class="form-control app-search__input form-control-sm" placeholder="{{ __('From') }}">
 
             <input type="search" name="to" id="filterto" value="{{ app('request')->input('to') }}"
-                class="form-control app-search__input form-control-sm" placeholder="To">
+                class="form-control app-search__input form-control-sm" placeholder="{{ __('To') }}">
         @endif
 
         @if ($type == 'callHistory')
             <input type="search" name="received_by" id="received_by" value="{{ app('request')->input('received_by') }}"
-                class="form-control app-search__input form-control-sm" placeholder="Received By">
+                class="form-control app-search__input form-control-sm" placeholder="{{ __('Received By') }}">
         @endif
 
         @if($type == 'trunkLog')
 
         {!! Form::select('sip_user_id', $trunks, app('request')->input('sip_user_id'), [
                 'id' => 'sip_user_id',
-                'placeholder' => 'Select Trunk',
+                'placeholder' => __('Select Trunk'),
                 'class' => 'form-control form-control-sm ',
             ]) !!}
 
@@ -45,7 +55,17 @@
             <input type="search" name="destination" id="destination" value="{{ app('request')->input('destination') }}"
                 class="form-control app-search__input form-control-sm"
                 placeholder="{{ $type == 'callQueue' ? __('Agent') : __('Destination') }}">
+
+            <select  id="callStatus"  class="form-control app-search__input form-control-sm" >
+                <option value="">{{ __("Call Status") }}</option>
+                @foreach ($statuses as $k=>$status)
+                <option value="{{ $k }}">{{ $status }}</option>
+                @endforeach
+            </select>
+
         @endif
+
+        
 
         <input type="text" name="date" id="date" value="{{ app('request')->input('date') }}"
             class="form-control app-search__input form-control-sm" placeholder="{{ __('date') }}">
@@ -76,6 +96,7 @@
 
 
 
+                var name = $("#que_name").val();
                 var caller_id = $("#caller_id").val();
                 var from = $("#from").val();
                 var to = $("#filterto").val();
@@ -84,6 +105,12 @@
                 var received_by = $("#received_by").val();
                 var sip_user_id = $("#sip_user_id").val();
 
+                var callStatus = $("#callStatus").val();
+
+
+                if (name !== undefined && name.length > 0) {
+                    q += 'name:' + name + ',';
+                }
 
                 if (from !== undefined && from.length > 0) {
                     q += 'from:' + from + ',';
@@ -110,12 +137,36 @@
                 }
 
                 console.log(q)
-
                 $crud.setUrlParam('q', q);
+
+                if (callStatus !== undefined && callStatus.length > 0) {
+                    $crud.setUrlParam('filter', 'status:' + callStatus);
+                }
+
+
                 $crud.reload_data()
 
                 console.log('submitted');
             })
+
+
+            $("#call_queue_id").change(function(e){
+                e.preventDefault();
+                var call_queue_id = $(this).val();
+                
+                if(call_queue_id.length > 0)
+                    $crud.setUrlParam('filter', 'call_queue_id:' + call_queue_id);
+                
+
+                $crud.reload_data()
+            })
+            
+            var filter = '{{ app('request')->input('filter') }}';
+
+            if(filter != ''){
+                filterArr = filter.split(':')
+                $("#" + filterArr[0]).val(filterArr[1]);    
+            }
 
             var q = '{{ app('request')->input('q') }}';
 
@@ -124,11 +175,15 @@
                 qs.forEach((item) => {
                     console.log(item)
                     qarr = item.split(':')
-                    $("#" + qarr[0]).val(qarr[1]);
+                    if(qarr[0] == 'name'){
+                        $("#que_name").val(qarr[1]);
+                    }
+                    else{
+                        $("#" + qarr[0]).val(qarr[1]);
+                    }
+                    
                 })
             }
-
-
         })
     </script>
 @endpush

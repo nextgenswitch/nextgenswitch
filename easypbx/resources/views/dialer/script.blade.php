@@ -4,13 +4,19 @@
         ws_opened = false;
         dcall_id = '';
         var socket;
+        record = true;
         
         $('#dialerModal').on('show.bs.modal', function () {
             $.get("{{ route('dialer.index') }}", function(data, status){
                 //alert("Data: " + data + "\nStatus: " + status);
 
-                // console.log(data);
+                 //console.log(data);
                 $('#dialer_ajax_content').html(data)
+                if($("#dialer_ajax_content").attr('call_id') != undefined)
+                    $('#dialerModal').trigger("afterConnect");
+                //console.log("dialer call id " + $("#dialer_ajax_content").attr('call_id'));
+
+                reloadRecordBtn();
             })
         })
    
@@ -25,6 +31,19 @@
 
         $('#dialerModal').popoverX('show');
         $('#dialerModal').popoverX('hide');
+        $('#dialerModal').on("dial", function(e,tel,rec){
+            //alert(telno);
+           // console.log(campaign_id);
+            if(tel !== undefined){
+                //console.log(tel)
+                $("#tel_no").val(tel)
+                
+                $('#dialerModal').popoverX('show');
+                if(ws_opened) $('#btndial').click();
+            }
+        });
+
+    
 
         $("#crud_contents").on('click', '.call-now', function(){
             
@@ -42,6 +61,16 @@
         });
 
 
+        $("#crud_contents").on('click', '.send-sms-now', function(){
+            
+            var tel = $(this).attr('tel');
+
+            if(tel != null && tel.length > 0){
+                $("#sms_to").val(tel);
+                $("#smsModal").modal('toggle');
+            }
+            
+        });
 
         $("#dialer_ajax_content").on('submit','.login-form',function(e) {
             e.preventDefault();
@@ -82,6 +111,7 @@
                         form.addClass('d-none');
                         $("#dialer_ajax_content").attr('call_id',data.call_id)
                         connectWebsocket();
+                        //$("#dialer_ajax_content").trigger('load_index', []);
                         console.log("after login");                      
                         $.get("{{ route('dialer.index') }}", function(data, status){
                             $('#dialer_ajax_content').html(data)
@@ -95,16 +125,24 @@
 
         });
 
-        // $("#dialer_ajax_content").on('click','#logout',function(e) {
-       
-        //     e.preventDefault();
-        //     $.get("{{ route('dialer.logout') }}", function(data, status){
-        //         //alert("Data: " + data + "\nStatus: " + status);
-        //         $('#dialerModal').modal('hide');
-        //         socket.close();
-        //         ws_opened = false;
-        //     });
-        // });
+        $("#dialer_ajax_content").on('click','#btnMic',function(e) {
+            e.preventDefault();
+            record = !record;
+            console.log(record);
+            reloadRecordBtn();
+        })
+
+        $("#dialer_ajax_content").on('click','#btnLogout',function(e) {
+            e.preventDefault();
+            logout();
+
+            // $.get("{{ route('dialer.logout') }}", function(data, status){
+            //     //alert("Data: " + data + "\nStatus: " + status);
+            //     $('#dialerModal').modal('hide');
+            //     socket.close();
+            //     ws_opened = false;
+            // });
+        });
 
         function logout(){
             $.get("{{ route('dialer.logout') }}", function(data, status){
@@ -114,6 +152,18 @@
                 ws_opened = false;
             });
         }
+
+      /*   function dial(tel_no,camapign_id){
+            $.get("{{ route('dialer.dial') }}?tel_no=" + $('#tel_no').val(), function(data, status){
+           
+                if(data.error == true){
+                    $('#dial-status').html(data.error_message)
+                }else{
+                    onCallDataRecieve(data);                  
+                }
+                           
+           });    
+        } */
 
         $("#dialer_ajax_content").on('load_index', function(e, data) { 
             connectWebsocket();
@@ -127,92 +177,200 @@
          
         });
 
-        // $("#dialer_ajax_content").on('submit','#dial_input_form', function(e) { 
-        //     e.preventDefault();
-        //     console.log('submitted dial form');
-
-        //     // if($('#btndial').contains('d-none')
-            
-        // });
 
         $("#dialer_ajax_content").on('click','#btndial', function(e) { 
-            $.get("{{ route('dialer.dial') }}?tel_no=" + $('#tel_no').val(), function(data, status){
-           
-                if(data.error == true){
-                    $('#dial-status').html(data.error_message)
-                }else{
-                    onCallDataRecieve(data);                  
-                }
-                
-                
-            });
+            $("#dial_input_form").submit();
         });
+
+        $("#dialer_ajax_content").on("submit", "#dial_input_form", function(e){
+            e.preventDefault();
+
+            var tel_no = $('#tel_no').val();
+
+            if(tel_no.length > 0){
+                $.get("{{ route('dialer.dial') }}?tel_no=" + tel_no + '&record=' + record, function(data, status){
+                    //console.log(data);
+                    if(data.error == true){
+                        $('#dial-status').html(data.error_message)
+                    }else if(data.status != undefined){
+                        onCallDataRecieve(data);
+                    }
+                });
+            }
+                     
+
+        })
+        
 
         $("#dialer_ajax_content").on('click','#btnhangup', function(e) { 
             $.get("{{ route('dialer.hangup') }}?call_id=" + dcall_id, function(data, status){
                 $('#btnhangup').addClass('d-none');
                 $('#btnforward').addClass('d-none');
-                $("#forwardGroup").addClass('d-none');
                 $('#btndial').removeClass('d-none');
+
             });            
         });   
 
         $("#dialer_ajax_content").on('click','#btnforward', function(e) { 
-            if( $("#forwardGroup").hasClass('d-none') ) {
-                $("#forwardNoInput").val('');
-                $("#forwardGroup").removeClass('d-none');
-            }
-            else{
-                $("#forwardGroup").addClass('d-none');
-            }
+            $("#dial_input_form").addClass('d-none');
+            $("#forward_input_form").removeClass('d-none');
+            $("#forward_to_function_switch").closest('.custom-control').removeClass('d-none');
 
-            // $('#btnforward').popoverButton({
-            //         target: '#popoverForward',
-            //         placement: 'top'
-            // });
-
-            // $('#popoverForward').popoverX('show');
-
-            // const forward = prompt("Please enter a number to forward");
-            // if(forward == '') return;
-            // $.get("{{ route('dialer.forward') }}?call_id=" + dcall_id + '&forward=' +  forward  , function(data, status){
-            //     $('#btnhangup').addClass('d-none');
-            //     $('#btnforward').addClass('d-none');
-            //     $('#btndial').removeClass('d-none');
-            // });   
         }); 
 
-        $("#dialer_ajax_content").on('click','#forwardCallBtn', function(e) { 
-            var forward = $("#forwardNoInput").val().trim();
-            console.log("forwarding to ", forward);
+        $("#dialer_ajax_content").on("click", '#cancelForwardBtn', function(){
+            $("#dial_input_form").removeClass('d-none');
+            $("#forward_input_form").addClass('d-none');
+            $("#forward_to_function_switch").closest('.custom-control').addClass('d-none');
+        });
 
-            $.get("{{ route('dialer.forward') }}?call_id=" + dcall_id + '&forward=' +  forward  , function(data, status){
-                $('#btnhangup').removeClass('d-none');
-                $('#btnforward').removeClass('d-none');
-                $('#btndial').addClass('d-none');
-                $("#forwardGroup").addClass('d-none');
-            }); 
+        $("#dialer_ajax_content").on("change", '#forward_to_function_switch', function(){
+            
+            if ($(this).is(':checked')) {
+                $("#forward_input_form").addClass('d-none');
+                $("#forward_function_form").removeClass('d-none');
+                
+            }
+            else{
+                $("#forward_input_form").removeClass('d-none');
+                $("#forward_function_form").addClass('d-none');
+            }
+            
 
         });
-        
 
+
+
+        destinations = "{{ route('dialer.destinations', 0) }}"
+
+        $("#dialer_ajax_content").on('change', '#dialer_function_id', function(e) {
+            e.preventDefault()
+
+            var val = $(this).val().trim()
+
+            if (val != undefined && val != '') {
+                route = destinations.trim().slice(0, -1) + val
+                console.log(route)
+
+                $.get(route, function(res) {
+                    console.log(res)
+                    $("#dialer_destination_id").html(res)
+                })
+
+            } else
+                $("#dialer_destination_id").html('<option> Select destination </option>')
+
+        })
+
+        $("#dialer_ajax_content").on('click','#forwardCallBtn', function(e) { 
+            e.preventDefault();
+            $("#forward_input_form").submit();
+        });
+
+        $("#dialer_ajax_content").on("submit", "#forward_input_form", function(event){
+            event.preventDefault();;
+
+            var fwd = $("#forwardNoInput").val().trim();
+
+            // console.log(fwd.length);
+            console.log('forwarding to ' + fwd);
+
+            if(fwd.length > 0){
+                console.log('submitted 2');
+                $.get("{{ route('dialer.forward') }}?call_id=" + dcall_id + '&forward=' +  fwd  , function(data, status){
+                    $('#btnhangup').removeClass('d-none');
+                    $('#btnforward').removeClass('d-none');
+                    $('#btndial').addClass('d-none');
+
+                    $("#dial_input_form").removeClass('d-none');
+                    $("#forward_input_form").addClass('d-none');
+                    $("#dial_input_form").trigger('reset');
+                }); 
+
+            }
+            return false;
+            
+        });
+
+        $("#dialer_ajax_content").on('click','#forwardFuncBtn', function(event) { 
+            event.preventDefault();
+
+            function_id = $("#dialer_function_id").val();
+            destination_id = $("#dialer_destination_id").val();
+
+            if(function_id.length > 0 && destination_id.length > 0){
+                $.get("{{ route('dialer.forward') }}?call_id=" + dcall_id + '&function_id=' +  function_id.trim() + '&destination_id=' + destination_id  , function(data, status){
+                    // console.log(data)
+                    // console.log(status)
+
+                    if(status){
+                        $("#forward_function_form").addClass('d-none');
+                        $("#forward_to_function_switch").prop('checked', false);
+                        $("#forward_to_function_switch").parent().addClass('d-none');
+                        $("#dial_input_form").removeClass('d-none');
+                    }
+                });
+            }
+           
+        });
+
+        $("#dialer_ajax_content").on("click", "#forwardFuncCancelBtn", function(e){
+            e.preventDefault();
+
+            $("#forward_function_form").addClass('d-none');
+            $("#dial_input_form").removeClass('d-none');
+
+            $("#forward_to_function_switch").prop('checked', false);
+            $("#forward_to_function_switch").parent().addClass('d-none');
+
+            
+        });
+
+    
+        function reloadRecordBtn(){
+            if(record){
+                $("#btnMic").addClass('bg-success');
+                $("#btnMic").removeClass('bg-secondary');
+
+                $("#btnMic i").addClass('fa-microphone');
+                $("#btnMic i").removeClass('fa-microphone-slash');
+            }
+            else{
+                $("#btnMic").addClass('bg-secondary');
+                $("#btnMic").removeClass('bg-success');
+
+                $("#btnMic i").addClass('fa-microphone-slash');
+                $("#btnMic i").removeClass('fa-microphone');
+            }
+
+        }
 
           
         function onCallDataRecieve(call){
+            
             if(call.call_id !='') dcall_id = call.call_id
             $('#dial-status').html(call.status);
-            $("#tel_no").val(call.to);
+            //$("#tel_no").val(call.to);
+            if(call.to == undefined)
+                call.to = $("#tel_no").val();
+            
+            $('#dialerModal').trigger('dialStatus',call);
 
             if(call["status-code"] >=3){                
                 $('#btnhangup').addClass('d-none');
                 $('#btnforward').addClass('d-none');
-                $("#forwardGroup").addClass('d-none');
                 $('#btndial').removeClass('d-none');
                 $('#dial-status').addClass('badge-danger');
                 $('#dial-status').removeClass('badge-success');
 
+                $("#forward_input_form").trigger('reset');
+                $("#forward_input_form").addClass('d-none');
+                $("#dial_input_form").removeClass('d-none');
 
-                
+                $("#forward_function_form").addClass('d-none');
+                $("#forward_to_function_switch").prop('checked', false);
+                $("#forward_to_function_switch").parent().addClass('d-none');
+
 
             }else if(call["status-code"] == 2){
                 $('#btndial').addClass('d-none');
@@ -240,9 +398,10 @@
             const ws = new WebSocket(url)
             ws.onopen = () => {
             console.log('ws opened on browser')
-            ws.send('hello world')
+            //ws.send('hello world')
             ws_opened = true
             socket = ws
+            
             }
 
             ws.onmessage = (message) => {
@@ -271,11 +430,11 @@
                         $('.dialpanel').removeClass('d-none')
                         $('#dial-status').html("Ready for call")
                         $('#dialerModal').attr('connected','1');
-                       /*  if($('#dialerModal').attr('dial') != ''){
-                            $('#tel_no').val($('#dialerModal').attr('dial'));
-                            $('#dialerModal').removeAttr('dial');
+                        $('#dialerModal').trigger("afterConnect");
+                        /* console.log("after login" + $('#tel_no').val());
+                        if($('#tel_no').val() != ''){
                             $('#btndial').click();
-                        } */
+                        }  */
                     }
                 }
 
@@ -317,6 +476,16 @@
 
         function loging(){
             console.log('sdfsdf')
+        }
+
+        function showToast(message, success = true) {
+            let toast = {
+                title: (success) ? "Success" : "Failed",
+                message: message,
+                status: (success) ? TOAST_STATUS.SUCCESS : TOAST_STATUS.DANGER,
+                timeout: 5000
+            }
+            Toast.create(toast);
         }
 
     });        

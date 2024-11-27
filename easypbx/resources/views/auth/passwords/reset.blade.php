@@ -1,6 +1,10 @@
 @extends('auth.layout')
+@php
+$title = env('APP_NAME', 'EasyPBX');
+if(config('licence.brand_name')) $title = config('licence.brand_name')
+@endphp
 
-@section('title', 'Reset password - EasyPBX')
+@section('title', 'Reset password - ' . $title)
 
 
 @section('content')

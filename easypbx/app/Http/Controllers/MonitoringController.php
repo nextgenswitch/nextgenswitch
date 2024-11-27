@@ -10,6 +10,8 @@ use App\Models\Queue;
 use App\Models\SipChannel;
 use App\Models\SmsHistory;
 use App\Models\Trunk;
+use App\Models\CallQueue;
+use App\Models\CallParkingLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -113,6 +115,17 @@ class MonitoringController extends Controller {
 
         $calls = $calls->paginate( $perPage );
 
+        foreach($calls as $key => $call){
+            if(CallHistory::where('call_id', $call->id)->orWhere('bridge_call_id', $call->id)->exists()){
+                $call->bridge = 1;
+            }
+            else{
+                $call->bridge = 0;
+            }
+        }
+
+        
+
         $calls->appends( ['sort' => $sort, 'filter' => $filter, 'per_page' => $perPage, 'q' => $q] );
 
         $view = $request->ajax() ? 'monitoring.trunks.table' : 'monitoring.trunks.index';
@@ -199,13 +212,13 @@ class MonitoringController extends Controller {
     }
 
     public function callHistories( Request $request ) {
-
+        
         $q       = $request->get( 'q' ) ?: '';
         $perPage = $request->get( 'per_page' ) ?: 10;
         $filter  = $request->get( 'filter' ) ?: '';
         $sort    = $request->get( 'sort' ) ?: '';
 
-        $calls = CallHistory::with( ['call', 'bridgeCall'] )->where( 'organization_id', auth()->user()->organization_id );
+        $calls = CallHistory::with( ['call', 'bridgeCall'] )->where( 'organization_id', auth()->user()->organization_id )->where('bridge_call_id','!=','');
 
         if (  ! empty( $q ) ) {
             $q             = rtrim( $q, ',' );
@@ -215,11 +228,11 @@ class MonitoringController extends Controller {
                 $searchColumnArr = explode( ':', $searchColumn );
 
                 if ( $searchColumnArr[0] == 'from' ) {
-                    $calls->whereHas( 'call', function ( $query ) use ( $searchColumnArr ) {
+                    $calls->whereHas( 'bridgeCall', function ( $query ) use ( $searchColumnArr ) {
                         $query->where( 'caller_id', $searchColumnArr[1] );
                     } );
                 } elseif ( $searchColumnArr[0] == 'to' ) {
-                    $calls->whereHas( 'call', function ( $query ) use ( $searchColumnArr ) {
+                    $calls->whereHas( 'bridgeCall', function ( $query ) use ( $searchColumnArr ) {
                         $query->where( 'destination', $searchColumnArr[1] );
                     } );
                 } elseif ( $searchColumnArr[0] == 'received_by' ) {
@@ -228,6 +241,7 @@ class MonitoringController extends Controller {
                     } );
                 }
                 elseif ( $searchColumnArr[0] == 'date' ) {
+                    
                     $calls->whereDate( 'created_at', Carbon::parse( $searchColumnArr[1] )->format( 'Y-m-d' ) );
 
                 }
@@ -235,7 +249,7 @@ class MonitoringController extends Controller {
             }
 
         }
-
+        
         if (  ! empty( $filter ) ) {
             $filtera = explode( ':', $filter );
             $calls->where( $filtera[0], '=', $filtera[1] );
@@ -302,7 +316,7 @@ class MonitoringController extends Controller {
         $calls->appends( ['sort' => $sort, 'filter' => $filter, 'per_page' => $perPage, 'q' => $q] );
 
         $view = $request->ajax() ? 'monitoring.call_histories.table' : 'monitoring.call_histories.index';
-
+        
         $statuses = CallStatusEnum::callLogStatuses();
 
         return view( $view, compact( 'calls', 'statuses' ) );
@@ -314,6 +328,7 @@ class MonitoringController extends Controller {
         $filter  = $request->get( 'filter' ) ?: '';
         $sort    = $request->get( 'sort' ) ?: '';
 
+        
         $calls = Call::with( 'records' )->where( 'organization_id', auth()->user()->organization_id );
 
         if (  ! empty( $q ) ) {
@@ -336,12 +351,25 @@ class MonitoringController extends Controller {
                 }
 
             }
-
         }
+
+        // return $calls->get();
 
         if (  ! empty( $filter ) ) {
             $filtera = explode( ':', $filter );
-            $calls->where( $filtera[0], '=', $filtera[1] );
+            
+
+            if( $filtera[0] == 'status' ) {
+
+                if(is_numeric($filtera[1])){
+                    $calls->where( $filtera[0], '=', $filtera[1] );    
+                }
+
+            }
+            else{
+                $calls->where( $filtera[0], '=', $filtera[1] );
+            }
+            
         }
 
         if (  ! empty( $sort ) ) {
@@ -397,10 +425,11 @@ class MonitoringController extends Controller {
 
         $view = $request->ajax() ? 'monitoring.call_logs.table' : 'monitoring.call_logs.index';
 
-        $statuses = CallStatusEnum::callLogStatuses();
+        $statuses = CallStatusEnum::CallStatuses();
 
         return view( $view, compact( 'calls', 'statuses' ) );
     }
+
 
     public function queueCall( Request $request ) {
 
@@ -502,8 +531,15 @@ class MonitoringController extends Controller {
 
         $statuses = QueueStatusEnum::statuses();
 
-        return view( $view, compact( 'calls', 'statuses' ) );
+
+        $queueList = CallQueue::where('organization_id', auth()->user()->organization_id)->pluck('name', 'id');
+
+        
+         
+        return view( $view, compact( 'calls', 'statuses', 'queueList' ) );
     }
+
+
 
     public function preview( $id ) {
         $queue = Queue::where( 'call_id', $id )->first();
@@ -527,6 +563,79 @@ class MonitoringController extends Controller {
         }
 
         return response()->json( ['status' => false, 'path' => null] );
+    }
+
+    public function activeParkingCalls(Request $request){
+        $q       = $request->get( 'q' ) ?: '';
+        $perPage = $request->get( 'per_page' ) ?: 10;
+        $filter  = $request->get( 'filter' ) ?: '';
+        $sort    = $request->get( 'sort' ) ?: '';
+
+        
+
+        $cpLogs = CallParkingLog::with(['call','callParking'])->where( 'organization_id', auth()->user()->organization_id );
+       // dd($cpLogs->toSQL());
+        if (  ! empty( $q ) ) {
+            $cpLogs->where( 'name', 'LIKE', '%' . $q . '%' );
+        }
+
+        if (  ! empty( $filter ) ) {
+            $filtera = explode( ':', $filter );
+            $cpLogs->where( $filtera[0], '=', $filtera[1] );
+        }
+
+        if (  ! empty( $sort ) ) {
+            $sorta = explode( ':', $sort );
+            $cpLogs->orderBy( $sorta[0], $sorta[1] );
+        } else {
+            $cpLogs->orderBy( 'created_at', 'DESC' );
+        }
+
+        if (  ! empty( $request->get( 'csv' ) ) ) {
+
+            $fileName = 'active_parking_calls.csv';
+
+            $logs = $cpLogs->get();
+
+            $headers = [
+                'Content-type'        => 'text/csv',
+                'Content-Disposition' => "attachment; filename=$fileName",
+                'Pragma'              => 'no-cache',
+                'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
+                'Expires'             => '0',
+            ];
+
+            $columns = [];
+
+            $callback = function () use ( $logs, $columns ) {
+                $file = fopen( 'php://output', 'w' );
+                fputcsv( $file, $columns );
+
+                foreach ( $logs as $call ) {
+
+                    foreach ( $columns as $column ) {
+
+                        $row[$column] = $call->{$column};
+
+                    }
+
+                    fputcsv( $file, $row );
+                }
+
+                fclose( $file );
+            };
+
+            return response()->stream( $callback, 200, $headers );
+        }
+        
+        $cpLogs = $cpLogs->paginate( $perPage );
+       
+        $cpLogs->appends( ['sort' => $sort, 'filter' => $filter, 'per_page' => $perPage] );
+
+        $view = $request->ajax() ? 'monitoring.active_parking_calls.table' : 'monitoring.active_parking_calls.index';
+        
+        return view( $view, compact( 'cpLogs' ) );
+
     }
 
     public function activeChannels( Request $request ) {

@@ -172,8 +172,9 @@ class ApisController extends Controller
             $secret = ApiKey::generateSecret();
             $data['secret'] = Hash::make($secret); //Str::random(32);
             $api = ApiKey::create($data);
-            if($request->ajax())  return response()->json(['success'=>true,'secret'=>$secret]);
+            // if($request->ajax())  return response()->json(['success'=>true,'secret'=>$secret]);
 
+            $api->secret = $secret;
             return view('apis.show', compact('api'));
             //return redirect()->route('apis.api.show', $api->id)
               //  ->with('success_message', __('Api was successfully added.'));
@@ -187,10 +188,12 @@ class ApisController extends Controller
         $api = ApiKey::find($id);
         
         $secret = ApiKey::generateSecret();
-        $secret = Hash::make($secret); //Str::random(32);
+        $secretHash = Hash::make($secret); //Str::random(32);
+
+        $api->secret = $secretHash;
+        $api->update();
 
         $api->secret = $secret;
-        $api->update();
         
         return view('apis.show', compact('api'));
     }

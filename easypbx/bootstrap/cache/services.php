@@ -40,7 +40,8 @@
     36 => 'App\\Providers\\AuthServiceProvider',
     37 => 'App\\Providers\\EventServiceProvider',
     38 => 'App\\Providers\\RouteServiceProvider',
-    39 => 'Devaslanphp\\AutoTranslate\\AutoTranslateProvider',
+    39 => 'App\\Providers\\CustomHelperServiceProvider',
+    40 => 'Devaslanphp\\AutoTranslate\\AutoTranslateProvider',
   ),
   'eager' => 
   array (
@@ -68,7 +69,8 @@
     21 => 'App\\Providers\\AuthServiceProvider',
     22 => 'App\\Providers\\EventServiceProvider',
     23 => 'App\\Providers\\RouteServiceProvider',
-    24 => 'Devaslanphp\\AutoTranslate\\AutoTranslateProvider',
+    24 => 'App\\Providers\\CustomHelperServiceProvider',
+    25 => 'Devaslanphp\\AutoTranslate\\AutoTranslateProvider',
   ),
   'deferred' => 
   array (

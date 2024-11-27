@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Script;
+use Carbon\Carbon;
 
 class DialerCampaign extends Model
 {
@@ -24,7 +25,7 @@ class DialerCampaign extends Model
     protected $primaryKey = 'id';
     protected $keyType = 'string';
     public $incrementing = false;
-
+    
 
     /**
      * Attributes that should be mass-assignable.
@@ -32,7 +33,7 @@ class DialerCampaign extends Model
      * @var array
      */
     protected $fillable = [
-                  'agents',
+                  'call_interval',
                   'organization_id',
                   'contact_groups',
                   'description',
@@ -62,10 +63,10 @@ class DialerCampaign extends Model
      * @param  string  $value
      * @return array
      */
-    public function getAgentsAttribute($value)
-    {
-        return explode(',', $value);
-    }
+    // public function getAgentsAttribute($value)
+    // {
+    //     return explode(',', $value);
+    // }
 
     /**
      * Set the contact_groups.
@@ -74,10 +75,10 @@ class DialerCampaign extends Model
      * @return void
     */ 
 
-    public function setAgentsAttribute($value)
-    {
-        $this->attributes['Agents'] = !empty($value) ? implode(',', $value) : null;
-    }
+    // public function setAgentsAttribute($value)
+    // {
+    //     $this->attributes['Agents'] = !empty($value) ? implode(',', $value) : null;
+    // }
 
     /**
      * get the contact_groups.
@@ -117,6 +118,28 @@ class DialerCampaign extends Model
     public function setScheduleDaysAttribute($value)
     {
         $this->attributes['schedule_days'] = !empty($value) ? implode(',',$value) : null;
+    }
+
+    public static function inTime($campaign): bool {
+        $start = $campaign->start_at;
+        $end = $campaign->end_at;
+        $end_date = $campaign->end_date;
+        $days = $campaign->schedule_days;
+        $now = now();
+        $currentDay = $now->format('D');
+
+        $inTime = $now->between($start, $end);
+    
+        if ($inTime) {
+            $inTime = in_array(strtolower($currentDay), $days);
+        }
+        
+        if ($inTime) {
+            $endDate = Carbon::parse($end_date);
+            $inTime = $now->lte($endDate);
+        }
+    
+        return $inTime;
     }
     
 }

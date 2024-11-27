@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CallStatusEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\FuncTrait;
-use App\Jobs\ProcessCampaign;
 use App\Models\Campaign;
 use App\Models\CampaignCall;
 use App\Models\CampaignSms;
 use App\Models\Contact;
 use App\Models\ContactGroup;
 use App\Models\Func;
-use App\ServiceProviders\TtsVoice;
+use App\Http\Controllers\Api\FunctionCall;
 use Exception;
+use Throwable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+
 use Schema;
 
 use function Psy\debug;
@@ -179,7 +180,7 @@ class BroadcastsController extends Controller {
 
         $campaign = Campaign::with( 'func' )->findOrFail( $id );
 
-        $processCampaign = new ProcessCampaign( $id );
+       // $processCampaign = new ProcessCampaign( $id );
 
         $functions      = Func::getFuncList();
         $contact_groups = ContactGroup::where( 'organization_id', '=', auth()->user()->organization_id )->pluck( 'name', 'id' )->all();
@@ -190,6 +191,28 @@ class BroadcastsController extends Controller {
             return view( 'broadcasts.form', compact( 'campaign', 'contact_groups', 'functions', 'destinations' ) )->with( ['action' => route( 'broadcasts.broadcast.update', $id ), 'method' => 'PUT'] );
         } else {
             return view( 'broadcasts.edit', compact( 'campaign', 'contact_groups', 'functions', 'destinations' ) );
+        }
+
+    }
+
+    public function clone( $id, Request $request ) {
+        
+        if(! Campaign::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists() )
+        return back();
+
+        $campaign = Campaign::with( 'func' )->findOrFail( $id );
+
+//        $processCampaign = new ProcessCampaign( $id );
+
+        $functions      = Func::getFuncList();
+        $contact_groups = ContactGroup::where( 'organization_id', '=', auth()->user()->organization_id )->pluck( 'name', 'id' )->all();
+
+        $destinations = $this->dist_by_function( $campaign->func->func, 0, true );
+
+        if ( $request->ajax() ) {
+            return view( 'broadcasts.form', compact( 'campaign', 'contact_groups', 'functions', 'destinations' ) )->with( ['action' => route( 'broadcasts.broadcast.update', $id ), 'method' => 'PUT'] );
+        } else {
+            return view( 'broadcasts.create', compact( 'campaign', 'contact_groups', 'functions', 'destinations' ) );
         }
 
     }
@@ -210,8 +233,10 @@ class BroadcastsController extends Controller {
 
         if(! Campaign::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists() )
         return back();
+       
 
         $campaign = Campaign::findOrFail( $id );
+        if($campaign->status == 3) return back();
         $campaign->update( $data );
 
         if ( $request->ajax() ) {
@@ -221,6 +246,50 @@ class BroadcastsController extends Controller {
         return redirect()->route( 'broadcasts.broadcast.index' )
             ->with( 'success_message', 'Campaign was successfully updated.' );
 
+    }
+
+    public function stats($id,Request $request){
+        if(! Campaign::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists() )
+        return back();
+
+        $campaign = Campaign::with( 'func' )->findOrFail( $id );
+        $stats = [];
+        $stats['total_contact'] = Contact::getContacts($campaign->contact_groups)->count();
+        $stats['processed'] = CampaignCall::getProcessedCoctacts($campaign)->count();
+        $stats['duration'] = CampaignCall::where( 'campaign_id', $campaign->id )->sum('duration');
+        $stats['duration'] =  (int) ($stats['duration']/60) . ':' . $stats['duration']%60;
+        $stats['successfull'] = CampaignCall::where( 'campaign_id', $campaign->id )->where('status',CallStatusEnum::Disconnected->value)->count();
+        $stats['failed'] = CampaignCall::where( 'campaign_id', $campaign->id )->where('status','>',CallStatusEnum::Disconnected->value)->count();
+        $stats['status'] = $campaign->status;
+        $stats['in_time'] = Campaign::inTime($campaign);
+
+        /* if($campaign->status == 1){
+            dispatch( new ProcessBroadcast( $id ) )->delay( now()->addSeconds( 1 ));           
+        } */
+        if($request->ajax())
+          return $stats;
+       // $worker = new \App\Http\Controllers\Api\Functions\BroadcastWorker($campaign->id);
+       // $worker->process();
+
+
+        return view( 'broadcasts.stats', compact( 'campaign', 'stats'));
+    }
+
+    public function run($id, Request $request){
+        if(! Campaign::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists() )
+        return back();
+        $campaign = Campaign::findOrFail( $id );
+        $data = [];
+        $data['status'] = $request->input('action');
+        if($campaign->status !=3)
+            $campaign->update( $data );
+        if($campaign->status == 1){
+          //  $job = dispatch(new ProcessBroadcast( $campaign->id ))->delay( now()->addSeconds( 1 ));
+            //$resp = FunctionCall::create_worker(['url'=>route('api.broadcast_worker',['campaign_id'=>$id]),'name'=>"broadcast:" . $id,'delay'=>1]); 
+            //info($resp);
+        }
+
+        return redirect()->route( 'broadcasts.broadcast.stats',$id );
     }
 
 
@@ -284,13 +353,13 @@ class BroadcastsController extends Controller {
 
             $campaign->update( $request->all() );
 
-            if ( $request->has( 'status' ) && $request->input( 'status' ) == 1 ) {
+           /*  if ( $request->has( 'status' ) && $request->input( 'status' ) == 1 ) {
                 dispatch( new ProcessCampaign( $id ) )->delay( now()->addSeconds( 10 ) );
                 Log::debug( 'Campaign job in queue' );
 
                 //dispatch( new ProcessCampaignCall( $id ) )->delay( now()->addSeconds( 30 ) );
                 //Log::debug( 'CampaignCall Job in queue.' );
-            }
+            } */
 
             return response()->json( ['success' => true] );
 
@@ -336,7 +405,7 @@ class BroadcastsController extends Controller {
 
     }
 
-    public function getVoiceFile( $id ) {
+/*     public function getVoiceFile( $id ) {
         $campaign = Campaign::findOrFail( $id );
 
         $ttsvoice = new TtsVoice;
@@ -349,7 +418,7 @@ class BroadcastsController extends Controller {
 
         return response()->download( $file, $id . '.mp3', $headers );
 
-    }
+    } */
 
     /**
      * Get the request's data from the request.
@@ -378,7 +447,7 @@ class BroadcastsController extends Controller {
         return $data;
     }
 
-    public function contacts( $campaign ): array | object {
+/*     public function contacts( $campaign ): array | object {
         $contacts = Contact::select( [DB::raw( "CONCAT(cc,tel_no) as tel" )] );
 
         foreach ( $campaign->contact_groups as $key => $groupId ) {
@@ -391,6 +460,6 @@ class BroadcastsController extends Controller {
         }
 
         return $contacts->groupBy( 'tel' )->pluck( 'tel' )->toArray();
-    }
+    } */
 
 }

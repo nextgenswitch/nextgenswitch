@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
+use Carbon\Carbon;
 class Setting extends Model
 {
     use HasFactory;
@@ -99,5 +99,20 @@ class Setting extends Model
         file_put_contents(self::getPath($group),$text);
     }
 
+    public static function writeIpTables($settings){
+        $data = file_get_contents(storage_path('settings/iptables-rules-sample.txt'));
+        
+        foreach($settings as $k => $setting){
+            if (preg_match('/:(\d+)$/', $setting, $matches)) {
+                $port = $matches[1];
+                $data = str_replace('%' . $k . '%', $port, $data);
+            } else {
+                $data = str_replace('%' . $k . '%', $setting, $data);
+            }
+        }
+
+        $data = str_replace('%updated_at%', Carbon::now()->toDateTimeString(), $data);
+        file_put_contents(storage_path('settings/iptables-rules.txt'), $data);
+    }
 
 }

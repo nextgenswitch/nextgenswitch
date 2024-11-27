@@ -185,7 +185,7 @@
 
     <div class="col-lg-6">
         <div class="form-group @error('function_id') has-error @enderror">
-            {!! Form::label('function_id', __('Last Destination'), ['class' => 'control-label']) !!}
+            {!! Form::label('function_id', __('Failed Destination'), ['class' => 'control-label']) !!}
             <span class="text-required">*</span>
             @php
                 $func = isset($ringGroup->func->func) ? $ringGroup->func->func : '';

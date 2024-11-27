@@ -4,10 +4,15 @@ namespace App\Http\Controllers;
 
 use Carbon\Carbon;
 use App\Models\VoiceMail;
+use App\Models\VoiceRecord;
 use Illuminate\Http\Request;
 
 class VoiceMailController extends Controller
 {
+    public function __construct(){
+        config(['menu.group' => 'menu-monitoring']);  
+    }
+    
     public function index(Request $request){
         
         $q       = $request->get( 'q' ) ?: '';
@@ -15,7 +20,9 @@ class VoiceMailController extends Controller
         $filter  = $request->get( 'filter' ) ?: '';
         $sort    = $request->get( 'sort' ) ?: '';
 
-        $mails = VoiceMail::with('extension')->where('organization_id', auth()->user()->organization_id);
+        $mails = VoiceMail::with('voiceRecord')->where('organization_id', auth()->user()->organization_id);
+        
+        
 
         if (  ! empty( $q ) ) {
             $q             = rtrim( $q, ',' );
@@ -100,8 +107,8 @@ class VoiceMailController extends Controller
 
         $view = $request->ajax() ? 'monitoring.voice_mails.table' : 'monitoring.voice_mails.index';
 
-
-        return view($view, compact('mails'));
+        $voiceRecordProfiles = VoiceRecord::where('organization_id', auth()->user()->organization_id)->pluck('name', 'id');
+        return view($view, compact('mails','voiceRecordProfiles'));
     }
 
 

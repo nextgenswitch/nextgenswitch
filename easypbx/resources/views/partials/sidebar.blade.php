@@ -4,7 +4,15 @@
         <div class="brand-img">
             <i data-feather="command"></i>
         </div>
-        <span class="brand-label">{{ env('APP_NAME') }}</span>
+        <span class="brand-label">
+
+            @if(config('licence.brand_name'))
+                {{ config('licence.brand_name') }}
+            @else
+                {{ env('APP_NAME', 'EasyPBX') }}
+            @endif           
+
+        </span>
     </div>
 
     
@@ -25,46 +33,65 @@
 
             <a class="app-menu__item" href="#" data-toggle="treeview">
                 <i data-feather="activity"></i>
-                <span class="app-menu__label">{{ __('Monitoring') }}</span>
+                <span class="app-menu__label">{{ __('Activity/Reports') }}</span>
                 <i class="treeview-indicator fa fa-angle-right"></i>
             </a>
            
             <ul class="treeview-menu">
 
-                <li>
+              <!--   <li>
                     <a class="treeview-item" href="{{ route('monitoring.active.call') }}"><i
                             class="icon fa fa-angle-double-right"></i>
                         {{ __('Active Calls') }}</a>
-                </li>
+                </li> -->
 
+                <li><a class="treeview-item" href="{{ route('monitoring.log.call') }}"><i
+                class="icon fa fa-angle-double-right"></i> {{ __('All Calls') }}</a></li>
+                
                 <li>
                     <a class="treeview-item" href="{{ route('monitoring.call.history') }}"><i
                             class="icon fa fa-angle-double-right"></i>
-                        {{ __('Call History') }}</a>
+                        {{ __('Bridge Calls') }}</a>
                 </li>
 
 
 
-                <li><a class="treeview-item" href="{{ route('monitoring.queue.call') }}"><i
+              <!--   <li><a class="treeview-item" href="{{ route('monitoring.queue.call') }}"><i
                             class="icon fa fa-angle-double-right"></i> {{ __('Queue Calls') }}</a></li>
-
-                <li><a class="treeview-item" href="{{ route('monitoring.log.call') }}"><i
-                            class="icon fa fa-angle-double-right"></i> {{ __('Call Logs') }}</a></li>
+ -->
+               
                 
                 <li><a class="treeview-item" href="{{ route('monitoring.trunk.log') }}"><i
-                                class="icon fa fa-angle-double-right"></i> {{ __('Trunk Logs') }}</a></li>
-
-                <li><a class="treeview-item" href="{{ route('monitoring.sms.histories') }}"><i
-                            class="icon fa fa-angle-double-right"></i> {{ __('SMS Logs') }}</a></li>
+                                class="icon fa fa-angle-double-right"></i> {{ __('Trunk Calls') }}</a></li>
                 
-                <li><a class="treeview-item" href="{{ route('campaign_calls.campaign_call.index') }}"><i
-                            class="icon fa fa-angle-double-right"></i> {{ __('Broadcast Logs') }}</a></li>
+                <li><a class="treeview-item" href="{{ route('report.queue.stats') }}"><i
+                                class="icon fa fa-angle-double-right"></i> {{ __('Queue Stats') }}</a></li>
+
+                
+                <li><a class="treeview-item" href="{{ route('report.extensions.summery') }}"><i
+                            class="icon fa fa-angle-double-right"></i> {{ __('Extension Summery') }}</a></li>
+                
+                            <li><a class="treeview-item" href="{{ route('report.trunks.summery') }}"><i
+                            class="icon fa fa-angle-double-right"></i> {{ __('Trunk Summery') }}</a></li>
+
+                
+                <li><a class="treeview-item" href="{{ route('monitoring.surveys') }}"><i
+                                class="icon fa fa-angle-double-right"></i> {{ __('Survey Results') }}</a></li>                
+
+              <!--   <li><a class="treeview-item" href="{{ route('broadcast_calls.broadcast_call.index') }}"><i
+                            class="icon fa fa-angle-double-right"></i> {{ __('Broadcast History') }}</a></li> -->
+
+                <li><a class="treeview-item" href="{{ route('monitoring.active.parking.calls') }}"><i
+                            class="icon fa fa-angle-double-right"></i> {{ __('Active Parking Calls') }}</a></li>
 
                 <li><a class="treeview-item" href="{{ route('monitoring.active.sip') }}"><i
                             class="icon fa fa-angle-double-right"></i> {{ __('Active Channels') }}</a></li>
 
                 <li><a class="treeview-item" href="{{ route('monitoring.voice_mails.index') }}"><i
-                            class="icon fa fa-angle-double-right"></i> {{ __('Voice Mails') }}</a></li>
+                            class="icon fa fa-angle-double-right"></i> {{ __('Voice Record Logs') }}</a></li>
+
+                <li><a class="treeview-item" href="{{ route('monitoring.sms.histories') }}"><i
+                            class="icon fa fa-angle-double-right"></i> {{ __('SMS Logs') }}</a></li>            
 
             </ul>
         </li>
@@ -107,6 +134,10 @@
 
                 <li><a class="treeview-item" href="{{ route('call_queues.call_queue.index') }}"><i
                             class="icon fa fa-angle-double-right"></i> {{ __('Call Queue') }}</a>
+                </li>
+
+                <li><a class="treeview-item" href="{{ route('calling.index') }}"><i
+                            class="icon fa fa-angle-double-right"></i> {{ __('Send Call') }}</a>
                 </li>
 
                 
@@ -170,15 +201,29 @@
         @can('admin.campaign.*')
         <li class="treeview " id="menu-campaign">
             <a class="app-menu__item" href="#" data-toggle="treeview">
-                <i data-feather="grid"></i>
-                <span class="app-menu__label">{{ __('Campaigns') }}</span>
+                <i data-feather="message-circle"></i>
+                <span class="app-menu__label">{{ __('Contact Center') }}</span>
                 <i class="treeview-indicator fa fa-angle-right"></i>
             </a>
             <ul class="treeview-menu">
-
+                <li><a class="treeview-item" href="{{ route('contacts.contact.index') }}"><i
+                            class="icon fa fa-angle-double-right"></i>
+                        {{ __('Contacts') }}</a></li>
+              <!--   <li><a class="treeview-item" href="{{ route('contact_groups.contact_group.index') }}"><i
+                            class="icon fa fa-angle-double-right"></i> {{ __('Contact Groups') }}</a></li> -->
+                
                 <li><a class="treeview-item" href="{{ route('dialer_campaigns.dialer_campaign.index') }}"><i
                     class="icon fa fa-angle-double-right"></i>
                 {{ __('Campaigns') }}</a></li>
+
+                <li><a class="treeview-item" href="{{ route('broadcasts.broadcast.index') }}"><i
+                            class="icon fa fa-angle-double-right"></i>
+                        {{ __('Broadcasts') }}</a></li>
+
+                <li><a class="treeview-item" href="{{ route('surveys.survey.index') }}"><i
+                    class="icon fa fa-angle-double-right"></i>
+                {{ __('Surveys') }}</a></li>
+
 
                 <li><a class="treeview-item" href="{{ route('scripts.script.index') }}"><i
                     class="icon fa fa-angle-double-right"></i>
@@ -188,33 +233,15 @@
                     class="icon fa fa-angle-double-right"></i>
                 {{ __('Custom Forms') }}</a></li>
 
-
-                <li><a class="treeview-item" href="{{ route('broadcasts.broadcast.index') }}"><i
-                            class="icon fa fa-angle-double-right"></i>
-                        {{ __('Broadcasts') }}</a></li>
-
-                
-                        <li><a class="treeview-item" href="{{ route('surveys.survey.index') }}"><i
-                            class="icon fa fa-angle-double-right"></i>
-                        {{ __('Surveys') }}</a></li>
-
-
                 <li><a class="treeview-item" href="{{ route('sms.sms.index') }}"><i
                             class="icon fa fa-angle-double-right"></i>
                         {{ __('SMS Templates') }}</a></li>
 
-                <li><a class="treeview-item" href="{{ route('contacts.contact.index') }}"><i
-                            class="icon fa fa-angle-double-right"></i>
-                        {{ __('Contacts') }}</a></li>
-                <li><a class="treeview-item" href="{{ route('contact_groups.contact_group.index') }}"><i
-                            class="icon fa fa-angle-double-right"></i> {{ __('Contact Groups') }}</a></li>
-                
+             
                 <li><a class="treeview-item" href="{{ route('leads.lead.index') }}"><i
                             class="icon fa fa-angle-double-right"></i> {{ __('Leads') }}</a></li>
 
-                <li><a class="treeview-item" href="{{ route('calling.index') }}"><i
-                            class="icon fa fa-angle-double-right"></i> {{ __('Send Call') }}</a>
-                </li>
+             
 
 
 
@@ -222,39 +249,44 @@
         </li>
         @endcan
 
-        <li  class="treeview " id="menu-application">
+        @can('admin.application.*')
+            <li  class="treeview " id="menu-application">
 
-            <a class="app-menu__item" href="#" data-toggle="treeview">
-                <i data-feather="package"></i>
-                <span class="app-menu__label">{{ __('Applications') }}</span>
-                <i class="treeview-indicator fa fa-angle-right"></i>
-            </a>
+                <a class="app-menu__item" href="#" data-toggle="treeview">
+                    <i data-feather="package"></i>
+                    <span class="app-menu__label">{{ __('Applications') }}</span>
+                    <i class="treeview-indicator fa fa-angle-right"></i>
+                </a>
 
-            <ul class="treeview-menu">
-
-
-                @can('admin.*')
-                <li><a class="treeview-item" href="{{ route('pin_lists.pin_list.index') }}"><i
-                            class="icon fa fa-angle-double-right"></i> {{ __('Pin List') }}</a></li>
-                @endcan
-
-                <li><a class="treeview-item" href="{{ route('custom_funcs.custom_func.index') }}"><i
-                            class="icon fa fa-angle-double-right"></i> {{ __('Custom Functions') }}</a></li>
-
-                <li><a class="treeview-item" href="{{ route('applications.application.index') }}"><i
-                            class="icon fa fa-angle-double-right"></i> {{ __('Applications') }}</a></li>
-
-                @can('admin.*')
-                <li><a class="treeview-item" href="{{ route('apis.api.index') }}"><i
-                            class="icon fa fa-angle-double-right"></i> {{ __('API') }}</a></li>
-                @endcan
-                
+                <ul class="treeview-menu">
 
 
-            </ul>
-        </li>
+                    
+                    <!-- <li><a class="treeview-item" href="{{ route('pin_lists.pin_list.index') }}"><i
+                                class="icon fa fa-angle-double-right"></i> {{ __('Pin List') }}</a></li> -->
+            
 
-        @can('admin.report.*')
+                    <li><a class="treeview-item" href="{{ route('call_parkings.call_parking.index') }}"><i
+                                class="icon fa fa-angle-double-right"></i> {{ __('Call Parking') }}</a></li>
+
+                    <li><a class="treeview-item" href="{{ route('voice_records.voice_record.index') }}"><i
+                                class="icon fa fa-angle-double-right"></i> {{ __('Voice Record') }}</a></li>
+
+                    <li><a class="treeview-item" href="{{ route('custom_funcs.custom_func.index') }}"><i
+                                class="icon fa fa-angle-double-right"></i> {{ __('Custom Functions') }}</a></li>
+
+                    <li><a class="treeview-item" href="{{ route('applications.application.index') }}"><i
+                                class="icon fa fa-angle-double-right"></i> {{ __('Applications') }}</a></li>
+
+            
+                    <li><a class="treeview-item" href="{{ route('apis.api.index') }}"><i
+                                class="icon fa fa-angle-double-right"></i> {{ __('API') }}</a></li>
+
+                </ul>
+            </li>
+        @endcan
+
+<!--         @can('admin.report.*')
         <li class="treeview " id="menu-reports">
 
             <a class="app-menu__item" href="#" data-toggle="treeview">
@@ -265,20 +297,10 @@
 
             <ul class="treeview-menu">
 
-                <li><a class="treeview-item" href="{{ route('report.extensions.summery') }}"><i
-                            class="icon fa fa-angle-double-right"></i> {{ __('Extension Summery') }}</a></li>
-                
-                            <li><a class="treeview-item" href="{{ route('report.trunks.summery') }}"><i
-                            class="icon fa fa-angle-double-right"></i> {{ __('Trunk Summery') }}</a></li>
-
-                            <li><a class="treeview-item" href="{{ route('report.campaign', 0) }}"><i
-                                class="icon fa fa-angle-double-right"></i> {{ __('Campaign Reports') }}</a></li>
-                <li><a class="treeview-item" href="{{ route('report.surveys', 0) }}"><i
-                                class="icon fa fa-angle-double-right"></i> {{ __('Survey Reports') }}</a></li>
 
             </ul>
         </li>
-        @endcan
+        @endcan -->
 
         @if (config('licence.multi_tenant') )
             

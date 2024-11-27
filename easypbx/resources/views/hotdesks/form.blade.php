@@ -44,6 +44,20 @@
                 </div>
             </div>
 
+            <div class="col-lg-12">
+                <div class="form-group">
+                    <input type="hidden" name="allow_ip" id="allow_ip_hidden_field" value="{{ old('allow_ip', optional($sip)->allow_ip) }}">
+                    <label for="">Allow IP <small> (Leave blank for allow any IP) </small> </label>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" placeholder="Enter allow ip address" id="add_allow_ip">
+                        <button class="btn btn-primary" type="button" id="btn_add_ip">
+                            <i class="fa fa-plus"></i>
+                        </button>
+                    </div>
+                    <div id="ip_contents"></div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -62,6 +76,71 @@
 @if(app('request')->ajax())
 <input type="submit" id="btnSubmit" class="d-none">
 </form>
+
+<script type="text/javascript">
+    $( document ).ready(function() {
+        $('.selectpicker').selectpicker();
+        var ipv4_address = $('#add_allow_ip');
+        ipv4_address.inputmask({
+            alias: "ip",
+            greedy: false 
+        });
+
+
+
+        render()
+        
+        $(document).on('click', '#btn_add_ip', function(){
+            // console.log('clicked add btn');
+            var old = $("#allow_ip_hidden_field").val().trim();
+
+            old = old.length > 0 ? old.split(',') : [];
+            
+            var ip = $("#add_allow_ip").val().trim();
+            // console.log(ip);
+
+            if (ip.length > 0 && !old.includes(ip)) {
+                old.unshift(ip);
+
+                $("#allow_ip_hidden_field").val(old.join(','));
+                render();
+
+                $("#add_allow_ip").val('');
+            }
+
+        })
+
+        $(document).on("click", '.btn-danger', function(){
+            // console.log('click delete btn');
+            
+            var old = $("#allow_ip_hidden_field").val().split(',');
+
+            var val = $(this).prev().val().trim();
+            
+            if(old.includes(val)){
+                old = old.filter(item => item !== val);
+                $("#allow_ip_hidden_field").val(old.join(','));
+            }
+
+            render();
+
+        })
+
+        function render(){
+            var html = '';
+            var old = $("#allow_ip_hidden_field").val().trim();
+            if(old.length > 0 ){
+                old.split(',').forEach((item, index) => {
+                    html += '<div class="input-group mb-1"> <input type="text" value="'+ item +'" readonly class="form-control"> <button class="btn btn-danger" type="button"> <i class="fa fa-times"></i> </button></div>';
+                })
+            }
+            $("#ip_contents").html(html);
+            
+        }
+        
+    });
+
+</script>
 @endif
 
 

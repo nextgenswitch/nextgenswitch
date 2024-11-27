@@ -1,37 +1,21 @@
 <?php
-/* error_log("opening stdin\n", 3, "storage/test.log");
-$handle = fopen('php://stdin','r');
-error_log("getting from stdin\n", 3, "storage/test.log");
-$input = fgets($handle);
-fclose($handle);
-error_log("writing stdout \n", 3, "storage/test.log");
+function sanitize_phone( $phone ) {
 
-//$handle = fopen('php://stdout','r');
-//fwrite($handle, "hello {$input}\n"); 
-echo "hello {$input}"; */
+  $intl = false;
+  if(strlen($phone) == 0)
+     return $phone;
+  $phone = trim($phone); 
+  if(substr($phone, 0, 1) == '+'){
+    $intl = true;
+    $phone = substr($phone, 1);
+  }
 
-$msg = "Easypbx AGI 1.0\r\n".
-"Length: 4\r\n".
-"path: /sip_user_validate\r\n\r\n".
-"{hjhj}\n";
+  $phone = preg_replace('/\D+/', '', $phone);
 
-//$data = explode( "\r\n\r\n",$msg);
-$headers = strstr($msg,"\r\n\r\n",true);
+  if($intl) $phone = '+' . $phone;
 
-echo $headers; 
-$body = trim(strstr($msg,"\r\n\r\n"));
-echo $body;
+  return $phone;
 
-$line = strtok($headers, "\r\n");
-$status_code = trim($line);
-$response_headers = [];
-// Parse the string, saving it into an array instead
-while (($line = strtok("\r\n")) !== false) {
-    if(false !== ($matches = explode(':', $line, 2))) {
-      $response_headers["{$matches[0]}"] = trim($matches[1]);
-    }  
 }
 
-print_r($response_headers);
-
-?>
+echo sanitize_phone('++3 674324(343)@$&');

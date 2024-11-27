@@ -15,18 +15,22 @@ use App\Models\Extension;
 use App\Models\IvrAction;
 use App\Models\VoiceFile;
 use App\Models\VoiceMail;
+use App\Models\VoiceRecord;
 use App\Models\CustomFunc;
 use App\Models\SmsHistory;
 use App\Models\CallHistory;
 use App\Models\MailProfile;
+use App\Models\SmsProfile;
 use App\Models\Announcement;
 use App\Models\InboundRoute;
 use App\Models\SurveyResult;
 use Illuminate\Http\Request;
 use App\Enums\CallStatusEnum;
 use App\Models\OutboundRoute;
+use App\Models\Ticket;
 use App\Models\TimeCondition;
-use App\Enums\QueueStatusEnum;
+use App\Models\CallParking;
+
 use App\Sms\Sms;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
@@ -36,7 +40,8 @@ use App\Http\Controllers\Api\Functions\CallHandler;
 use App\Http\Controllers\Api\Functions\QueueWorker;
 use App\Http\Controllers\Api\Functions\OutboundWorker;
 use App\Http\Controllers\Api\Functions\RingGroupWorker;
-
+use App\Http\Controllers\Api\Functions\CallParkingWorker;
+use App\Models\CallQueueExtension;
 
 class FunctionCall{
     private $func_id;
@@ -66,6 +71,7 @@ class FunctionCall{
     public static function send_call($data){
         if(auth()->user())
             $data['organization_id'] = auth()->user()->organization_id;
+
         $request = Request::create('/', 'POST',$data);
        return CallHandler::create($request);
     } 
@@ -76,16 +82,36 @@ class FunctionCall{
         if(auth()->user())
             $data['organization_id'] = auth()->user()->organization_id;
         
+        if(!isset($data['sms_profile'])){
+            $smsProfile = SmsProfile::where('organization_id', $data['organization_id'])->where('default', 1)->first();
+
+            if($smsProfile) {
+                $data['sms_profile'] = $smsProfile;
+            }
+            else{
+                Log::info("SMS profile not found");
+                return;
+            }
+
+        }
+
+        if(isset($data['from']) == false){
+            $options = json_decode($smsProfile->options, true);
+
+            $data['from'] = isset($options['from']) ? $options['from'] : 'EasyPbx';
+        }
+
         $smsHistory = SmsHistory::create($data);
 
         $response = Sms::send($data['to'], $data['body'], $data['from'], $data['sms_profile']);
-        Log::info( $response );
+        //Log::info( $response );
 
         $smsHistory->update([
             'trxid' => $response['trxid'],
             'status' => $response['status']
         ]);
 
+        $response['sms_history_id'] = $smsHistory->id;
         return $response;
     }
     
@@ -100,8 +126,12 @@ class FunctionCall{
             if($mprofile) {
                 $data['mail_profile_id'] = $mprofile->id;
             }
+            else{
+                Log::info("Mail profile not found");
+                return;
+            }
         }
-
+        
         $template = isset($data['template']) ? $data['template'] : 'default';
         return Mail::send($data['to'], $data['subject'], $data['body'], $data['mail_profile_id'], $template);
 
@@ -173,9 +203,9 @@ class FunctionCall{
         $trunks = Trunk::where("organization_id",$sip_channel->organization_id)->where("sip_user_id",$sip_channel->id)->get();
         if($trunks->count() > 0) $is_trunk = true;
         $response = new VoiceResponse();
-        Log::debug("is trunk " . $is_trunk); 
+        //Log::debug("is trunk " . $is_trunk); 
         if($is_trunk == false){  // call comes from an local extension
-                            
+            info("call come from local extension ?");                  
             $response = self::getOutboundRoutes($dest,$sip_channel->organization_id,$caller_id);
             if($response && $response->count() == 0){                
                 $response->say("User extension ");
@@ -205,22 +235,50 @@ class FunctionCall{
         return $response;
     }
 
+    public static function getOutboundChannels($organization_id,$to){
+       
+        $dest = $to;
+        $oroutes = OutboundRoute::where( "organization_id", $organization_id )->where( "is_active", true )->get();
+        $outbound_channels = [];
+        foreach ( $oroutes as $oroute ) {
+
+            $dest = $to;
+            
+            if ( FunctionCall::matchPattern( $oroute->pattern, $dest ) ) {
+                foreach($oroute->trunks as $key=>$trunk)
+                    $outbound_channels[$trunk->sip_user_id] = $dest;                    
+            }
+
+        }
+        return $outbound_channels;
+    }
+
+    public static function getExtensionRoute($dest,$org_id,$caller_id = null,$response = null){
+        if(!$response)
+        $response = new VoiceResponse();
+       // info("here on getExtensionRoute");
+        $extension = Extension::where("organization_id",$org_id)->where("code",$dest)->first();
+       // info($extension);
+        if($extension) return self::execute('extension',$extension->id,$response,['event_to'=>$dest,'event_from'=>$caller_id]);
+        return false;
+
+    }
+
 
     public static function getOutboundRoutes($dest,$org_id,$caller_id = null,$response = null){   // this is used when call from api
         
-        //$funcCall = new FunctionCall;
+       
         if(!$response)
             $response = new VoiceResponse();
-
-        $extension = Extension::where("organization_id",$org_id)->where("code",$dest)->first();
-        
-        if(!$extension){
+        $newresponse = self::getExtensionRoute($dest,$org_id,$caller_id,$response);
+        if( $newresponse == false)
+        {
             if(substr($dest, 0, 1) == '*'){
                 return self::execute('short_code',$dest,$response);
             }
             // find outbound routes here
             
-            $routes = [];
+             $routes = [];
             $oroutes = OutboundRoute::where("organization_id",$org_id)->where("is_active",true)->orderBy('priority','desc')->get();
                         
             foreach( $oroutes as $oroute){
@@ -234,9 +292,13 @@ class FunctionCall{
                     $response = self::execute('outbound_route',$oroute->id,$response,['event_to'=>$dest,'event_from'=>$caller_id]);
                     break;
                 }    
-            }
+            } 
+
+           // $response->dial($dest,['answerOnBridge'=>'true','record'=>'record-from-answer']);
+
                                    
-        }else  $response = self::execute('extension',$extension->id,$response,['event_to'=>$dest,'event_from'=>$caller_id]); //$response =  $funcCall->extension(($extension->id));
+        }else
+            $response = $newresponse;
         return $response;
     }
 
@@ -347,10 +409,12 @@ class FunctionCall{
         $survey = Survey::find($id);
         $try = request()->query('gather',-1);
         $data = request()->input();
+        
         info("on survey " . $id);
-        info($try);
-        if($try >= 0){
+        // info("Retry " . $try);
+        // info($data);
 
+        if($try >= 0){
             $call = Call::find($data['call_id']);         
             if(!empty($data['digits']) && !empty($survey->keys)){
                 $keys = json_decode($survey->keys,true);
@@ -361,8 +425,31 @@ class FunctionCall{
                         $create = ['organization_id'=>$survey->organization_id,'survey_id'=> $survey->id,
                         'call_id'=>$call->id,'caller_id'=>$call->destination,'pressed_key'=>$data['digits']];
                         SurveyResult::create($create);
-                        return $this->response;
+                        
+                        $body = 'Received feedback ' . $data['digits'] . '(' . $key['text'] .')' .' from caller id #' . $call->destination .' and survey - ' . $survey->name;
+                        info($body);
 
+                        if(empty($survey->email) == false){
+                            info('Sending email from survey');
+                            self::send_mail([
+                                'organization_id' => $survey->organization_id,
+                                'to' => $survey->email,
+                                'subject' => 'Survey Feedback',
+                                'body' => $body,
+                                'template' => 'plain'
+                            ]);
+                        }
+                        
+                        if(empty($survey->phone) == false){
+                            info('sending sms from survey');
+                            self::send_sms([
+                                'organization_id' => $survey->organization_id,
+                                'to' => $survey->phone,
+                                'body' => $body,
+                            ]);
+
+                        }
+                        return $this->response;
                     }
                 }
             }elseif(isset($data['record_file'])){
@@ -378,7 +465,7 @@ class FunctionCall{
         $try = $try + 1;
         $max_try = $survey->max_try;
         //if($max_try == 0) $max_try = 1;
-        info($try . "  " . $max_try);
+        //info($try . "  " . $max_try);
         if($try > $max_try ){
             info("survey on end");
             $this->response->redirect(route('api.func_call',['func_id'=>$survey->function_id,'dest_id'=>$survey->destination_id]));              
@@ -387,14 +474,14 @@ class FunctionCall{
 
         if($survey->type == 0){                    
             $options = [
-                'action'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$survey->id,'gather'=>$try ]),
+                'action'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$survey->id, 'gather'=>$try ]),
                 'numDigits'=>1,'speechTimeout'=>5,'timeout'=>300,'transcript'=>false];
         
             $gather = $this->response->gather($options);
             self::voice_file_play($gather,$survey->voice);     
         }elseif($survey->type == 1){
             self::voice_file_play($this->response,$survey->voice); 
-            $this->response->record(['beep'=>true,'transcribe'=>false,'action'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$id,'record'=>true])]);
+            $this->response->record(['beep'=>true,'transcribe'=>false,'action'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$id,'record'=>true, 'gather'=>$try])]);
         }
         //info($this->response->xml()); 
         return $this->response;
@@ -408,9 +495,40 @@ class FunctionCall{
     }
 
     function call_queue($id){
+        info("on call queue");
         $queue_worker = new QueueWorker($id,$this->func_id);
         return $queue_worker->process($this->response);
     }
+
+    function queue_join($id){
+        //$data = request()->input();
+        info("on call queue_join");
+        if(request()->query('gather') == '1'){
+            $call = Call::find(request()->input('call_id'));
+            $extension = Extension::where("organization_id",$call->organization_id)->where('destination_id',$call->sip_user_id)->where('extension_type',1)->first();
+            if(request()->input('digits') == '1'){
+                if($extension) CallQueueExtension::where('call_queue_id',$id)->where("extension_id",$extension->id)->update(['dynamic_queue'=>1]);
+                return $this->response;
+            }else if(request()->input('digits') == '2'){
+                if($extension) CallQueueExtension::where('call_queue_id',$id)->where("extension_id",$extension->id)->update(['dynamic_queue'=>0]);
+                return $this->response;
+            }else if(request()->input('digits') == '0'){
+                $this->response->redirect(route('api.func_call',['func_id'=>'call_queue','dest_id'=>$id, 'queue'=>true ]));
+                
+            }else
+                return $this->response;
+        }
+        $options = [
+            'action'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$id, 'gather'=>true ]),
+            'numDigits'=>1,'timeout'=>300,];
+    
+        $gather = $this->response->gather($options);
+        $gather->play(storage_path( 'app/public/sounds/queue_menu_en.mp3' ),['localfile' => "true"]);
+        info($this->response->xml());
+        return $this->response;        
+    }
+
+
 
     function ring_group($id){
         $ring_worker = new RingGroupWorker($id,$this->func_id);
@@ -442,6 +560,14 @@ class FunctionCall{
         return $this->response;
     }
 
+
+    function call_parking($id){
+      //  info("on call parking");
+          $worker = new CallParkingWorker($id,$this->params);
+          return $worker->process($this->response);
+    } 
+
+     
     
 
     function extension($id){      
@@ -544,26 +670,80 @@ class FunctionCall{
         return $response;
     }
 
-    function voice_mail($ext_id = null){
+    function voice_record($id ){
         //$response = new VoiceResponse();
-        $extension = Extension::find($ext_id);
-        if(!$extension) return $this->response;        
+        $recordVoiceProfile = VoiceRecord::find($id);
+
+        if(!$recordVoiceProfile) return $this->response;        
         $data = request()->all();        
+
         if(isset($data['record_file'])){
             // save voicemail here
-            $data = ['organization_id'=>$extension->organization_id,'extension_id'=>$ext_id,
-            'voice_path'=>$data['record_file']];
+            info($data);
+            
+            $data = [
+                'organization_id' => $recordVoiceProfile->organization_id,
+                'voice_record_id'=>$id,
+                'voice_path'=>$data['record_file'],
+                'caller_id' => $data['event_from'],
+                'call_id' => $data['call_id'],
+            ];
+
             if(isset($data['speech_result'])) $data['transcript'] = $data['speech_result'];
             VoiceMail::create($data);
+
+            // send email
+            if($recordVoiceProfile->email && $recordVoiceProfile->is_transcript){
+                self::send_mail([
+                    'to' => $recordVoiceProfile->email,
+                    'subject' => 'Received voice record from ' . $recordVoiceProfile->name,
+                    'body' => $data['transcript'],
+                    'template' => 'plain'
+                ]);
+            }
+
+            // send sms
+            if($recordVoiceProfile->email && $recordVoiceProfile->is_transcript){
+                self::send_sms([
+                    'organization_id' => $recordVoiceProfile->organization_id,
+                    'from' => $recordVoiceProfile->name,
+                    'to' => $recordVoiceProfile->phone,
+                    'body' => $data['transcript']
+                ]);
+            }
+
+            // create ticket
+
+            if( $recordVoiceProfile->is_create_ticket && $data['voice_path'] ){
+                Ticket::create([
+                    'organization_id' => $recordVoiceProfile->organization_id,
+                    'name'=>$data['caller_id'],
+                    'phone' => $data['caller_id'],
+                    'subject' => __('Support ticket from ') . $data['caller_id'],
+                    'description' => isset($data['transcript']) ? $data['transcript'] : 'Please check record file for more information.',
+                    'record' => $data['voice_path']
+                ]);
+
+            }
+
+
             $this->response->say("Your voice has been recorded");
             
         }else{
  
-            $this->response->say("Please leave a message after the beep.");
-            $this->response->record(['beep'=>true,'transcribe'=>true,'action'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$ext_id])]);
+            // $this->response->say("Please leave a message after the beep.");
+            self::voice_file_play($this->response, $recordVoiceProfile->voice); 
+
+            $playload = [
+                'beep' => $recordVoiceProfile->play_beep?true:false,
+                'transcribe' => $recordVoiceProfile->is_transcript?true:false,
+                'action'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$id])
+            ];
+
+            $this->response->record($playload);
            
         }
-        
+       // info($this->response->xml());
         return $this->response; 
     }
 

@@ -1,7 +1,12 @@
 <form method="POST" action="{{ route('licence.active') }}" class="d-none @if (config('licence.call_limit') > 0) d-none @endif">
     <div class="modal-body">
-        <p>Please activate your license to use EasyPBX . If you don't have any license info please
-            <a class="active-licence licence-toggle-form" href="javascript:void(0)">Click here</a>.
+    @php
+        $title = env('APP_NAME', 'EasyPBX');
+       // if(config('licence.brand_name')) $title = config('licence.brand_name')
+    @endphp
+
+        <p>{{__("Please activate your license to use {$title} . If you don't have any license info please")}}
+            <a class="active-licence licence-toggle-form" href="javascript:void(0)">{{ __('Click here') }}</a>.
         </p>
         @csrf
         <div class="row">

@@ -1,8 +1,13 @@
 <form method="POST" action="{{ route('licence') }}" class="active-lc-form @if (config('licence.call_limit') > 0) d-none @endif">
     <div class="modal-body">
 
-        <p> Please activate your license to use EasyPBX . If you allready have any previous license info please
-            <a class="create-account licence-toggle-form" href="javascript:void(0)">Click here</a>.
+    @php
+        $title = env('APP_NAME', 'EasyPBX');
+        if(config('licence.brand_name')) $title = config('licence.brand_name')
+    @endphp
+    
+        <p> {{ __('Please activate your license to use {$title} . If you allready have any previous license info please') }}
+            <a class="create-account licence-toggle-form" href="javascript:void(0)">{{ __('Click here') }}</a>.
         </p>
         @csrf
         <div class="row">

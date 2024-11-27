@@ -44,7 +44,7 @@
         </div>
     </div>
 
-    <div class="col-lg-12">
+    <!-- <div class="col-lg-12">
         <div class="form-group @error('agents') has-error @enderror">
             {!! Form::label('agents', __('Agents'), ['class' => 'control-label']) !!}
             <span class="text-required">*</span>
@@ -60,11 +60,11 @@
                 <p class="help-block  text-danger"> {{ $message }} </p>
             @enderror
         </div>
-    </div>
+    </div> -->
 
     <div class="col-lg-12">
         <div class="form-group @error('contact_groups') has-error @enderror">
-            {!! Form::label('contact_groups', __('Contact Group'), ['class' => 'control-label']) !!} <a style="color: #004a43" href="{{ route('contacts.contact.index') }}"> Click here to add/import contact</a>
+            {!! Form::label('contact_groups', __('Contact Group'), ['class' => 'control-label']) !!} 
             <span class="text-required">*</span>
 
             {!! Form::select('contact_groups', $contact_groups, old('contact_groups', optional($dialerCampaign)->contact_groups), [
@@ -80,9 +80,11 @@
         </div>
     </div>
 
+    
+
     <div class="col-lg-12">
         <div class="form-group @error('schedule_days') has-error @enderror">
-            {!! Form::label('schedule_days', __('Campaign days'), ['class' => 'control-label']) !!}
+            {!! Form::label('schedule_days', __('Days'), ['class' => 'control-label']) !!}
             <span class="text-required">*</span>
 
             {!! Form::select(
@@ -157,10 +159,10 @@
     </div>
 
     
-    <div class="col-lg-12">
+    <div class="col-lg-6">
         <div class="form-group @error('end_date') has-error @enderror">
             {!! Form::label('end_date', __('End Date'), ['class' => 'control-label']) !!}
-            <span class="text-required">*</span>
+            
 
             {!! Form::text('end_date', old('end_date', optional($dialerCampaign)->end_date), [
                 'class' => 'form-control' . ($errors->has('end_date') ? ' is-invalid' : null),
@@ -172,7 +174,23 @@
             @enderror
         </div>
     </div>
-    
+    <div class="col-lg-6">
+        <div class="form-group @error('call_interval') has-error @enderror">
+            {!! Form::label('call_interval', __('Call Interval (sec)'), ['class' => 'control-label']) !!}
+            <span class="text-required">*</span>
+
+            {!! Form::number('call_interval', old('call_interval', optional($dialerCampaign)->call_interval ?  optional($dialerCampaign)->call_interval: 10), [
+                'class' => 'form-control' . ($errors->has('call_interval') ? ' is-invalid' : null),
+                'min' => '0',
+                'max' => '100',
+                'required' => true,
+                'placeholder' => __('Enter call interval here...'),
+            ]) !!}
+            @error('call_interval')
+                <p class="help-block  text-danger"> {{ $message }} </p>
+            @enderror
+        </div>
+    </div>
     <div class="col-lg-6">
         <div class="form-group @error('script_id') has-error @enderror">
             {!! Form::label('script_id', __('Script'), ['class' => 'control-label']) !!}
@@ -194,7 +212,7 @@
 
     <div class="col-lg-6">
         <div class="form-group @error('form_id') has-error @enderror">
-            {!! Form::label('form_id', __('From'), ['class' => 'control-label']) !!}
+            {!! Form::label('form_id', __('Form'), ['class' => 'control-label']) !!}
             <span class="text-required">*</span>
 
             {!! Form::select('form_id', $forms, old('form_id', optional($dialerCampaign)->form_id), [
@@ -203,7 +221,7 @@
                 'maxlength' => '100',
                 'required' => true,
                 'data-live-search' => 'true',
-                'placeholder' => __('Please select form'),
+                'placeholder' => __('Please select custom form'),
             ]) !!}
             @error('form_id')
                 <p class="help-block  text-danger"> {{ $message }} </p>
@@ -250,6 +268,8 @@
                 is24hour: true,
 
             }
+
+           
 
             mdtimepicker('#start_at', options)
             mdtimepicker('#end_at', options)

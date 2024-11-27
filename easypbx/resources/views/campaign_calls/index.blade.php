@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', __('Campaign call History'))
+@section('title', __('Broadcast  History'))
 
 @section('content')
 
@@ -21,22 +21,7 @@
             <a href="{{ route('broadcasts.broadcast.index') }}" class="btn btn-primary btn-sm">
             <span class="fa fa-list" aria-hidden="true"></span>
             </a>
-            @if ($campaign->status == 0 || $campaign->status == 2)
-            <a href="{{ route('broadcasts.broadcast.updateField', $campaign->id) }}" cid="{{$campaign->id}}" class="btn btn-primary btn-sm btnStatus"
-                data-status="1">
-                <span class="fa fa-play" aria-hidden="true"></span>{{ __('Start') }}
-            </a>
-            @elseif($campaign->status == 1)
-
-            <button type="button" class="btn btn-primary btn-sm mr-2 campaignLog">
-                <i class="fa fa-tasks"> Logs </i>
-            </button>
-
-            <a href="{{ route('broadcasts.broadcast.updateField', $campaign->id) }}" class="btn btn-primary btn-sm btnStatus"
-                title="{{ __('Campaign stop') }}" data-status="2">
-                <span class="fa fa-stop" aria-hidden="true"></span>{{ __('Stop') }}
-            </a>
-            @endif
+         
         </div>
 
     </div>
@@ -106,7 +91,7 @@
 
                             <div class="dropdown-menu dropdown-menu-right shadow-dropdown" aria-labelledby="btnFilter">
                                 <a class="dropdown-item"
-                                    href="{!! route('campaign_calls.campaign_call.index') !!}?id={{ $campaign->id }}">{{ __('All') }}</a>
+                                    href="{!! route('broadcast_calls.broadcast_call.index') !!}?id={{ $campaign->id }}">{{ __('All') }}</a>
                             </div>
                         </div>
 
@@ -135,7 +120,7 @@
     </div>
 </div>
 
-@include('broadcasts.wslog')
+
 
 <!-- Modal for bulk actions-->
 <div class="modal fade" id="bulkActionModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -148,7 +133,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                <form method="POST" action="{!! route('campaign_calls.campaign_call.bulk', $campaign->id) !!}"
+                <form method="POST" action=""
                     class="editableForm" id="massActionFrm" accept-charset="UTF-8">
                     {{ csrf_field() }}
                     <input name="_method" type="hidden" value="PUT">
@@ -196,6 +181,8 @@
     </div>
 </div>
 
+@include('contacts.sms_modal')
+
 @endsection
 
 @push('script')
@@ -209,7 +196,7 @@ $(document).ready(function(){
     $('#crud_contents').crud();
 
     $('#filter_group').change(function() {
-        window.location.href = "{!! route('campaign_calls.campaign_call.index') !!}?id=" + $(this).val();
+        window.location.href = "{!! route('broadcast_calls.broadcast_call.index') !!}?id=" + $(this).val();
 
     });
 

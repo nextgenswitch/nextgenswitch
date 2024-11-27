@@ -24,7 +24,7 @@ class SmsProfilesController extends Controller
         $perPage = $request->get('per_page') ?: 10;
         $filter = $request->get('filter') ?: '';
         $sort = $request->get('sort') ?: '';
-        $smsProfile = SmsProfile::query();
+        $smsProfile = SmsProfile::where( 'organization_id', auth()->user()->organization_id );
         if(!empty($q))  $smsProfile->where('name', 'LIKE', '%' . $q . '%');
 
         if(!empty($filter)){

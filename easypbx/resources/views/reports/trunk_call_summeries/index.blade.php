@@ -16,7 +16,7 @@
         <div class="panel-heading clearfix">
 
             <div class="pull-left">
-                <h4 class="tile-title">{{ __('Trunk Call Summaries') }}</h4>
+                <h4 class="tile-title">{{ __('Trunk Call Summeries') }}</h4>
             </div>
 
         </div>

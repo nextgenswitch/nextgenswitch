@@ -60,8 +60,8 @@
     
     
 
-    <script src="{{ asset('c3/d3.min.js') }}"></script>
-    <script src="{{ asset('c3/c3.min.js') }}"></script>
+    <script src="{{ asset('js/c3/d3.min.js') }}"></script>
+    <script src="{{ asset('js/c3/c3.min.js') }}"></script>
     
 
     <script>
@@ -87,8 +87,8 @@
             var callChartData = {
                 columns: [
                     // ['Total Calls', calls.total],
-                    ['Succeeded Calls', calls.successed],
-                    ['Failed Calls', calls.failed],
+                    ["{{ __('Succeeded Calls') }}", calls.successed],
+                    ["{{ __('Failed Calls') }}", calls.failed],
                 ],
                 type: 'donut'
             };
@@ -96,7 +96,7 @@
             // Configuration options for the chart
             var callChartOptions = {
                 donut: {
-                    title: "Total " + calls.total,
+                    title: "{{ __('Total') }} " + calls.total,
                     label: {
                         format: function(value, ratio, id) {
                             return value;
@@ -117,8 +117,8 @@
 
             var extChartData = {
                 columns: [
-                    ['Online Extensions', extensions.online],
-                    ['Offline Extension', extensions.total - extensions.online],
+                    ["{{ __('Online Extensions') }}", extensions.online],
+                    ["{{ __('Offline Extension') }}", extensions.total - extensions.online],
                 ],
                 type: 'donut'
             };
@@ -126,7 +126,7 @@
             // Configuration options for the chart
             var extChartOptions = {
                 donut: {
-                    title: "Total " + extensions.total,
+                    title: "{{__('Total') }} " + extensions.total,
                     label: {
                         format: function(value, ratio, id) {
                             return value;
@@ -146,9 +146,9 @@
 
             var hourlyReports = @json($hourlyReports);
             hourlyReports = JSON.parse(hourlyReports);
-            hourlyReports.total.unshift('Total')
-            hourlyReports.successed.unshift('Successed')
-            hourlyReports.failed.unshift('Failed')
+            hourlyReports.total.unshift("{{ __('Total') }}")
+            hourlyReports.successed.unshift("{{ __('Successed') }}")
+            hourlyReports.failed.unshift("{{ __('Failed') }}")
             hourlyReports.time.unshift('x')
             console.log(hourlyReports);
 

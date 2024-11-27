@@ -5,7 +5,7 @@
             <thead>
                 <tr>
 
-                    <th>{{ __('Extension Name') }}</th>
+                    <!-- <th>{{ __('Voice Record Profile') }}</th> -->
                     <th class='sortable' sort-by="caller_id">{{ __('Caller ID') }}</th>
                     <th>{{ __('Voice') }}</th>
                     <th class="sortable" sort-by="expire">{{ __('Transcript') }}</th>
@@ -14,8 +14,9 @@
             </thead>
             <tbody>
                 @foreach ($mails as $mail)
+         
                     <tr>
-                        <td>{{ $mail->extension->name }}</td>
+                       <!--  <td>{{ $mail->voiceRecord->name }}</td> -->
                         <td>{{ $mail->caller_id }}</td>
 
                     
@@ -28,7 +29,7 @@
 
 
                         <td>{{ $mail->transcript }}</td>
-                        <td>{{ $mail->created_at }}</td>
+                        <td>{{ date_time_format($mail->created_at) }}</td>
                     </tr>
                 @endforeach
             </tbody>

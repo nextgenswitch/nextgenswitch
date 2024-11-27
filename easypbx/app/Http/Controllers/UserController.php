@@ -22,20 +22,19 @@ class UserController extends Controller
         $data = $request->validate([
             'user.name' => ['required', 'string'],
             'user.email' => ['required', 'email'],
-            'organization.domain' => ['required', 'string'],
-            'organization.email' => ['required', 'email'],
-            'organization.contact_no' => ['required', 'string'],
-            'organization.address' => ['required', 'string']
+            // 'organization.domain' => ['required', 'string'],
+            // 'organization.email' => ['required', 'email'],
+            // 'organization.contact_no' => ['required', 'string'],
+            // 'organization.address' => ['required', 'string']
         ]);
         
         $user = User::find(auth()->id());
         $user->update($data['user']);
 
-        if($user->organization->update($data['organization'])){
+        if($user){
             return back()->with('success_message', 'User profile updated successfully');
         }
             
-
 
         return back()->withInput()->withErrors(['unexpected_error' => 'Unexpected error occurred while trying to update profile.']);
 

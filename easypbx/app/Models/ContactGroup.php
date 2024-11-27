@@ -7,24 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 class ContactGroup extends Model
 {
     
-
-    /**
-     * The database table used by the model.
-     *
-     * @var string
-     */
-    protected $table = 'contact_groups';
-
-    /**
-    * The database primary key value.
-    *
-    * @var string
-    */
-    protected $primaryKey = 'id';
-    protected $keyType = 'string';
-    public $incrementing = false;
-
-
     /**
      * Attributes that should be mass-assignable.
      *
@@ -55,7 +37,9 @@ class ContactGroup extends Model
      * @return App\Models\User
      */
 
-
+    public function getTotalAttribute(){
+        return Contact::whereRaw('FIND_IN_SET(?, contact_groups)', [$this->id])->count();
+    }
 
     /**
      * Get created_at in array format

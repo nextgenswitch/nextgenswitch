@@ -154,7 +154,7 @@
 
     <div class="col-lg-12 column">
         <div class="form-group @error('mode') has-error @enderror">
-            <label for="mode" class="control-label">IVR Mode</label>
+            <label for="mode" class="control-label">{{ __('IVR Mode') }}</label>
 
             {!! Form::select('mode', config('enums.ivr_mode'), old('mode', optional($ivr)->mode), [
                 'class' => 'form-control mode',

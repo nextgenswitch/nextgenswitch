@@ -1,341 +1,270 @@
 <?php
 
 namespace App\Http\Controllers\Api\Functions;
-use App\Jobs\QueueJob;
-use Illuminate\Support\Facades\Log;
-use App\Models\Call;
 use App\Enums\CallStatusEnum;
 use App\Enums\QueueStatusEnum;
 use App\Http\Controllers\Api\FunctionCall;
-use Illuminate\Support\Facades\Cache;
 use App\Http\Controllers\Api\VoiceResponse;
 use App\Models\CallQueue;
 use App\Models\Queue;
+use App\Models\QueueCall;
 use App\Models\CallHistory;
-use App\Models\Organization;
-use Carbon\Carbon;
+use App\Models\CallQueueExtension;
+use App\Models\SipChannel;
 
 class QueueWorker{
     private $id;
     private $func_id;
-
+    private $call_queue;
     function __construct($id,$func_id)
     {
         $this->id = $id;
         $this->func_id = $func_id;
+        $this->call_queue = CallQueue::find($this->id);  
     }
 
     public function hangup($call_id){
         $response = new VoiceResponse();
         $response->hangup();
-        //Http::asForm()->post(route('api.switch.call_modify'),['call_id'=>$call_id,'responseXml'=>$response->xml()]);
         $call = FunctionCall::modify_call($call_id,['responseXml'=>$response->xml()]);
-        //Log::info("calling hangup");
-        //Log::info($call);
+       
         
     }
 
-    function send_call($extension){
-        $rjson = FunctionCall::send_call($extension);
-        //Log::info("on create call");  Log::info($rjson);
-        if(isset($rjson['error'])) return false;                    
-        $call_id = $rjson["call_id"];
-        if(!empty($call_id) && $rjson['status-code'] < CallStatusEnum::Disconnected->value) return $call_id;
-        return false;
+    public function hangup_queue_calls(){
+        info("hangup all call");
+        if($this->queue_has_calls() == 0){
+            $calls = QueueCall::where("call_queue_id",$this->id)->where('status','<',CallStatusEnum::Established->value)->get();
+            //info($calls);
+            foreach($calls as $call){
+                $this->hangup($call->call_id);
+            }
+        }
     }
 
-    function handle(){
-        Log::info("queue handle here");
-        $call_queue = CallQueue::find($this->id);   
-        if(!$call_queue) return;
-        $organization = Organization::find($call_queue->organization_id);
-        //Log::info($organization);
-        $queue_calls = Cache::pull('queue_calls:' . $call_queue->id,[]);
-        $queue_calls_hangup = Cache::pull('queue_calls_hangup:' . $call_queue->id,[]);
-        $queue_calls_established = Cache::pull('queue_calls_established:' . $call_queue->id,[]);
-        $queue_calls_answered = Cache::pull('queue_calls_answered:' . $call_queue->id,[]);
-        $queue_status = Cache::pull('queue_status:' . $call_queue->id,[]);
+    function dial_forward($extension){
+        if(!$extension->allow_diversion || empty($extension->forwarding_number) ) return false;
+        $caller_id = $this->call_queue->extension->code;
+        if(!empty($this->call_queue->cid_name_prefix)) $caller_id =$this->call_queue->cid_name_prefix . $caller_id;
+        $dial =  ['id'=>$extension->id,'to'=>$extension->forwarding_number,"organization_id"=>$this->call_queue->organization_id,"from"=> $caller_id,'timeout'=>($this->call_queue->member_timeout > 0)?$this->call_queue->member_timeout:30,
+        'response'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$this->call_queue->id,'queue'=>true,'ext_id'=>$extension->id]),
+        'statusCallback'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$this->call_queue->id,'queue_status'=>true])
+        ];
+        $call = FunctionCall::send_call($dial); 
+        return $call;
+    }
 
-        //Log::info("queue status "); Log::info($queue_status);
-        //Log::info("queue calls "); Log::info($queue_calls);
-        foreach($queue_status as $call_id=>$status){
-            $id = 0;
-            foreach($queue_calls as $k=>$queue_call){
-                if(isset($queue_status[$queue_call])){ $id = $k; unset($queue_calls[$k]); }
-            }
+    function dial_extension($extension){
+        info("dialing extension " . $extension->id . " " . $extension->destination_id);
+        if(SipChannel::where("sip_user_id",$extension->destination_id)->count() == 0) return false;
+        if(QueueCall::where("call_queue_id",$this->id)->where('status','<=',CallStatusEnum::Established->value)->where('extension_id',$extension->id)->count() > 0) return false;
+        if($extension->last_ans < $this->call_queue->wrap_up_time) return false;
+        if($extension->last_dial < $this->call_queue->retry) return false;
+        
+        $caller_id = $this->call_queue->extension->code;
+        if(!empty($this->call_queue->cid_name_prefix)) $caller_id =$this->call_queue->cid_name_prefix . $caller_id;
+        $dial =  ['id'=>$extension->id,'to'=>$extension->code,"organization_id"=>$this->call_queue->organization_id,"from"=> $caller_id,'timeout'=>($this->call_queue->member_timeout > 0)?$this->call_queue->member_timeout:30,
+        'response'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$this->call_queue->id,'queue'=>true,'ext_id'=>$extension->id]),
+        'statusCallback'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$this->call_queue->id,'queue_status'=>true])
+        ];
+        $call = FunctionCall::send_call($dial); 
+        //info($call);
+        if(isset($call['error']) || $call['status-code'] > CallStatusEnum::Disconnected->value){
+            $call = $this->dial_forward($extension);
+            if(isset($call['error']) || $call['status-code'] > CallStatusEnum::Disconnected->value)
+                return false; 
+        } 
+        //if() return false;
+        QueueCall::create(['call_id'=>$call['call_id'],'status'=>$call['status-code'],'extension_id'=>$extension->id,'call_queue_id'=>$this->id,'organization_id'=>$this->call_queue->organization_id]);      
+        CallQueueExtension::where("call_queue_id",$this->id)->where('extension_id',$extension->id)->update(['last_dial'=>now()]);
+        return $call;
+    }
 
-            if($id == 0) {  Log::info("id not found to update"); continue;}
+    private  function order_least_assigned($a, $b){
+        
+    }
 
-            if((int) $status >= CallStatusEnum::Established->value){
-                if((int) $status > CallStatusEnum::Disconnected->value){
-                    $queue_calls_hangup[$id] =  time();
-                    //Log::info("Check Call forwarding here ".  request()->query('forward'));
-                    if(empty(request()->query('forward'))){
-                        if(isset($extension_forwards[$id])){
-                            //Log::info("Call forwarding here");
-                            //Log::info( $extension_forwards[$id]);
-                            $extensions = Cache::pull('queue_extensions:' . $call_queue->id,[]);
-                            array_unshift($extensions, $extension_forwards[$id]);
-                            unset($extension_forwards[$id]);
-                            //Log::info($extensions);
-                            Cache::put('queue_extensions:' . $call_queue->id, $extensions, 3600); // 1 hour
-                        }
-                    }
-    
-                }else
-                    $queue_calls_established[$call_id] = $id;
-            }
-        }
+    private  function order_fewest_assigned($a, $b){
+        
+    }
+
+    private  function order_random($a, $b){
+        
+    }
+
+    private  function order_weight_random($a, $b){
+        
+    }
+
+    private  function order_last_dial($a, $b){
+        return ($a->last_dial < $b->last_dial)?1:-1;
+        
+    }
+
+  
+
+
+ 
+
+   
+   
+
+    function queue_has_calls(){
       
+        $queue_calls = Queue::where('call_queue_id',$this->call_queue->id)->where('status','<',QueueStatusEnum::Bridged->value);
+        return $queue_calls->count();
+    }
 
-        //Log::info($queue_calls);
-        $queue = Queue::where("call_queue_id",$call_queue->id)->where("organization_id",$call_queue->organization_id)->where("status",0)->get();
-        if($queue->count() > 0){
-            $extensions = Cache::pull('queue_extensions:' . $call_queue->id,[]);
-            $extension_forwards = [];
-            //Log::info("extensions count to call " . sizeof($extensions));
-            if(sizeof($extensions ) == 0){ 
-                 //$extensions = [];
-                 //$extension_forwards =  Cache::pull('queue_extension_forwards:' . $call_queue->id,[]);
-                 $extensionlist = $call_queue->extensions;
-                 $caller_id = $call_queue->extension->code;
-                 if(!empty($call_queue->cid_name_prefix)) $caller_id = $call_queue->cid_name_prefix . $caller_id;
+
+
+    function handle(){
+        $call_count = $this->queue_has_calls();
+        if($call_count > 0){
+
+            $extensionlist = $this->call_queue->extensions;
+
+            //info($extensionlist);
+            usort($extensionlist,array($this,'order_last_dial'));
+           // info((array) $extensionlist);
+            foreach($extensionlist as $ext)
+                info($ext);
+            if($this->call_queue->strategy == 0){
+                foreach($extensionlist as $extension)
+                    $this->dial_extension($extension);
+            }else{
+                $sent = QueueCall::where("call_queue_id",$this->id)->where('status','<=',CallStatusEnum::Established->value)->count();
                 foreach($extensionlist as $extension){
-                    $dial =  ['id'=>$extension->id,'to'=>$extension->code,"domain"=>$organization->domain,"from"=> $caller_id,'timeout'=>($call_queue->member_timeout > 0)?$call_queue->member_timeout:30,
-                    'response'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$call_queue->id,'queue'=>true]),
-                    'statusCallback'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$call_queue->id,'queue'=>true,'queue_status'=>true])
-                    ];
-                    $extensions[] = $dial;
-                    //Log::info($extension->allow_diversion . " forwards " . $extension->forwarding_number);
-                    if(($extension->allow_diversion) && !empty($extension->forwarding_number)){ 
-                        $dial['to'] = $extension->forwarding_number;  
-                        $dial['forward'] = true;
-                        $dial['statusCallback'] = route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$call_queue->id,'queue'=>true,'queue_status'=>true,'forward'=>true]);
-                        $extension_forwards[$extension->id] = $dial;
-                    }
+                    if($sent >= $call_count) break;
+                    if($this->dial_extension($extension))
+                        $sent++;
                     
-                } 
-
+                }
             }
-            if(sizeof($extension_forwards) > 0) Cache::put('queue_extension_forwards:' . $call_queue->id, $extension_forwards, 3600); // 1 hour
             
-            $extensioncount = sizeof($extensions );
-            //Log::info($extensions);
-            
-            if(sizeof($extensions ) > 0)
-            while(1){
-                if($call_queue->strategy == 1 && sizeof($queue_calls) > 0) break;
-                $extension = array_shift($extensions);
-                if($extension){
-                    //Log::info("trying  extension");
-                    //Log::info($extension);
-                    $id = $extension['id'];
-                    unset($extension['id']);
-                    if(isset($queue_calls[$id])){ 
-                        Log::info("queue call exisit for this extension "); 
-                        continue;
-                    }
-                    
-                    if(isset($queue_calls_answered[$id])){
-                        $tm = Carbon::createFromTimestamp($queue_calls_answered[$id]);
-                        //Log::info("Wrap up  time for extension " .$id . " " . $call_queue->wrap_up_time  . " " . $tm->diffInSeconds(now()));
-                        if($tm->diffInSeconds(now()) < $call_queue->wrap_up_time ){
-                            Log::info("Wrap up  time for extension " .$id . " " . $call_queue->wrap_up_time  . " " . $tm->diffInSeconds(now()));
-                            continue;
-                        }
-                    }
-
-                    if(!isset($extension['forward']) && isset($queue_calls_hangup[$id])){
-                        $tm = Carbon::createFromTimestamp($queue_calls_hangup[$id]);
-                        if($tm->diffInSeconds(now()) < $call_queue->retry){
-                            Log::info("Waiting retry timeout for extension " .$id . " " . $call_queue->retry . " " . $tm->diffInSeconds(now()));
-                            continue;
-                        }
-                    }
-                    
-                    /* $rjson = FunctionCall::send_call($extension);
-                    if(isset($rjson['error'])) continue;                    
-                    $call_id = $rjson["call_id"]; */
-                   
-                    //Log::info("Queue sending call to extension");
-                    //Log::info($extension);
-                    $call_id = $this->send_call($extension); 
-                    if($call_id == false) continue;
-                    $queue_calls[$id] = $call_id;
-                    //Log::debug("call sent id " . $call_id);
-
-
-                }else break; 
-                //Log::info("call_queue->strategy " . $call_queue->strategy);
-                if($call_queue->strategy == 1) break;
-                
-            }
-
-            if(sizeof($extensions) > 0) Cache::put('queue_extensions:' . $call_queue->id, $extensions, 3600); // 1 hour
-                                
-            $resp = FunctionCall::create_worker(['url'=>route('api.call_queue_worker_execute',['id'=>$call_queue->id,'func_id'=>$this->func_id]),'name'=>"queue:" . $call_queue->id,'delay'=>1]);
-            if((isset($resp['error']) && $resp['error'] == true)){
-                $queueJobs = new QueueJob($this->id,$this->func_id);
-                dispatch($queueJobs)->delay(now()->addSeconds(1)); 
-                Log::info("dispatching queue job");
-            }
-
-            foreach($queue as $qcall){
-                
-                if(($qcall->created_at->diffInSeconds(now()) > $call_queue->queue_timeout) || ($extensioncount == 0 && $call_queue->leave_when_empty)  ){
-                    Log::info("queue call has timeout now");
+            $queue_calls = Queue::where('call_queue_id',$this->call_queue->id)->where('status','<',QueueStatusEnum::Bridged->value)->get();
+            //info($queue_calls);
+            foreach($queue_calls as $qcall){
+                if(($qcall->created_at->diffInSeconds(now()) > $this->call_queue->queue_timeout) || (sizeof($extensionlist) == 0 && $this->call_queue->leave_when_empty)  ){
+                    info("queue call has timeout now");
                     $response = new VoiceResponse();
-                    $response->redirect(route('api.func_call',['func_id'=>$call_queue->function_id,'dest_id'=>$call_queue->destination_id]));
-                    //Http::asForm()->post(route('api.switch.call_modify'),['call_id'=>$qcall->call_id,'responseXml'=>$response->xml()]);
+                    $response->redirect(route('api.func_call',['func_id'=>$this->call_queue->function_id,'dest_id'=>$this->call_queue->destination_id]));
                     FunctionCall::modify_call($qcall->call_id,['responseXml'=>$response->xml()]);
-                } 
+                    Queue::where("call_id",$qcall->call_id)->update(['status'=>QueueStatusEnum::Timeout]);
+                }
             }
-        }else{
-            //Log::info("queue does not have any call so disconnect all");
-           
-            //Log:info($queue_calls);
-            foreach($queue_calls as $k=>$queue_call){
-                $call = Call::find($queue_call);                
-                if($call && $call->status->value < CallStatusEnum::Established->value){                  
-                    $this->hangup($queue_call);
-                } 
-            }
-            $queue_calls = [];
-            Cache::forget('queue_extensions:' . $call_queue->id);
+            $resp = FunctionCall::create_worker(['url'=>route('api.call_queue_worker_execute',['id'=>$this->call_queue->id,'func_id'=>$this->func_id]),'name'=>"queue:" . $this->call_queue->id,'delay'=>$this->call_queue->retry]);
+          
         }
 
-        Cache::put('queue_calls_hangup:' . $call_queue->id,$queue_calls_hangup,3600);
-        Cache::put('queue_calls_established:' . $call_queue->id,$queue_calls_established,3600);
-        Cache::put('queue_calls_answered:' . $call_queue->id,$queue_calls_answered,3600);
-        //if(sizeof($queue_calls) > 0) 
-        Cache::put('queue_calls:' . $call_queue->id, $queue_calls, 3600); // 1 hour
+    }
 
-       // $this->release();
-
+    function queue_name(){
+        return preg_replace("/[^a-zA-Z0-9]+/", "", $this->call_queue->name);
     }
 
     function process($response){        
         $data = request()->all();
-        //$response = new VoiceResponse();
-        $call_queue = CallQueue::find($this->id);
-        if(!$call_queue) return $response;
-        //$queueJob = new QueueSendCall($call_queue->id,$this->func_id);
-
-        if(request()->query('queue_result') == 1){
+       // info($data);
+        if(!$this->call_queue) return $response;
+       
+        if(request()->query('queue_result') == 1){  // this is called when agent call finally ended
             //Log::debug("Queue dial result here");
             //Log::debug($data);
             if(isset($data['record_file']))
                 Queue::where("call_id",$data['bridge_call_id'])->update(['record_file'=>$data['record_file']]);
-
+            
+            CallQueueExtension::where("call_queue_id",$this->id)->where('extension_id',request()->query('ext_id'))->update(['last_ans'=>now()]);
+     
             CallHistory::create(
-                ['organization_id'=>$call_queue->organization_id,'call_id'=>$data['bridge_call_id'],'bridge_call_id'=>$data['call_id'],'duration'=>$data['duration'],'status'=>CallStatusEnum::Disconnected,'record_file'=>isset($data['record_file'])?$data['record_file']:""]
+                ['organization_id'=>$this->call_queue->organization_id,'call_id'=>$data['bridge_call_id'],'bridge_call_id'=>$data['call_id'],'duration'=>$data['duration'],'status'=>CallStatusEnum::Disconnected,'record_file'=>isset($data['record_file'])?$data['record_file']:""]
             );
             
-            $queue_calls_established = Cache::pull('queue_calls_established:' . $call_queue->id,[]);
-            if(isset($queue_calls_established[$data['call_id']])){
-                $queue_calls_answered = Cache::pull('queue_calls_answered:' . $call_queue->id,[]);
-                $queue_calls_answered[$queue_calls_established[$data['call_id']]] = time();
-                Cache::put('queue_calls_answered:' . $call_queue->id,$queue_calls_answered,3600);
-            }
-            Cache::put('queue_calls_established:' . $call_queue->id,$queue_calls_established,3600);
-
             
-        }elseif(request()->query('queue_loop') == 1){
-            $this->handle(); 
-            return $response;
-        }elseif(request()->query('queue_status') == 1){
+            
+        }elseif(request()->query('queue_status') == 1){  // this is called when agent  call status comes 
             $calldata = request()->input();
+            QueueCall::where("call_queue_id",$this->id)->where('call_id',$calldata['call_id'])->update(['status'=>$calldata['status-code']]);
             if((int) $calldata['status-code'] < CallStatusEnum::Established->value) return $response;
-            $queue_status = Cache::get('queue_status:' . $call_queue->id,[]);
-            $queue_status[$calldata['call_id']] = $calldata['status-code'];
-            Cache::put('queue_status:' . $call_queue->id, $queue_status, 3600);
-
-            
-        }else if(request()->query('queue_join') == 1){            
+            elseif((int) $calldata['status-code'] > CallStatusEnum::Established->value) $this->handle();
+          
+          
+        }else if(request()->query('queue_join') == 1){       // this is called when agent  joining a call from queue
        
             //Log::debug("call bridging here");
-            $queue = Queue::where("queue_name",$data["name"])->where("organization_id",$call_queue->organization_id)->where("status",0)->first();
+            $queue = Queue::where("queue_name",$data["name"])->where("organization_id",$this->call_queue->organization_id)->where("status",0)->orderBy('created_at','asc')->first();
 
             if($queue){
-                Queue::where("call_id",$queue["call_id"])->update(['status'=>QueueStatusEnum::Bridging,'bridge_call_id'=>$data['call_id']]);
+                Queue::where("call_id",$queue["call_id"])->update(['status'=>QueueStatusEnum::Bridged,'bridge_call_id'=>$data['call_id']]);
                 
                 $response->bridge($queue['call_id']);
-              
-                //dispatch( $queueJob);
-                $this->handle(); 
+                $this->hangup_queue_calls();
+                
             }else{
-                $response->say("bridge call not found");
+                $response->leave();
             }
         
-        }else if(request()->query('queue') == 1){
-            if(!empty($call_queue->agentAnnouncement)) FunctionCall::voice_file_play($response,$call_queue->agentAnnouncement); 
-            $options = ['action'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$call_queue->id,'queue_result'=>true])];
-            if($call_queue->record == true)
+        }else if(request()->query('queue') == 1){   // this is called when agent entering in the queue
+            if(!empty($this->call_queue->agentAnnouncement)) FunctionCall::voice_file_play($response,$this->call_queue->agentAnnouncement); 
+            $options = ['action'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$this->call_queue->id,'queue_result'=>true,'ext_id'=>request()->query('ext_id')])];
+            if($this->call_queue->record == true)
                 $options['record'] = 'record-from-answer';
 
             $dial = $response->dial('',$options);
-            $dial->queue($call_queue->name,['url'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$call_queue->id,'queue_join'=>true])]);
+            $dial->queue($this->queue_name(),['url'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$this->call_queue->id,'queue_join'=>true])]);
             
         
-        }else if(request()->query('join') == 1){
-           /*  if(isset($data['status'])){
-                Log::debug("call failed or successfull here on enqueue finish " . $data["call_id"]);
-                Queue::where("call_id",$data['call_id'])->update(['bridge_call_id'=>$data['bridge_call_id'],'duration'=>$data['duration'],'waiting_duration'=>$data['waiting_duration'],'status'=>($data['dial_status'] == "0")?QueueStatusEnum::Hangup:QueueStatusEnum::Bridged]);
-               
-                $this->handle(); 
-            }else{ */
-                $extensions = $call_queue->extensions;
-                //$extensions = [];
-                if(sizeof($extensions) > 0 || $call_queue->join_empty){
-                    Queue::create(['call_id'=>$data['call_id'],'call_queue_id'=>$call_queue->id,'organization_id'=>$call_queue->organization_id,'queue_name'=>$data['name'],'status'=>QueueStatusEnum::Dialing]);        
-                    //Log::info("call queue log here");
-                    //Log::info($call_queue);
-                    //$this->call_queue_send_calls($call_queue);                            
+        }else if(request()->query('join') == 1){   // this is called when call joing in the queue
+                info("on join");
+                $extensions = $this->call_queue->extensions;
+                
+                if(sizeof($extensions) > 0 || $this->call_queue->join_empty){
+                    Queue::create(['call_id'=>$data['call_id'],'call_queue_id'=>$this->call_queue->id,'organization_id'=>$this->call_queue->organization_id,'queue_name'=>$data['name'],'status'=>QueueStatusEnum::Queued]);        
+                                            
                     $this->handle();                
-                    if(!empty($call_queue->joinAnnouncement)) FunctionCall::voice_file_play($response,$call_queue->joinAnnouncement);           
-                    if(!empty($call_queue->musicOnHold)) FunctionCall::voice_file_play($response,$call_queue->musicOnHold); 
+                    if(!empty($this->call_queue->joinAnnouncement)) FunctionCall::voice_file_play($response,$this->call_queue->joinAnnouncement);           
+                    if(!empty($this->call_queue->musicOnHold)) FunctionCall::voice_file_play($response,$this->call_queue->musicOnHold); 
                     else $response->play(storage_path( 'app/public/sounds/music_on_hold.mp3' ), ['localfile' => "true"]);
                             
-                    $response->redirect(route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$call_queue->id,'rejoin'=>true]));     
+                    $response->redirect(route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$this->call_queue->id,'rejoin'=>true]));     
                     
                 }else                 
                     $response->leave();
-            //}
+           
                 
-        }else if(request()->query('rejoin') == 1){
-            if(!empty($call_queue->joinAnnouncement)) FunctionCall::voice_file_play($response,$call_queue->joinAnnouncement);           
-            if(!empty($call_queue->musicOnHold)) FunctionCall::voice_file_play($response,$call_queue->musicOnHold); 
+        }else if(request()->query('rejoin') == 1){ // this is called when call rejoing in the queue after playing the music on hold
+            if(!empty($this->call_queue->joinAnnouncement)) FunctionCall::voice_file_play($response,$this->call_queue->joinAnnouncement);           
+            if(!empty($this->call_queue->musicOnHold)) FunctionCall::voice_file_play($response,$this->call_queue->musicOnHold); 
             else $response->play(storage_path( 'app/public/sounds/music_on_hold.mp3' ), ['localfile' => "true"]);
-            $response->redirect(route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$call_queue->id,'rejoin'=>true]));     
+            $response->redirect(route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$this->call_queue->id,'rejoin'=>true]));     
 
-        }else if(request()->query('enqueue_result') == 1){
-            //Log::debug("call failed or successfull here on enqueue finish " . $data["call_id"]);
-            Queue::where("call_id",$data['call_id'])->update(['bridge_call_id'=>isset($data['bridge_call_id'])?$data['bridge_call_id']:"",'duration'=>$data['duration'],'waiting_duration'=>$data['waiting_duration'],'status'=>($data['dial_status'] == "0")?QueueStatusEnum::Hangup:QueueStatusEnum::Bridged]);
-            if(intval(request()->input('dial_status')) == 0){
-                $data = request()->input();
-               
-                CallHistory::create(
-                    ['organization_id'=>$call_queue->organization_id,'call_id'=>$data['call_id'],'bridge_call_id'=>"",'status'=>CallStatusEnum::Failed]
-                );
-            }    
-            $this->handle(); 
-            //$response->redirect(route('api.func_call',['func_id'=>$call_queue->function_id,'dest_id'=>$call_queue->destination_id]));
-        }else{
+        }else if(request()->query('enqueue_result') == 1){  // this is called when queue call finally ended
+            $qcall = Queue::where("call_id",$data['call_id'])->first();
+            //info("queue call updating");
+            //info($qcall);
+            info("on queue call end");
+            info($data);
+            if(!$qcall) return;
+            $status = $qcall->status;
+            if($data['dial_status'] == "0"){
+                $status = ($qcall->status == QueueStatusEnum::Timeout)?QueueStatusEnum::Timeout:QueueStatusEnum::Abandoned;         
+            }else   
+                $status =   QueueStatusEnum::Disconnected;
+
+            Queue::where("call_id",$data['call_id'])->update(['bridge_call_id'=>isset($data['bridge_call_id'])?$data['bridge_call_id']:"",'duration'=>$data['duration'],'waiting_duration'=>$data['waiting_duration'],'status'=>$status]);
+       
+            $this->hangup_queue_calls();
+        }else{    // this is called when a queue first time enter in a queue
             
-            //  $this->voice_file_play($response,$call_queue->joinAnnouncement);     
-            //Log::info("call queue log here");
-            //Log::info($call_queue);            
             $options = [
-                'action'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$call_queue->id,'enqueue_result'=>true]),
+                'action'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$this->call_queue->id,'enqueue_result'=>true]),
                 'answerOnBridge'=>false,
-                'waitUrl'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$call_queue->id,'join'=>true])];
+                'waitUrl'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$this->call_queue->id,'join'=>true])];
             
-            $response->enqueue($call_queue->name,$options);
-            $response->redirect(route('api.func_call',['func_id'=>$call_queue->function_id,'dest_id'=>$call_queue->destination_id]));
-            //$response->say("we are so sorry, our support lines is cloed now.Please call again after some time.");
+            $response->enqueue($this->queue_name(),$options);
+            $response->redirect(route('api.func_call',['func_id'=>$this->call_queue->function_id,'dest_id'=>$this->call_queue->destination_id]));
         }
 
-        //Log::debug($response->xml());
+       // Log::debug($response->xml());
 
         return $response;
     }

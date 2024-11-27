@@ -11,7 +11,7 @@ class DialerCampaignCall extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['dialer_campaign_id', 'call_id', 'tel', 'retry', 'status', 'duration', 'form_data'];
+    protected $fillable = ['dialer_campaign_id', 'call_id', 'tel', 'retry', 'status', 'duration', 'form_data','record_file'];
 
     protected static function boot() {
         parent::boot();
@@ -20,6 +20,10 @@ class DialerCampaignCall extends Model
             $call->id = Str::uuid();
 
         } );
+    }
+    
+    public function call(){
+        return $this->hasOne(Call::class, 'id', 'call_id');
     }
 
     public function getHumanReadableDurationAttribute() {
@@ -30,5 +34,7 @@ class DialerCampaignCall extends Model
 
         return '';
     }
+
+
 
 }

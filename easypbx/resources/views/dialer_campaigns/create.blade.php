@@ -39,7 +39,7 @@
                 ])
             !!}
 
-            @include ('dialer_campaigns.form', ['dialerCampaign' => null,])
+            @include ('dialer_campaigns.form', ['dialerCampaign' => $dialerCampaign,])
             <div class="form-group">
                 <div class="col-md-offset-2 col-md-10">
                     {!! Form::submit(__('Add'), ['class' => 'btn btn-primary']) !!}

@@ -7,8 +7,8 @@ use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-
-
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 
 class User extends Authenticatable
 {
@@ -91,6 +91,35 @@ class User extends Authenticatable
     public function getIsUserAttribute()
     {
         return ($this->role == 'user') ? true : false;
+    }
+
+    public static function createRoleAndPermisssions(){
+        $permissions = config('enums.permissions');
+        
+        foreach($permissions as $group => $groupPermissions){
+            
+            foreach($groupPermissions as $permission){
+                if(! Permission::where('name', $permission)->exists()){
+                    Permission::create(['name' => $permission]);
+                }
+            }
+        }
+
+
+        foreach(config('enums.user_roles') as $roleName){
+            
+            if(!Role::where('name', $roleName)->exists()){
+                Role::create(['name' => $roleName, 'organization_id' => null]);    
+            }
+
+            $role = Role::where('name', $roleName)->first();
+
+            if(array_key_exists($roleName, $permissions)){
+                $role->syncPermissions($permissions[$roleName]);
+            }
+            
+        }
+        
     }
 
 }

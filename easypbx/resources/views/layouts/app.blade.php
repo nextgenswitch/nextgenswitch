@@ -1,7 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>@yield('title', 'EasyPBX')</title>
+@php
+$title = env('APP_NAME', 'EasyPBX');
+if(config('licence.brand_name')) $title = config('licence.brand_name')
+@endphp
+
+    <title>@yield('title', $title)</title>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -18,10 +23,13 @@
     
     
     <!-- Font-icon css-->
-    <link rel="stylesheet" type="text/css" href="{{ asset('js/font-awesome/css/font-awesome.min.css') }}">
+    <!-- <link rel="stylesheet" type="text/css" href="{{ asset('js/font-awesome/css/font-awesome.min.css') }}"> -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     
     <link rel="stylesheet" type="text/css" href="{{ asset('css/custom.css')}}">
-
+    <style>
+    .call-now:hover {cursor: pointer;}
+  </style>
     @stack('css')
 
   </head>
@@ -47,7 +55,7 @@
       </div>    
       </div>
 
-      <p style="position: fixed; right: 1%; bottom: 0%">Design and developed by <a target="_blank" href="https://infosoftbd.com/"> <b>Infosoftbd Solutions</b></a></p>
+      
     </main>
 
     @include('dialer.modal')

@@ -1,6 +1,6 @@
 <form method="POST" action="{{ route('dialer.login') }}" class="login-form">
     
-        <p>Please login with your device username and password</p>
+        <p>{{ __("Please login with your device username and password") }}</p>
         @csrf
 
         <div class="form-group">

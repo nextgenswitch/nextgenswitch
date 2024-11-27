@@ -33,7 +33,7 @@
                     <label class="control-label" for="content">{{ __('Content') }}</label>
                     <span class="text-required">*</span>
                 </div>
-                <a href="#" data-toggle="modal" data-target="#instructionModal" class="btn btn-sm btn-outline-primary mb-2">Instruction</a>
+                <a href="#" data-toggle="modal" data-target="#instructionModal" class="btn btn-sm btn-outline-primary mb-2">{{ __('Instruction') }}</a>
             </div>
             
 

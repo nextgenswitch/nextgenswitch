@@ -23,7 +23,7 @@
                         <td>{{ $call->destination }}</td>
                         <td  title="{{ $call->channel }}" data-toggle="tooltip" data-placement="top">{{ substr($call->channel, 0, 10) }}...</td>
                         <td>{{ $call->caller_id }}</td>
-                        <td  data-toggle="tooltip" data-placement="top" data-html="true" title="Connect :{{ $call->connect_time }} <br />Establish :{{ $call->establish_time }} ">{{ $call->connect_time }}</td>
+                        <td  data-toggle="tooltip" data-placement="top" data-html="true" title="Connect :{{ date_time_format($call->connect_time) }} <br />Establish :{{ date_time_format($call->establish_time) }} ">{{ date_time_format($call->connect_time) }}</td>
                         
                         <td>{{ $call->duration }}</td>
                         <td>{{ $call->uas == 1 ? 'Incoming' : 'Outgoing' }}</td>

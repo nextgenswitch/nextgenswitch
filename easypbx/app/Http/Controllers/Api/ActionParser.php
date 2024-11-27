@@ -128,7 +128,7 @@ class ActionParser {
             }
 
             if ( $verb['beep'] == true ) {
-                $play = array_merge( $this->parseElements( VoiceResponse::genXmlElelment( 'play', storage_path( 'app/public/sounds/beep.wav' ), ['localfile' => "true"] ) ), $play );
+                $play = array_merge( $this->parseElements( VoiceResponse::genXmlElelment( 'play', storage_path( 'app/public/sounds/beep-1.mp3' ), ['localfile' => "true"] ) ), $play );
             }
 
             $verb['actions'] = $play;
@@ -203,12 +203,18 @@ class ActionParser {
             }
             //Log::info("parsing all dial here");
             //Log::info($dial);
-            if ( isset( $dial['channel'] ) || isset( $dial['channel_id'] ) || isset( $dial['queue'] ) ) {
+             if ( isset( $dial['channel'] ) || isset( $dial['channel_id'] ) || isset( $dial['queue'] ) ) {
                 $actions[] = $dial;
 
             } else {
-                $actions = $this->parseElements( FunctionCall::getOutboundRoutes( (string) $elem, $this->org_id ) );
-            }
+                $resp = FunctionCall::getExtensionRoute( (string) $elem, $this->org_id );
+                if($resp)
+                    $actions = $this->parseElements( $resp );
+                else
+                    $actions[] = $dial;
+            } 
+
+            
 
             unset( $dial['to'] );
 
@@ -262,7 +268,7 @@ class ActionParser {
 
             $actions[] = $verb;
         } elseif ( $tag == 'record' ) {
-            $verb = ['verb' => $tag, 'action' => $this->url, 'method' => 'POST', 'timeout' => 5, 'finishOnKey' => 0, 'transcribe' => false, 'trim' => true, 'beep' => true];
+            $verb = ['verb' => $tag, 'action' => $this->url, 'method' => 'POST', 'timeout' => 5, 'finishOnKey' => 0, 'transcribe' => false, 'trim' => true, 'beep' => false];
 
             foreach ( $elem->attributes() as $ak => $av ) {
 
@@ -301,10 +307,11 @@ class ActionParser {
             }
 
             if ( $verb['beep'] == true ) {
-                $actions = $this->parseElements( VoiceResponse::genXmlElelment( 'play', storage_path( 'app/public/sounds/beep.wav' ), ['localfile' => "true"] ) );
+                $actions = $this->parseElements( VoiceResponse::genXmlElelment( 'play', storage_path( 'app/public/sounds/beep-1.mp3' ), ['localfile' => "true"] ) );
             }
-
+           
             $actions[] = $verb;
+           
         } elseif ( $tag == 'enqueue' ) {
             $verb = ['verb' => 'dial', 'answerOnBridge' => false, 'to' => (string) $elem, 'enqueue' => ['url' => $this->url]];
 

@@ -16,6 +16,7 @@ class Kernel extends ConsoleKernel
          $schedule->command('app:hourly-update')->hourly();
          $schedule->command('app:daily-update')->daily();
          $schedule->command('records:clear')->daily();
+         $schedule->command('app:minute-update')->everyMinute();
     }
 
     /**

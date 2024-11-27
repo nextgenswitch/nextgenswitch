@@ -68,6 +68,7 @@ class OutboundWorker{
     }
 
     function process($response){
+        info("on outbound call");
         $this->dest = $this->params['event_to'];        
        // if(empty($dest))  return;
         //info("in outbound worker");

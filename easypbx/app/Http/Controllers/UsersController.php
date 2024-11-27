@@ -22,8 +22,8 @@ class UsersController extends Controller {
      * @return Illuminate\View\View
      */
     public function index( Request $request) {
-        $this->createRoleAndPermisssions();
-
+        // $this->createRoleAndPermisssions();
+        User::createRoleAndPermisssions();
 
         $q       = $request->get( 'q' ) ?: '';
         $perPage = $request->get( 'per_page' ) ?: 10;
@@ -262,6 +262,12 @@ class UsersController extends Controller {
             return back();
 
             $user = User::findOrFail( $id );
+
+            if($user->hasRole('Super Admin')){
+                return response()->json( ['success' => false] );
+            }
+            
+
             $user->delete();
 
             if ( $request->ajax() ) {
@@ -343,16 +349,16 @@ class UsersController extends Controller {
      */
     protected function getData( Request $request, $id = 0 ) {
 
-        $email_unique_rule = Rule::unique( 'users' )->where( function ( $query ) use ( $request ) {
-            return $query->where( 'email', $request->email )->where( 'organization_id', $request->organization_id );
-        } );
+        // $email_unique_rule = Rule::unique( 'users' )->where( function ( $query ) use ( $request ) {
+        //     return $query->where( 'email', $request->email )->where( 'organization_id', $request->organization_id );
+        // } );
 
-        if ( $id > 0 ) {
-            $email_unique_rule->ignore( $id );
-        }
+        // if ( $id > 0 ) {
+        //     $email_unique_rule->ignore( $id );
+        // }
 
         $rules = [
-            'email'           => ['required', 'string', 'email', $email_unique_rule],
+            'email'           => ['required', 'string', 'email', 'unique:users,email'],
             'name'            => 'required|string|min:1|max:255',
             'password'        => 'required|string|min:8|max:30',
             'status'          => 'nullable|string',
@@ -361,6 +367,7 @@ class UsersController extends Controller {
 
         if ( $id > 0 ) {
             $rules['password'] = 'nullable|string|min:8|max:30';
+            $rules['email'] = ['required', 'string', 'email', 'unique:users,email,' . $id];
         }
 
         $data = $request->validate( $rules );

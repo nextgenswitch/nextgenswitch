@@ -14,10 +14,32 @@ use App\Models\CallRecord;
 use App\Models\OutboundRoute;
 use App\Models\SipUser;
 use App\Enums\CallStatusEnum;
+use Illuminate\Http\Request;
 use Exception;
 
 
 class CallHandler{
+
+      
+    
+    public static function createOutbound($request){
+            
+        $channels = FunctionCall::getOutboundChannels($request->input( 'organization_id' ),$request->input( 'to' ));
+        foreach($channels as $id=>$dest){
+             $data = $request->input();
+             $data['to'] = $dest;
+             $data['channel_id'] = $id;
+             $request = Request::create('/', 'POST',$data);
+             $call  = self::create($request);
+             if(isset($call['error']) || $call['status-code'] >= CallStatusEnum::Disconnected->value)
+               continue;
+             else
+                return $call; 
+        }
+
+        return false;
+
+    }
 
     public static function create($request){
 
@@ -76,15 +98,18 @@ class CallHandler{
         $call_count = Call::where('organization_id')->where('status','<',CallStatusEnum::Disconnected->value)->count();
         if($call_count >= $organization->call_limit)     goto out;
          */
-
+        $err_code = 3;
         if ( empty( $channel_id ) ) {
            
             $extension = Extension::where( "code", $to )->where( "organization_id", $organization->id )->where( "extension_type", 1 )->first();
             if ( $extension ) {              
                 $channel_id  = $extension->destination_id;
             } else {
-
-                $oroutes = OutboundRoute::where( "organization_id", $organization->id )->where( "is_active", true )->get();
+                $call = self::createOutbound($request);
+                if($call == false) goto out;
+                else return $call;
+                
+               /*  $oroutes = OutboundRoute::where( "organization_id", $organization->id )->where( "is_active", true )->get();
 
                 foreach ( $oroutes as $oroute ) {
                     if ( FunctionCall::matchPattern( $oroute->pattern, $to ) ) {
@@ -93,13 +118,14 @@ class CallHandler{
                         break;                 
                     }
 
-                }
+                }  */
+
 
             }
 
         }
 
-        $err_code = 3;
+        
 
         if ( empty( $channel_id ) ) {
             goto out;
@@ -148,7 +174,7 @@ class CallHandler{
                     $method = 'POST';
                 }
 
-                Cache::put( "CallStatusCallback:" . $call->id, ['url' => $status_callback, 'method' => $method], 3700 );
+                Cache::put( "CallStatusCallback:" . $call->id, ['url' => $status_callback, 'method' => $method], 36000 );
             }
 
         } else {
@@ -166,7 +192,7 @@ class CallHandler{
         }
 
         $err =  ['error' => true, 'error_code' => $err_code, 'error_message' => self::call_error_code_to_msg( $err_code )] ;
-        info($err);
+        //info($err);
         return $err;
     
             
@@ -174,7 +200,7 @@ class CallHandler{
 
     public static function modify($call_id,$request){
         $err_code = 2;
-        Log::debug("call modify request " . $call_id);
+        //Log::debug("call modify request " . $call_id);
 
         if ( empty( $call_id ) ) {
             goto out;

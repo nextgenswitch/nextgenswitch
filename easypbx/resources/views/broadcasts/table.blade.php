@@ -25,14 +25,14 @@
                             
                         
                             <td>
-                                <a href="{{ $campaign->is_sms  ?  route('campaign_sms.campaign_sms.index', $campaign->id) :  route('campaign_calls.campaign_call.index', ['id'=>$campaign->id]) }}">
+                                <a href="{{ route('broadcasts.broadcast.edit', $campaign->id ) }}">
                                            {{ $campaign->name }} 
                                 </a>
                             </td>
 
                         
                             <td>        
-                                <span class="badge badge-pill badge-light"> {{ config('enums.campaign_status')[$campaign->status] }} </span>    
+                                <span class="badge badge-pill badge-light"><a href="{{ route('broadcasts.broadcast.stats', $campaign->id ) }}"> {{ config('enums.campaign_status')[$campaign->status] }} </a></span>    
                                 
                             </td>
                             
@@ -51,32 +51,21 @@
                                    @method('DELETE')   
                                     <a href="#" data-toggle="dropdown"> <i data-feather="more-horizontal"> </i> </a>
                                     <ul class="dropdown-menu shadow-dropdown action-dropdown-menu" aria-labelledby="dropdownMenuButton1">
-                                        @if($campaign->status != 3)
+                                       
                                         <li><a class="dropdown-item" href="{{ route('broadcasts.broadcast.edit', $campaign->id ) }}">
-                                            <i data-feather="edit"></i> {{ __('Edit') }}
+                                            <i data-feather="edit"></i> {{ __('Edit/View') }}
                                         </a>
                                        </li>
 
-                                       @endif
+                                     
 
-                                       @if($campaign->status == 1)
-                                       <li><a title="{{ __('Stop Broadcast')}} #{{ $campaign->id }}" class="dropdown-item btnStatus" href="{{ route('broadcasts.broadcast.updateField',$campaign->id) }}" data-toggle="tooltip" data-placement="top" title="{{ __('Stop Broadcast')}}" data-status="2">
-                                            <i data-feather="stop-circle"></i> {{ __('Stop') }}
+                                  
+                                       <a title="{{ __('Start/Stop/Stats')}} " class="dropdown-item" href="{{ route('broadcasts.broadcast.stats', $campaign->id ) }}">
+                                            <i data-feather="activity"></i> {{ __('Start/Stop/Stats') }}
                                         </a>
-                                       </li>
-                                       @endif
-
-                                       @if($campaign->is_sms)   
-                                        <li> 
-                                            <a title="{{ __('SMS Histories')}} #{{ $campaign->id }}" class="dropdown-item" href="{{ route('campaign_sms.campaign_sms.index', $campaign->id) }}">
-                                                <i data-feather="message-circle"></i> {{ __('History') }}
-                                            </a>
-                                        </li>
-                                       @else
-                                        <a title="{{ __('Call Histories')}} #{{ $campaign->id }}" class="dropdown-item" href="{{ route('campaign_calls.campaign_call.index', ['id'=>$campaign->id]) }}">
+                                        <a title="{{ __('Call Histories')}} #{{ $campaign->id }}" class="dropdown-item" href="{{ route('broadcast_calls.broadcast_call.index', ['id'=>$campaign->id]) }}">
                                             <i data-feather="phone-call"></i> {{ __('History') }}
                                         </a>
-                                       @endif
                                        
                                     
                                        @if($campaign->status != 1 )
@@ -86,6 +75,11 @@
                                         </button>
                                         </li>
                                         @endif 
+                                        <li><a class="dropdown-item" href="{{ route('broadcasts.broadcast.clone', $campaign->id ) }}">
+                                            <i data-feather="copy"></i> {{ __('Clone') }}
+                                        </a>
+                                       </li>
+
                                   </ul>
                                 </form>
                                 </div>

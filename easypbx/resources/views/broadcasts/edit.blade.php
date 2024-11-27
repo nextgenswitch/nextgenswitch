@@ -26,9 +26,17 @@
         </div>
 
         <div class="panel-body">
-
+        @if($campaign->status == 3)
+        <ul class="alert alert-danger">                  
+            <li>{{ __("Broadcast could not update as its already marked as completed .") }}</li>
+        </ul>
+        @endif 
             @if ($errors->any())
                 <ul class="alert alert-danger">
+                    @if($campaign->status == 3)
+                    <li>{{ __("Campaign could not update as its already marked as completed .") }}</li>
+
+                    @endif 
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
@@ -46,13 +54,13 @@
             ]) !!}
 
             @include ('broadcasts.form', ['campaign' => $campaign,])
-
+            @if($campaign->status != 3)
             <div class="form-group">
                 <div class="col-md-offset-2 col-md-10">
                     {!! Form::submit('Update Broadcast', ['class' => 'btn btn-primary']) !!}
                 </div>
             </div>
-
+            @endif    
             {!! Form::close() !!}
 
         </div>

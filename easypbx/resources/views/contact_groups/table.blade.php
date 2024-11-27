@@ -6,6 +6,7 @@
                             <th><input type="checkbox" name="checkAll" id="checkAll"></th>
                         
                             <th class="sortable" sort-by="name">{{ __('Contact Group Name')}}</th>
+                            <th>No of contacts</th>
 
                             <th></th>
                         </tr>
@@ -17,6 +18,12 @@
                            
                            
                             <td>{{ $contactGroup->name }}</td>
+
+                            <td>
+                                <a href="{{ route('contacts.contact.index') }}?filter=contact_group_id:{{ $contactGroup->id }}">
+                                    <span class="badge badge-secondary">{{ $contactGroup->total }}</span>
+                                </a>
+                            </td>
 
                             <td>
                                   

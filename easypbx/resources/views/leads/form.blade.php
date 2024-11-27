@@ -75,7 +75,7 @@
 <div class="col-lg-12">
 <div class="form-group @error('source') has-error @enderror">
     {!! Form::label('source',__('Source'),['class' => 'control-label']) !!}
-    {!! Form::select('source', config('enums.lead_source'), old('source', optional($lead)->source), ['class' => 'form-control', 'placeholder' => 'Select Lead source']) !!}
+    {!! Form::select('source', config('enums.lead_source'), old('source', optional($lead)->source), ['class' => 'form-control', 'placeholder' => __('Select Lead source')]) !!}
     @error('source') <p class="help-block  text-danger"> {{ $message }} </p> @enderror
 </div>
 </div>
@@ -94,7 +94,7 @@
     {!! Form::label('status',__('Status'),['class' => 'control-label']) !!}
     <span class="text-required">*</span>
 
-    {!! Form::select('status', config('enums.lead_status'), old('status', optional($lead)->status), ['class' => 'form-control', 'required' => true,  'placeholder' => 'Select Lead Status']) !!}
+    {!! Form::select('status', config('enums.lead_status'), old('status', optional($lead)->status), ['class' => 'form-control', 'required' => true,  'placeholder' => __('Select Lead Status')]) !!}
   
         @error('status') <p class="help-block  text-danger"> {{ $message }} </p> @enderror
 </div>

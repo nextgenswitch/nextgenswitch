@@ -26,7 +26,7 @@ class VoiceFilesController extends Controller {
         $perPage   = $request->get( 'per_page' ) ?: 10;
         $filter    = $request->get( 'filter' ) ?: '';
         $sort      = $request->get( 'sort' ) ?: '';
-        $voiceFile = VoiceFile::where( 'organization_id', auth()->user()->organization_id );
+        $voiceFile = VoiceFile::where( 'organization_id', auth()->user()->organization_id )->latest();
 
         if (  ! empty( $q ) ) {
             $voiceFile->where( 'name', 'LIKE', '%' . $q . '%' );
@@ -41,7 +41,7 @@ class VoiceFilesController extends Controller {
             $sorta = explode( ':', $sort );
             $voiceFile->orderBy( $sorta[0], $sorta[1] );
         } else {
-            $voiceFile->orderBy( 'created_at', 'DESC' );
+            $voiceFile->orderBy( 'id', 'DESC' );
         }
 
         $voiceFiles = $voiceFile->paginate( $perPage );
@@ -359,7 +359,7 @@ class VoiceFilesController extends Controller {
         $rules['voice_type'] = 'required';
 
         if (  ! $request->hasFile( 'file' ) ) {
-            $rules['tts_text']       = 'required|string|min:1|max:255';
+            $rules['tts_text']       = 'required|string|min:1';
             $rules['tts_profile_id'] = 'required';
         } else {
             $rules['file'] = 'required|mimes:mp3|max:20480';

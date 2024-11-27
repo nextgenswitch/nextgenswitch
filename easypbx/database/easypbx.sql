@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Jul 29, 2024 at 04:24 AM
+-- Generation Time: Nov 27, 2024 at 07:24 AM
 -- Server version: 8.0.26
 -- PHP Version: 7.2.24
 
@@ -151,6 +151,44 @@ CREATE TABLE `call_histories` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `call_parkings`
+--
+
+CREATE TABLE `call_parkings` (
+  `id` bigint UNSIGNED NOT NULL,
+  `organization_id` int NOT NULL,
+  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `extension_no` int NOT NULL,
+  `no_of_slot` int NOT NULL,
+  `music_on_hold` int NOT NULL,
+  `timeout` int NOT NULL,
+  `function_id` int NOT NULL,
+  `destination_id` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `record` tinyint(1) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `call_parking_logs`
+--
+
+CREATE TABLE `call_parking_logs` (
+  `call_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `call_parking_id` int NOT NULL,
+  `organization_id` int NOT NULL,
+  `parking_no` int NOT NULL,
+  `from` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `to` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `call_queues`
 --
 
@@ -181,7 +219,8 @@ CREATE TABLE `call_queues` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `agent_function_id` int DEFAULT NULL,
-  `agent_destination_id` int DEFAULT NULL
+  `agent_destination_id` int DEFAULT NULL,
+  `join_extension_id` int DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -199,7 +238,9 @@ CREATE TABLE `call_queue_extensions` (
   `allow_diversion` tinyint(1) NOT NULL DEFAULT '0',
   `last_ans` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `last_dial` timestamp NULL DEFAULT NULL,
+  `dynamic_queue` tinyint(1) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -232,7 +273,7 @@ CREATE TABLE `campaigns` (
   `destination_id` int NOT NULL,
   `tts` text COLLATE utf8mb4_unicode_ci,
   `tts_lang` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `tts_gender` tinyint DEFAULT NULL,
+  `on_queue` tinyint DEFAULT NULL,
   `provider_id` int DEFAULT NULL,
   `contact_groups` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `status` tinyint NOT NULL,
@@ -262,9 +303,10 @@ CREATE TABLE `campaign_calls` (
   `tel` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
   `retry` int NOT NULL,
   `status` int DEFAULT NULL,
-  `completed` tinyint(1) NOT NULL DEFAULT '0',
+  `sms_history_id` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `duration` int DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -307,7 +349,8 @@ CREATE TABLE `contacts` (
   `city` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `state` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `post_code` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `country` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+  `country` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -367,9 +410,9 @@ CREATE TABLE `dialer_campaigns` (
   `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `contact_groups` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `agents` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `agents` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `timezone` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `end_date` date NOT NULL,
+  `end_date` date DEFAULT NULL,
   `start_at` time NOT NULL,
   `end_at` time NOT NULL,
   `schedule_days` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -377,7 +420,29 @@ CREATE TABLE `dialer_campaigns` (
   `form_id` int NOT NULL,
   `status` tinyint NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `max_retry` int DEFAULT '0',
+  `call_interval` int NOT NULL DEFAULT '0'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `dialer_campaign_calls`
+--
+
+CREATE TABLE `dialer_campaign_calls` (
+  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `dialer_campaign_id` int NOT NULL,
+  `call_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tel` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `retry` int NOT NULL DEFAULT '1',
+  `status` int DEFAULT NULL,
+  `duration` int NOT NULL DEFAULT '0',
+  `form_data` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `record_file` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -482,26 +547,6 @@ CREATE TABLE `funcs` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `funcs`
---
-
-INSERT INTO `funcs` (`id`, `organization_id`, `name`, `func_type`, `func`, `created_at`, `updated_at`) VALUES
-(1, 0, 'SIPCALL', 1, 'sip_call', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
-(2, 0, 'EXTENSION', 0, 'extension', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
-(3, 0, 'SMS', 0, 'sms', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
-(4, 0, 'ANNOUNCEMENT', 0, 'announcement', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
-(5, 0, 'OUTBOUND ROUTE', 1, 'outbound_route', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
-(6, 0, 'IVR', 0, 'ivr', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
-(7, 0, 'CUSTOM FUNCTION', 0, 'custom_function', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
-(12, 0, 'TERMINATE CALL', 0, 'terminate_call', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
-(13, 0, 'VOICE MAIL', 0, 'voice_mail', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
-(14, 0, 'RING GROUP', 0, 'ring_group', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
-(15, 0, 'CALL QUEUE', 0, 'call_queue', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
-(16, 0, 'SHORT CODE', 1, 'short_code', NULL, NULL),
-(18, 0, 'TIME CONDITION', 0, 'time_condition', NULL, NULL),
-(19, 0, 'CALL SURVEY', 0, 'call_survey', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -773,7 +818,29 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 (102, '2024_06_04_100306_update_contacts_table', 37),
 (103, '2024_06_04_112714_create_scripts_table', 37),
 (104, '2024_06_26_142214_create_permission_tables', 38),
-(105, '2024_06_24_054016_create_custom_forms_table', 39);
+(105, '2024_06_24_054016_create_custom_forms_table', 39),
+(106, '2024_07_29_150400_create_dialer_campaign_calls_table', 40),
+(107, '2024_08_06_204733_add_notes_field_to_contacts_table', 40),
+(108, '2024_08_18_115139_add_allow_ip_field_into_sip_users_table', 40),
+(110, '2024_08_28_115139_update_campaign', 41),
+(111, '2024_09_03_204912_update_dialer_campaign', 42),
+(112, '2024_09_02_175532_update_dialer_campaign_table', 43),
+(113, '2024_09_11_132914_create_call_parkings_table', 44),
+(114, '2024_09_17_132914_update_dialer_campaign_calls_table', 45),
+(116, '2024_09_25_154742_create_call_parking_logs_table', 46),
+(117, '2024_09_26_132850_create_voice_records_table', 47),
+(118, '2024_09_30_154753_update_voice_mails_table', 48),
+(119, '2024_10_02_112427_add_record_field_into_call_parkings_table', 48),
+(120, '2024_10_02_121707_create_tickets_table', 48),
+(121, '2024_10_02_123143_create_ticket_follow_ups_table', 48),
+(122, '2024_10_02_132850_alter_call_queue_extensions_table', 48),
+(123, '2024_10_02_132850_alter_queue_calls_table', 49),
+(124, '2024_10_07_164028_add_record_field_in_tickets_table', 49),
+(125, '2024_10_08_174534_add_login_code_in_call_queues_table', 49),
+(126, '2024_10_23_175851_update_call_queue_table', 50),
+(127, '2024_10_24_203109_update_call_queue_extensions_table', 50),
+(128, '2024_10_29_193330_update_survey_results_table', 50),
+(129, '2024_11_03_174004_update_caller_id_in_voice_mails_table', 50);
 
 -- --------------------------------------------------------
 
@@ -971,9 +1038,11 @@ CREATE TABLE `queue_calls` (
   `call_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
   `parent_call_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `organization_id` int NOT NULL,
-  `queue_name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `extension_id` int NOT NULL,
+  `call_queue_id` int NOT NULL,
+  `status` int NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1106,7 +1175,8 @@ CREATE TABLE `sip_users` (
   `updated_at` timestamp NULL DEFAULT NULL,
   `user_type` tinyint DEFAULT NULL,
   `call_limit` int DEFAULT '0',
-  `status` tinyint DEFAULT '1'
+  `status` tinyint DEFAULT '1',
+  `allow_ip` text COLLATE utf8mb4_unicode_ci
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1196,9 +1266,45 @@ CREATE TABLE `survey_results` (
   `organization_id` int NOT NULL,
   `call_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
   `survey_id` int NOT NULL,
-  `caller_id` int NOT NULL,
+  `caller_id` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
   `pressed_key` int DEFAULT NULL,
   `record_file` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `tickets`
+--
+
+CREATE TABLE `tickets` (
+  `id` bigint UNSIGNED NOT NULL,
+  `organization_id` int NOT NULL,
+  `ticket_id` int NOT NULL,
+  `user_id` int DEFAULT NULL,
+  `name` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subject` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` tinyint NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `record` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `ticket_follow_ups`
+--
+
+CREATE TABLE `ticket_follow_ups` (
+  `id` bigint UNSIGNED NOT NULL,
+  `ticket_id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `comment` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1351,13 +1457,36 @@ CREATE TABLE `voice_files` (
 CREATE TABLE `voice_mails` (
   `id` bigint UNSIGNED NOT NULL,
   `organization_id` int NOT NULL,
-  `extension_id` int NOT NULL,
   `voice_path` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `transcript` text COLLATE utf8mb4_unicode_ci,
   `read` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `caller_id` int DEFAULT NULL
+  `caller_id` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `call_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `voice_record_id` int NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `voice_records`
+--
+
+CREATE TABLE `voice_records` (
+  `id` bigint UNSIGNED NOT NULL,
+  `organization_id` int NOT NULL,
+  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `voice_id` int NOT NULL,
+  `is_transcript` tinyint(1) NOT NULL DEFAULT '0',
+  `text` text COLLATE utf8mb4_unicode_ci,
+  `play_beep` tinyint(1) NOT NULL DEFAULT '0',
+  `is_send_email` tinyint(1) NOT NULL DEFAULT '0',
+  `email` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_create_ticket` tinyint(1) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -1398,6 +1527,12 @@ ALTER TABLE `applications`
 -- Indexes for table `calls`
 --
 ALTER TABLE `calls`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `call_parkings`
+--
+ALTER TABLE `call_parkings`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -1698,6 +1833,18 @@ ALTER TABLE `survey_results`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `tickets`
+--
+ALTER TABLE `tickets`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `ticket_follow_ups`
+--
+ALTER TABLE `ticket_follow_ups`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `time_conditions`
 --
 ALTER TABLE `time_conditions`
@@ -1752,6 +1899,12 @@ ALTER TABLE `voice_mails`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `voice_records`
+--
+ALTER TABLE `voice_records`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -1783,6 +1936,12 @@ ALTER TABLE `api_logs`
 -- AUTO_INCREMENT for table `applications`
 --
 ALTER TABLE `applications`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `call_parkings`
+--
+ALTER TABLE `call_parkings`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -1873,7 +2032,7 @@ ALTER TABLE `flow_actions`
 -- AUTO_INCREMENT for table `funcs`
 --
 ALTER TABLE `funcs`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `hotdesks`
@@ -1933,7 +2092,7 @@ ALTER TABLE `mail_profiles`
 -- AUTO_INCREMENT for table `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=106;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=130;
 
 --
 -- AUTO_INCREMENT for table `organizations`
@@ -2032,6 +2191,18 @@ ALTER TABLE `survey_results`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `tickets`
+--
+ALTER TABLE `tickets`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `ticket_follow_ups`
+--
+ALTER TABLE `ticket_follow_ups`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `time_conditions`
 --
 ALTER TABLE `time_conditions`
@@ -2083,6 +2254,12 @@ ALTER TABLE `voice_files`
 -- AUTO_INCREMENT for table `voice_mails`
 --
 ALTER TABLE `voice_mails`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `voice_records`
+--
+ALTER TABLE `voice_records`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --

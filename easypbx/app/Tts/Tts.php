@@ -93,14 +93,17 @@ class Tts {
 
 
         if (  ! $tts_profile ) {
+            info("no profile found");
             goto out;
         }
-        //info($tts_profile);
+        
         $tts_profile->config = json_decode( $tts_profile->config );
         $ret = false;
         if ( $tts_profile->provider == 'witai' ){
+          
             $witai  = new WitAi( $tts_profile->config->api_key, $tts_profile->config->api_version );
             $ret =  $witai->speechToText( $audioPath);
+           
         }elseif ( $tts_profile->provider == 'cloudflare' ){
             $cloudflare = new Cloudflare($tts_profile->config->api_key,$tts_profile->config->bearer_token);
             $ret =  $cloudflare->speechToText($audioPath);
@@ -136,7 +139,7 @@ class Tts {
         
         
         out:
-        info("no profile found");
+        info("error in transcribe " . $audioPath);
         return false;
 
 
