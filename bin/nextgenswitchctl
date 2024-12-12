@@ -113,7 +113,7 @@ update)
    cd updates/
    wget https://github.com/nextgenswitch/nextgenswitch/archive/refs/heads/main.zip
    unzip main.zip
-   rsync -azvh --exclude='bin/lua/config.lua' --exclude='bin/records' nextgenswitch-main/bin/ ../
+   rsync -azvh --exclude='lua/config.lua' --exclude='records' nextgenswitch-main/bin/ ../
    cd ..
    rm -fr updates
    echo update completed
