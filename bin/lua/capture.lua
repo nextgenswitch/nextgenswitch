@@ -13,10 +13,10 @@ dofile("lua/config.lua")
 
   function capture.agi(path,json)
     local err,resp
-    if(USE_CURL) then
-        err,resp = curl_post(SERVER_API_URL  .. path,json,API_USERNAME,API_PASSOWRD)
+    if(USE_AGI) then
+        err,resp =  curl_post("http://" .. FASTAGI_HOST  .. path,json)    
     else
-        err,resp =  curl_post("http://" .. FASTAGI_HOST .. ":" .. FASTAGI_PORT .. path,json)
+        err,resp = curl_post(SERVER_API_URL  .. path,json,API_USERNAME,API_PASSOWRD)
     end
     return err,resp
   end  
