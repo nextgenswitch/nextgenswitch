@@ -14,7 +14,7 @@
 - Developer-Friendly Platform.
 - Built-in Voice Response Verbs.
 - Security and Compliance.
-
+![NextGenSwitch dashboard](https://nextgenswitch.com/nextgenswitch_dashboard.png)
 Multi-Tenant Virtual PBX , AI BOT, Call Center , Campaign and Survey solution.
 ## Developer Friendly platform (alternative to Twilio Platform)
 [NextGenSwitch](https://nextgenswitch.com) support built in response verbs same as Twilio to send and recieve calls.
