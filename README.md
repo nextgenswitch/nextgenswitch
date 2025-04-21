@@ -57,6 +57,6 @@ A full documentation can be found on https://nextgenswitch.com/docs/programmable
 > SIP  Domain: demo.nextgenswitch.com \
 > SIP Port: 5060 (UDP + TCP) , 5061 (TLS)
 
-Documentation can found on  [NextGenSwitch Docs](https://nextgenswitch.com/docs).\
-For plan and pricing  [NextGenSwitch Pricing](https://nextgenswitch.com/plans-and-pricing/).
+Documentation can found on  [NextGenSwitch Docs](https://nextgenswitch.com/docs).
+
 
