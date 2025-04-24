@@ -15,4 +15,5 @@ if(jsondata.disconnect_time > 0) then
     --print("deleting redis data for call")
     redisclient.del("actions:" .. jsondata["call_id"])
     redisclient.del("action:" .. jsondata["call_id"])
+    redisclient.del("modify:" .. jsondata["call_id"])
 end    

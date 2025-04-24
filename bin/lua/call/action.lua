@@ -10,12 +10,16 @@ dofile("lua/config.lua")
 local jsondata = json.decode(jsonstr)
 
 if(jsondata.call_id == nil) then return end
+if(jsondata.modify == true) then
+    local modifyaction = json.decode(redisclient.get("modify:" .. jsondata.call_id))
+    local err = actionparser.setActions(modifyaction)
+    redisclient.del("modify:" .. jsondata.call_id)
+    print("call has been modified in action " .. err)
+end
+
 
 
 local action_id = 0
---print("getting action data")
---local actiondata = redisclient.lpop("actions:" .. jsondata["call_id"])
---print("actiondata for " .. "actions:" .. jsondata.call_id )
 
 ::ACTION::
 local action = {}
@@ -72,6 +76,9 @@ elseif(action.verb == "redirect") then
     data.call_id = jsondata.call_id
     data.method = action.method
     data.body = {}
+    if(action.data ~= nil) then
+        data.body = action.data
+    end
     --data.body.call_id = jsondata.call_id
     print("sending for url request" .. json.encode(data))
     --local err,resp = curl_post(SERVER_API_URL .. "/call/url_request",json.encode(data))
