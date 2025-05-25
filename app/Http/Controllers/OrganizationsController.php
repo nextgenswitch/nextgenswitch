@@ -162,7 +162,7 @@ class OrganizationsController extends Controller
                 'max_extension' => 'nullable|numeric',
                 'email'         => 'required|string|email|unique:users,email',
                 'address'       => 'nullable|string|min:1|max:255',
-                'password'      => 'nullable|string|min:8|max:30',
+                'password'      => 'nullable|string|min:6|max:30',
                 'expire_date'   => 'nullable|string',
             ];
 
@@ -385,7 +385,7 @@ class OrganizationsController extends Controller
             'email'      => 'required|string|email|unique:users,email',
             //'email'      => 'required|string|email|unique:organizations,email',
             'address'    => 'required|string|min:1|max:255',
-            'password'   => 'nullable|string|min:8|max:30',
+            'password'   => 'nullable|string|min:6|max:30',
             'expire_date'   => 'nullable|string',
         ];
 

@@ -1,66 +1,60 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Next Generation SoftSwitch, Multi Tenant PBX, Call Center and Contact Center (CCPAAS) Solution
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+[NextGenSwitch](https://nextgenswitch.com) is a cutting-edge, programmable API-driven SIP SoftSwitch designed to revolutionize voice communication solutions for businesses of all sizes. This versatile platform integrates a comprehensive suite of communication tools, including PBX, Call Center , Call Broadcasting, Virtual Voice Bot and Contact center Solution into a unified and scalable platform.Let’s dive into why businesses should consider choosing NextGenSwitch for their communication needs. Here’s a compelling list of reasons highlighting its unique features, benefits, and advantages:
 
-## About Laravel
+- Comprehensive Communication Suite.
+- PBX features like extension, Call Queue , Ring Group , Call parking.
+- IVR features with mulit level and voice anouncements.
+- Contact Center feature like Campaign , Broadcast and click to call.
+- AI Voice bot development features .
+- Helpdesk with ticket management
+- CRM integraton available with click to call facility
+- Programmable API-Driven Architecture.
+- Scalability and Growth.
+- Developer-Friendly Platform.
+- Built-in Voice Response Verbs.
+- Security and Compliance.
+![NextGenSwitch dashboard](https://nextgenswitch.com/nextgenswitch_dashboard.png)
+Multi-Tenant Virtual PBX , AI BOT, Call Center , Campaign and Survey solution.
+## Developer Friendly platform (alternative to Twilio Platform)
+[NextGenSwitch](https://nextgenswitch.com) support built in response verbs same as Twilio to send and recieve calls.
+The following will say Hello World when the call will be established.
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say>Hello, world!</Say>
+</Response>
+```
+To gather DTMF or voice
+```
+<Gather action="https://example.com/process_input" method="POST" maxDigits="4" timeout="10">
+    <Say>Please enter your 4-digit PIN. </Say>
+</Gather>
+```
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+To dial a new number
+```
+ <Dial to="+1234567890" answerOnBridge="true" record="record-from-answer">
+        <Play>https://example.com/audio/connecting.mp3</Play>
+ </Dial>
+```
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+A raw curl request given below
+```
+curl --header "X-Authorization: Your_authorizaton_code" \
+  --header "X-Authorization-Secre: Your_authorizaton_secret" \
+  --request POST \
+  --data 'to=23123&from=2323&statusCallback=http://your_status_callback_url&response=http://your_xml_response_document_url' \
+  http://nextgenswitch_url/api/v1/call
+```
+A full documentation can be found on https://nextgenswitch.com/docs/programmable-voice-api/
 
-## Learning Laravel
+## Demo access
+> URL: http://demo.nextgenswitch.com \
+> user: demo@nextgenswitch.com \
+> pass: demopass \
+> SIP  Domain: demo.nextgenswitch.com \
+> SIP Port: 5060 (UDP + TCP) , 5061 (TLS)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
-
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-## Laravel Sponsors
-
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Documentation can found on  [NextGenSwitch Docs](https://nextgenswitch.com/docs).

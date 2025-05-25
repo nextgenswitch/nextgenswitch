@@ -104,7 +104,7 @@ class VoiceRecordsController extends Controller
      */
     public function create(Request $request)
     {
-        $voices = VoiceFile::pluck('name','id')->all();
+        $voices = VoiceFile::where('organization_id',auth()->user()->organization_id)->pluck('name','id')->all();
         
         if($request->ajax())
             return view('voice_records.form', compact('voices'))->with(['action'=>route('voice_records.voice_record.store'),'voiceRecord' => null,'method'=>'POST']);
