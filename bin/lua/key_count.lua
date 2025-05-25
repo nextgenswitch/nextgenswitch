@@ -1,1 +1,0 @@
-return #redis.pcall('keys', ARGV[1])

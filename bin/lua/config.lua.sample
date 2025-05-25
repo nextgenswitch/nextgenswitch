@@ -1,5 +1,0 @@
-SERVER_API_URL = "http://127.0.0.1/api/switch"
-API_USERNAME = "admin"
-API_PASSOWRD = "admin"
-USE_AGI = true
-FASTAGI_HOST = "127.0.0.1:6785"
