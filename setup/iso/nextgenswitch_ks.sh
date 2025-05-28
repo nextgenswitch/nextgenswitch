@@ -12,10 +12,7 @@ dnf install php-{bz2,cli,common,mysql,curl,intl,mbstring,zip,redis,xml} -y
 dnf install mariadb-server -y
 dnf install iptables-services -y
 
-cd /tmp
-git clone  https://github.com/nextgenswitch/nextgenswitch.git
-cd nextgenswitch
-mv easypbx /var/www/html
+
 
 systemctl disable firewalld
 systemctl mask firewalld

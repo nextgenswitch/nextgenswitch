@@ -1,13 +1,13 @@
 [Unit]
-Description=Run my-once-script.sh at boot
+Description=Run nextgenswitch setup script at boot
 After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/my-once-script.sh
+ExecStart=/usr/local/bin/nextgenswitch_setup.sh
 RemainAfterExit=no
 
 [Install]
 WantedBy=multi-user.target
 
-#/etc/systemd/system/my-once-script.service
+# Move the script to /etc/systemd/system/nextgenswitch_setup.service

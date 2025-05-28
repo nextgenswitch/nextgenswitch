@@ -1,10 +1,15 @@
 #!/bin/bash
-#/usr/local/bin/my-once-script.sh
+# Move the script to /usr/local/bin/nextgenswitch_setup.sh
+
+
 # Do your actual work here
-echo "Running boot script" > /tmp/boot_script_output.txt
+# echo "Running boot script" > /tmp/boot_script_output.txt
+mysql -sfu root < "/var/www/html/easypbx/setup/init.sql"
+mysql -ueasypbx -peasypbx easypbx < "/var/www/html/easypbx/setup/easypbx.sql"
+
 
 # Delete the service and script
-rm -f /etc/systemd/system/my-once-script.service
+rm -f /etc/systemd/system/nextgenswitch_setup.service
 rm -- "$0"
 
 # Reload systemd
