@@ -1,0 +1,13 @@
+[Unit]
+Description=Run my-once-script.sh at boot
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/my-once-script.sh
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target
+
+#/etc/systemd/system/my-once-script.service

@@ -103,7 +103,7 @@ class installEasyPbx extends Command
                 return;
             }
 
-            $sqlFilePath = base_path('database/easypbx.sql');
+            $sqlFilePath = base_path('setup/easypbx.sql');
             if (file_exists($sqlFilePath)) {
                 $command = sprintf(
                     'mysql -h%s -P%s -u%s -p%s %s < %s',
