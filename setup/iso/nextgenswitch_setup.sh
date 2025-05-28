@@ -3,7 +3,7 @@
 
 
 # Do your actual work here
-# echo "Running boot script" > /tmp/boot_script_output.txt
+echo "NextGenSwitch setup script running..." >> /var/log/nextgenswitch_setup.log
 mysql -sfu root < "/var/www/html/easypbx/setup/init.sql"
 mysql -ueasypbx -peasypbx easypbx < "/var/www/html/easypbx/setup/easypbx.sql"
 
