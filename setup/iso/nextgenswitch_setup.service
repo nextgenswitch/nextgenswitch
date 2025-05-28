@@ -1,6 +1,7 @@
 [Unit]
 Description=Run nextgenswitch setup script at boot
-After=network.target
+After=network.target mariadb.service
+Requires=mariadb.service
 
 [Service]
 Type=oneshot
