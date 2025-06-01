@@ -1,0 +1,98 @@
+.text-required{
+    font-size: 18px;
+    color: rgb(247, 28, 28);
+  }
+
+#dial_input_form{
+    /* border:1px solid red; */
+    position: relative;
+}
+
+#dialer_ajax_content{
+    padding-top: 0px;
+    padding-bottom: 20px;
+}
+
+/* #forwardGroup{
+    position: absolute;
+    top: -44px !important;
+    right: 0px !important;
+    width: 185px !important;
+} */
+
+.callnow-popup{
+    position: relative;
+}
+
+.callnow-popup .tel_no{
+    cursor: pointer;
+}
+.callnow-popup .tel_no:hover .sms_box{
+    display: block;
+    padding: 5px;
+    padding-left: 0px !important;
+}
+.callnow-popup .sms_box{
+    position: absolute;
+    top: -30px;
+    left: 0px;
+    display: none;
+}
+.toolbar{
+    /* border: 1px solid red; */
+    padding-top: 5px;
+    text-align: right;
+}
+.toolbar .btn-icon{
+    align-items: center;
+    justify-content: center;
+    height: 26px;
+    width: 26px;
+    border: none;
+    color: #fff;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+#dialer_ajax_content .btn .icon, .btn .fa{
+    margin-right: 0px !important;
+    vertical-align: baseline;
+}
+
+#dialer_ajax_content button:focus{
+    outline: none !important;
+}
+
+#dialer_ajax_content .divider{
+    position: relative;
+    margin-bottom: 15px;
+}
+
+#dialer_ajax_content .divider .line {
+    display: block;
+    background: #c3c3c3;
+    height: 1px;
+    margin-top: 15px;
+}
+
+#dialer_ajax_content .divider .or{
+    font-size: 14px;
+    font-weight: 500;
+    background: #ffffff;
+    position: absolute;
+    top: -11px;   
+    color: #383838;
+}
+
+
+
+#forward_function_form select{
+    font-size: 12px;
+    color: #383838;
+    font-weight: normal;
+    margin-bottom: 10px;
+}
+
+#toastContainer{
+    z-index: 999999999;
+}

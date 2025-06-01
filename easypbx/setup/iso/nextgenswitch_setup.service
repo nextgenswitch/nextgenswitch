@@ -1,0 +1,14 @@
+[Unit]
+Description=Run nextgenswitch setup script at boot
+After=network.target mariadb.service
+Requires=mariadb.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/nextgenswitch_setup.sh
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target
+
+# Move the script to /etc/systemd/system/nextgenswitch_setup.service
