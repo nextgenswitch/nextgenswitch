@@ -26,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);
         Paginator::useBootstrap();
 
-        if ((php_sapi_name() != 'cli')) {
+        //if ((php_sapi_name() != 'cli')) {
             if ($this->is_ssl()) {
                 URL::forceScheme('https');
             }
@@ -36,7 +36,7 @@ class AppServiceProvider extends ServiceProvider
             if (file_exists(storage_path('licence.json')) && !is_dir(storage_path('licence.json'))) {
                 config(['licence' => json_decode(file_get_contents(storage_path('licence.json')), true)]);
             }
-        }
+       // }
     }
 
     function is_ssl()

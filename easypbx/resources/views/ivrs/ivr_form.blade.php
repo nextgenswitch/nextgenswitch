@@ -172,16 +172,48 @@
         </div>
     </div>
 
+
+<div class="modal fade" id="promptModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">LLM instruction</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>You’re a LLM that detects intent from user queries. Your task is to classify the user's intent based on their query. Below are the possible intents with brief descriptions. Use these to accurately determine the user's goal, and output only the intent topic.
+   <ul>
+    <li>Order Status: Inquiries about the current status of an order, including delivery tracking and estimated arrival times.</li>
+    <li>Product Information: Questions regarding product details, specifications, availability, or compatibility.</li>
+    <li>Payments: Queries related to making payments, payment methods, billing issues, or transaction problems.</li>
+    <li>Returns: Requests or questions about returning a product, including return policies and procedures.</li>
+    <li>Feedback: User comments, reviews, or general feedback about products, services, or experiences.</li>
+<li>Other: Choose this if the query doesn’t fall into any of the other intents.</li>   
+</ul>
+</p>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        
+      </div>
+    </div>
+  </div>
+</div>
+
     <div class="col-lg-12 @if (!optional($ivr)->mode) ) d-none @endif" id="inent_analyzer_div">
         <div class="form-group @error('intent_analyzer') has-error @enderror">
-            {!! Form::label('intent_analyzer', __('Intent Analyzer'), ['class' => 'control-label']) !!}
+            {!! Form::label('intent_analyzer', __('Speech Intent Analysis'), ['class' => 'control-label']) !!}
 
             {!! Form::textarea('intent_analyzer', old('intent_analyzer', optional($ivr)->intent_analyzer), [
                 'class' => 'form-control' . ($errors->has('intent_analyzer') ? ' is-invalid' : null),
                 'minlength' => '1',
                 'required' => false,
-                'placeholder' => __('Enter intent analyzer here...'),
+                'placeholder' => __('Enter LLM instruction properly to parse intent from the voice text.  '),
             ]) !!}
+            <small id="emailHelp" class="form-text text-muted">Make sure you have default LLM setup and Speech to Text added in AI providers . To see a example intent instruct <a href="#" data-toggle="modal" data-target="#promptModal" >click here </a>. </small>
             @error('intent_analyzer')
                 <p class="help-block  text-danger"> {{ $message }} </p>
             @enderror

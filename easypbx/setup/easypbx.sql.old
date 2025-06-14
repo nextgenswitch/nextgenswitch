@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Jun 10, 2025 at 03:52 PM
+-- Generation Time: Nov 27, 2024 at 07:24 AM
 -- Server version: 8.0.26
 -- PHP Version: 7.2.24
 
@@ -20,70 +20,6 @@ SET time_zone = "+00:00";
 --
 -- Database: `office_easypbx`
 --
-
--- --------------------------------------------------------
-
---
--- Table structure for table `ai_assistant_calls`
---
-
-CREATE TABLE `ai_assistant_calls` (
-  `id` bigint UNSIGNED NOT NULL,
-  `call_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `organization_id` int NOT NULL,
-  `caller_id` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `ai_assistant_id` int NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `ai_bots`
---
-
-CREATE TABLE `ai_bots` (
-  `id` bigint UNSIGNED NOT NULL,
-  `organization_id` int NOT NULL,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `voice_id` int NOT NULL,
-  `llm_provider_id` int NOT NULL,
-  `api_key` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `api_endpoint` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `model` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `resource` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `max_interactions` int NOT NULL,
-  `max_silince` int NOT NULL,
-  `waiting_tone` int DEFAULT NULL,
-  `inaudible_voice` int DEFAULT NULL,
-  `listening_tone` int DEFAULT NULL,
-  `internal_directory` int NOT NULL,
-  `email` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `create_support_ticket` tinyint NOT NULL DEFAULT '0',
-  `function_id` int NOT NULL,
-  `destination_id` int NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  `call_transfer_tone` int DEFAULT NULL,
-  `tts_profile_id` int DEFAULT NULL,
-  `stt_profile_id` int DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `ai_conversations`
---
-
-CREATE TABLE `ai_conversations` (
-  `id` bigint UNSIGNED NOT NULL,
-  `call_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `message` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `ai_msg` tinyint NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -685,8 +621,7 @@ CREATE TABLE `ivrs` (
   `end_key` char(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `function_id` int NOT NULL,
   `destination_id` int NOT NULL,
-  `mode` tinyint NOT NULL DEFAULT '0',
-  `intent_analyzer` text COLLATE utf8mb4_unicode_ci
+  `mode` tinyint NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -741,7 +676,7 @@ CREATE TABLE `leads` (
   `address` text COLLATE utf8mb4_unicode_ci,
   `source` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `notes` text COLLATE utf8mb4_unicode_ci,
-  `status` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` tinyint DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -905,24 +840,7 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 (126, '2024_10_23_175851_update_call_queue_table', 50),
 (127, '2024_10_24_203109_update_call_queue_extensions_table', 50),
 (128, '2024_10_29_193330_update_survey_results_table', 50),
-(129, '2024_11_03_174004_update_caller_id_in_voice_mails_table', 50),
-(130, '2025_01_13_164434_add_duration_into_queue_calls_table', 51),
-(132, '2025_01_19_121050_create_ai_bots_table', 52),
-(133, '2025_01_19_162506_update_sip_user_table', 52),
-(134, '2025_02_04_174552_create_ai_conversations_table', 52),
-(135, '2025_02_05_163616_create_ai_assistant_calls_table', 52),
-(136, '2025_02_13_170029_update_language_and_model_fields_in_tts_profiles_table', 52),
-(137, '2025_02_25_124810_add_call_transfer_tone_field_into_ai_bots_table', 53),
-(138, '2025_02_27_123515_add_max_extension_field_into_organizations_table', 54),
-(139, '2025_03_06_132245_add_fields_into_ai_bots_table', 55),
-(140, '2025_03_09_131611_add_field_response_timeout_into_tts_histroies_table', 55),
-(141, '2025_03_11_121854_update_status_field_in_leads_table', 55),
-(142, '2025_03_09_131611_add_field_response_time_into_tts_histroies_table', 56),
-(143, '2025_04_13_124030_add_intent_analyzer_field_into_ivrs_table', 56),
-(144, '2025_04_21_165602_add_intent_analyzer_field_into_surveys_table', 56),
-(145, '2025_01_14_153703_add_call_limit_and_expire_date_into_organizations_table', 57),
-(146, '2025_04_24_183853_add_is_primary_field_into_organizations_table', 58),
-(147, '2025_04_28_123859_update_organization_tables', 58);
+(129, '2024_11_03_174004_update_caller_id_in_voice_mails_table', 50);
 
 -- --------------------------------------------------------
 
@@ -978,17 +896,13 @@ CREATE TABLE `organizations` (
   `plan_id` int DEFAULT NULL,
   `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
   `domain` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `contact_no` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `contact_no` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
   `email` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `address` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `address` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `credit` double(8,2) NOT NULL DEFAULT '0.00',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `is_default` tinyint(1) DEFAULT NULL,
-  `max_extension` int NOT NULL DEFAULT '0',
-  `call_limit` int NOT NULL DEFAULT '0',
-  `expire_date` date DEFAULT NULL,
-  `is_primary` tinyint(1) NOT NULL DEFAULT '0'
+  `is_default` tinyint(1) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1128,8 +1042,7 @@ CREATE TABLE `queue_calls` (
   `updated_at` timestamp NULL DEFAULT NULL,
   `extension_id` int NOT NULL,
   `call_queue_id` int NOT NULL,
-  `status` int NOT NULL,
-  `duration` int DEFAULT NULL
+  `status` int NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1263,8 +1176,7 @@ CREATE TABLE `sip_users` (
   `user_type` tinyint DEFAULT NULL,
   `call_limit` int DEFAULT '0',
   `status` tinyint DEFAULT '1',
-  `allow_ip` text COLLATE utf8mb4_unicode_ci,
-  `overwrite_cid` tinyint(1) DEFAULT NULL
+  `allow_ip` text COLLATE utf8mb4_unicode_ci
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1340,8 +1252,7 @@ CREATE TABLE `surveys` (
   `updated_at` timestamp NULL DEFAULT NULL,
   `max_retry` int NOT NULL,
   `email` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `intent_analyzer` text COLLATE utf8mb4_unicode_ci
+  `phone` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1462,9 +1373,7 @@ CREATE TABLE `tts_histories` (
   `input` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `output` text COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  `response_timeout` double(8,2) NOT NULL,
-  `response_time` double(8,2) NOT NULL
+  `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1478,8 +1387,8 @@ CREATE TABLE `tts_profiles` (
   `organization_id` int DEFAULT NULL,
   `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
   `provider` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `language` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `model` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `language` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `model` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
   `config` text COLLATE utf8mb4_unicode_ci,
   `is_default` tinyint(1) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -1583,24 +1492,6 @@ CREATE TABLE `voice_records` (
 --
 -- Indexes for dumped tables
 --
-
---
--- Indexes for table `ai_assistant_calls`
---
-ALTER TABLE `ai_assistant_calls`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `ai_bots`
---
-ALTER TABLE `ai_bots`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `ai_conversations`
---
-ALTER TABLE `ai_conversations`
-  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `announcements`
@@ -2018,24 +1909,6 @@ ALTER TABLE `voice_records`
 --
 
 --
--- AUTO_INCREMENT for table `ai_assistant_calls`
---
-ALTER TABLE `ai_assistant_calls`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `ai_bots`
---
-ALTER TABLE `ai_bots`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `ai_conversations`
---
-ALTER TABLE `ai_conversations`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT for table `announcements`
 --
 ALTER TABLE `announcements`
@@ -2219,7 +2092,7 @@ ALTER TABLE `mail_profiles`
 -- AUTO_INCREMENT for table `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=148;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=130;
 
 --
 -- AUTO_INCREMENT for table `organizations`
