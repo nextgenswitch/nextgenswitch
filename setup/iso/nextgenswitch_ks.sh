@@ -1,7 +1,4 @@
 # Example RPM from EPEL
-dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm -y
-dnf -y install https://rpms.remirepo.net/enterprise/remi-release-9.rpm
-dnf -y install yum-utils
 
 setsebool -P httpd_can_network_connect=1
 
@@ -23,18 +20,21 @@ systemctl enable supervisord
 sudo systemctl enable redis
 systemctl enable mariadb
 
-CUSTOM_RPM_URL="http://51.79.230.231:81/office/nextgenswitch-1.0-1.el8.noarch.rpm"
-
-echo "Downloading and installing custom RPM from $CUSTOM_RPM_URL..."
-wget -O /tmp/custom.rpm "$CUSTOM_RPM_URL"
-if [ $? -eq 0 ]; then
-    echo "Download successful, installing..."
-    dnf install -y /tmp/custom.rpm
-else
-    echo "Failed to download custom RPM" >> /root/kickstart-post.log
-fi
 
 
+dnf install -y easypbx/setup/iso/nextgenswitch-1.0-1.el8.noarch.rpm
+
+cp easypbx/setup/iso/nextgenswitch_setup.sh /usr/local/bin/
+chmod +x /usr/local/bin/nextgenswitch_setup.sh
+sudo restorecon -v /usr/local/bin/nextgenswitch_setup.sh
+
+cp easypbx/setup/iso/nextgenswitch_setup.service /etc/systemd/system/
+sudo chmod 644 /etc/systemd/system/nextgenswitch_setup.service
+sudo restorecon -v /etc/systemd/system/nextgenswitch_setup.service
+
+sudo systemctl enable nextgenswitch_setup.service
+
+cp -fr easypbx /var/www/html/
 
 cd /var/www/html/easypbx
 unzip storage.zip

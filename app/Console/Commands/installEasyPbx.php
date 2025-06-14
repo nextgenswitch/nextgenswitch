@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Symfony\Component\Process\Process;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class installEasyPbx extends Command
 {
@@ -96,8 +98,16 @@ class installEasyPbx extends Command
                 $pdo = new \PDO("mysql:host=$dbHost;port=$dbHostPort", $dbUser, $dbPass);
                 $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
+                // Check if the database already exists
+                $query = $pdo->query("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$dbName'");
+                if ($query->rowCount() > 0) {
+                    $this->warn("Database `$dbName` already exists. Installation terminated.");
+                    return;
+                }
+
+                // Create the database if it does not exist
                 $pdo->exec("CREATE DATABASE IF NOT EXISTS `$dbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
-                $this->info("Database `$dbName` created or already exists.");
+                $this->info("Database `$dbName` created successfully.");
             } catch (\PDOException $e) {
                 $this->error('Failed to create the database: ' . $e->getMessage());
                 return;
@@ -130,11 +140,15 @@ class installEasyPbx extends Command
                 return;
             }
 
+            $this->setupPermissions();
+
             $this->info('EasyPBX installed successfully!');
         } else {
             $this->info('Installation cancelled.');
         }
     }
+
+
 
     private function checkDependencies(array $dependencies): void
     {
@@ -330,5 +344,60 @@ class installEasyPbx extends Command
             'arch linux' => '/etc/httpd/conf.d',
             default => null,
         };
+    }
+
+    private function setupPermissions(): void
+    {
+        $basePath = base_path();
+
+        $commands = [
+            "find {$basePath}/public -type f -exec chmod 644 {} \\;",
+            "find {$basePath}/public -type d -exec chmod 755 {} \\;",
+            "chmod -R 0777 {$basePath}/storage",
+            // "ln -s {$basePath}/public/sounds {$basePath}/storage/app/public/sounds",
+            // "ln -s {$basePath}/storage/app/public {$basePath}/public/storage",
+            // "ln -s {$basePath}/storage/app/public/records /usr/infosoftbd/nextgenswitch/records"
+        ];
+
+        if (strtolower($this->getCloudDistro()) != 'ubuntu' && strtolower($this->getCloudDistro()) != 'debian') {
+            $commands[] = "sudo chcon -R -t httpd_sys_rw_content_t {$basePath}";
+        }
+
+        foreach ($commands as $command) {
+            $process = Process::fromShellCommandline($command);
+            $process->run();
+
+            if (!$process->isSuccessful()) {
+                $this->error($process->getErrorOutput());
+                throw new ProcessFailedException($process);
+            }
+
+            $this->info("Executed: {$command}");
+        }
+
+
+        $links = [
+            "{$basePath}/public/sounds" => "{$basePath}/storage/app/public/sounds",
+            "{$basePath}/storage/app/public" => "{$basePath}/public/storage",
+            "{$basePath}/storage/app/public/records" => "/usr/infosoftbd/nextgenswitch/records",
+        ];
+
+        foreach ($links as $target => $link) {
+
+            if (!file_exists($target)) {
+                $this->error("Target does not exist: {$target}");
+                continue;
+            }
+
+            if (!file_exists($link)) {
+                symlink($target, $link);
+                $this->info("Created symbolic link: {$link} -> {$target}");
+            } else {
+                $this->warn("Symbolic link already exists: {$link}");
+            }
+        }
+
+
+        $this->info('Project permissions and symbolic links set successfully.');
     }
 }
