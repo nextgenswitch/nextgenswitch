@@ -57,4 +57,6 @@ A full documentation can be found on https://nextgenswitch.com/docs/programmable
 > SIP  Domain: demo.nextgenswitch.com \
 > SIP Port: 5060 (UDP + TCP) , 5061 (TLS)
 
-Documentation can found on  [NextGenSwitch Docs](https://nextgenswitch.com/docs).
+Documentation can found on  [NextGenSwitch Docs](https://nextgenswitch.com/docs).\
+Installation instruction available on [NextGenSwitch Installation](https://nextgenswitch.com/docs/installation/).\
+NextGenSwitch service released as binary . Released as RPM and DEB file for install on REDHAT based system and ubuntu system .  
