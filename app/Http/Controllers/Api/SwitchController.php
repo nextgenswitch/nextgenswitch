@@ -287,7 +287,10 @@ class SwitchController extends Controller {
     }
 
     public function speechToText() {
+
         $data = request()->json()->all();
+        info("speech to text");
+        info($data);
         return SwitchHandler::speech_to_text($data);
 
     }

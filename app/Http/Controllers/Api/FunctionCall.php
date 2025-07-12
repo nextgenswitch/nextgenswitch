@@ -90,7 +90,9 @@ class FunctionCall
         if (auth()->user())
             $data['organization_id'] = auth()->user()->organization_id;
 
-        if (!isset($data['sms_profile'])) {
+        if (isset($data['sms_profile'])) $smsProfile = $data['sms_profile'];
+
+        else {
             $smsProfile = SmsProfile::where('organization_id', $data['organization_id'])->where('default', 1)->first();
 
             if ($smsProfile) {
@@ -224,7 +226,7 @@ class FunctionCall
         $trunks = Trunk::where("organization_id", $sip_channel->organization_id)->where("sip_user_id", $sip_channel->id)->get();
         if ($trunks->count() > 0) $is_trunk = true;
         $response = new VoiceResponse();
-        //Log::debug("is trunk " . $is_trunk); 
+        //Log::debug("is trunk " . $is_trunk);
         if ($is_trunk == false) {  // call comes from an local extension
             info("call come from local extension ?");
             $response = self::getOutboundRoutes($dest, $sip_channel->organization_id, $caller_id);
@@ -244,7 +246,7 @@ class FunctionCall
                         }
                         Log::debug("incoming route found" . $iroute->did_pattern);
                         // need fix here not to use redirect
-                        //$response->redirect(route('api.func_call',['func_id'=>$iroute->function_id,'dest_id'=>$iroute->destination_id]));                            
+                        //$response->redirect(route('api.func_call',['func_id'=>$iroute->function_id,'dest_id'=>$iroute->destination_id]));
                         $response = self::execute($iroute->function_id, $iroute->destination_id, $response, ['event_to' => $dest, 'event_from' => $caller_id]);
                     }
                 }
@@ -347,7 +349,7 @@ class FunctionCall
             } elseif ($pattern == '*') return true;
             elseif (strcmp($pattern, substr($dest, 0, strlen($pattern))) == 0) return true;
         }
-        //Log::debug("matching pattern ". $pattern . " " .$dest . " " . strcmp($pattern,substr($dest,0,strlen($pattern))));          
+        //Log::debug("matching pattern ". $pattern . " " .$dest . " " . strcmp($pattern,substr($dest,0,strlen($pattern))));
         return false;
     }
 
@@ -437,14 +439,13 @@ class FunctionCall
     function call_survey($id)
     {
         $survey = Survey::find($id);
-        $try = request()->query('gather', -1);
+        $try = request()->query('retry', -1);
         $data = request()->input();
 
         info("on survey " . $id);
-        // info("Retry " . $try);
-        // info($data);
 
-        if ($try >= 0) {
+        if (request()->query('gather') == true) {
+
             $call = Call::find($data['call_id']);
             if (!empty($data['digits']) && !empty($survey->keys)) {
                 $keys = json_decode($survey->keys, true);
@@ -522,41 +523,31 @@ class FunctionCall
         }
 
         $try = $try + 1;
-        $max_try = $survey->max_try;
-        //if($max_try == 0) $max_try = 1;
-        //info($try . "  " . $max_try);
+        $max_try = $survey->max_retry;
+        if ($max_try == 0) $max_try = 1;
+        info($try . "  " . $max_try);
         if ($try > $max_try) {
             info("survey on end");
             $this->response->redirect(route('api.func_call', ['func_id' => $survey->function_id, 'dest_id' => $survey->destination_id]));
             return $this->response;
         }
 
-        // if ($survey->type == 0) {
-        //     $options = [
-        //         'action' => route('api.func_call', ['func_id' => $this->func_id, 'dest_id' => $survey->id, 'gather' => $try]),
-        //         'numDigits' => 1,
-        //         'speechTimeout' => 5,
-        //         'timeout' => 300,
-        //         'transcript' => false
-        //     ];
 
-        //     $gather = $this->response->gather($options);
-        //     self::voice_file_play($gather, $survey->voice);
-        // } elseif ($survey->type == 1) {
-        //     self::voice_file_play($this->response, $survey->voice);
-        //     $this->response->record(['beep' => true, 'transcribe' => false, 'action' => route('api.func_call', ['func_id' => $this->func_id, 'dest_id' => $id, 'record' => true, 'gather' => $try])]);
-        // }
 
         if ($survey->type == 1) {
             self::voice_file_play($this->response, $survey->voice);
             $this->response->record(['beep' => true, 'transcribe' => false, 'action' => route('api.func_call', ['func_id' => $this->func_id, 'dest_id' => $id, 'record' => true, 'gather' => $try])]);
         } else {
             $max_digit = 1;
+
+
+
             $input = 'dtmf';
             if ($survey->type == 2)  $input = 'speech';
             elseif ($survey->type == 3)  $input = 'dtmf speech';
             Log::info("input is " . $input);
-            $timeout = 300;
+            $timeout = $survey->timeout;
+            if (!$timeout) $timeout = 10;
 
             $options = [
                 'input' => $input,
@@ -564,18 +555,18 @@ class FunctionCall
                 'speechTimeout' => 5,
                 'timeout' => $timeout,
                 'transcript' => false,
-                'action' => route('api.func_call', ['func_id' => $this->func_id, 'dest_id' => $survey->id, 'gather' => $try]),
+                'action' => route('api.func_call', ['func_id' => $this->func_id, 'dest_id' => $survey->id, 'gather' => true, 'retry' => $try]),
             ];
 
             $gather = $this->response->gather($options);
             self::voice_file_play($gather, $survey->voice);
-
-            // $gather = $this->response->gather(['input' => $input, 'numDigits' => $max_digit, 'timeout' => $timeout, 'action' => route('api.func_call', ['func_id' => $this->func_id, 'dest_id' => $ivr->id, 'gather' => true, 'retry' => $retry])]);
+            $this->response->redirect(route('api.func_call', ['func_id' => $this->func_id, 'dest_id' => $survey->id, 'retry' => $try]));
+            $this->response->hangup();
         }
 
 
 
-        //info($this->response->xml()); 
+        // info($this->response->xml());
         return $this->response;
     }
 
@@ -716,10 +707,10 @@ class FunctionCall
                 $opt['record'] = 'record-from-answer';
             //Log::debug(" call options");
             //Log::debug($opt);
-            //Log::debug($this->params);    
+            //Log::debug($this->params);
             $this->response->dial($sip_user->username, $opt);
         }
-        //info($this->response->xml());               
+        //info($this->response->xml());
         return $this->response;
     }
 
@@ -791,17 +782,22 @@ class FunctionCall
                 'voice_path' => $data['record_file'],
                 'caller_id' => $data['event_from'],
                 'call_id' => $data['call_id'],
+                'transcript' => isset($data['speech_result']) ? $data['speech_result'] : __('Please check record file for more information.')
             ];
 
-            if (isset($data['speech_result'])) $data['transcript'] = $data['speech_result'];
+            //if (isset($data['speech_result'])) $data['transcript'] = $data['speech_result'];
             VoiceMail::create($data);
+
+            $body = 'Received voice record from ' . $data['caller_id'] . ' and transcript - ' . $data['transcript'];
+
 
             // send email
             if ($recordVoiceProfile->email && $recordVoiceProfile->is_transcript) {
                 self::send_mail([
+                    'organization_id' => $recordVoiceProfile->organization_id,
                     'to' => $recordVoiceProfile->email,
                     'subject' => 'Received voice record from ' . $recordVoiceProfile->name,
-                    'body' => $data['transcript'],
+                    'body' => $body,
                     'template' => 'plain'
                 ]);
             }
@@ -812,7 +808,7 @@ class FunctionCall
                     'organization_id' => $recordVoiceProfile->organization_id,
                     'from' => $recordVoiceProfile->name,
                     'to' => $recordVoiceProfile->phone,
-                    'body' => $data['transcript']
+                    'body' => $body
                 ]);
             }
 
@@ -824,7 +820,7 @@ class FunctionCall
                     'name' => $data['caller_id'],
                     'phone' => $data['caller_id'],
                     'subject' => __('Support ticket from ') . $data['caller_id'],
-                    'description' => isset($data['transcript']) ? $data['transcript'] : 'Please check record file for more information.',
+                    'description' => $data['transcript'],
                     'record' => $data['voice_path']
                 ]);
             }
@@ -886,7 +882,7 @@ class FunctionCall
         $announcement =  Announcement::find($id);
         //$response = new VoiceResponse();
         $this->voice_file_play($this->response, $announcement->voice);
-        //$this->response->redirect(route('api.func_call',['func_id'=>$announcement->function_id,'dest_id'=>$announcement->destination_id])); 
+        //$this->response->redirect(route('api.func_call',['func_id'=>$announcement->function_id,'dest_id'=>$announcement->destination_id]));
         $this->response = self::execute($announcement->function_id, $announcement->destination_id, $this->response, $this->params);
         return $this->response;
     }
@@ -900,7 +896,7 @@ class FunctionCall
     // function ai_assistant($id){
     //     $assistant = AiBot::find($id);
     //     $data = request()->all();
-    //     $inaudiable = false; 
+    //     $inaudiable = false;
     //     $modify = false;
     //     info($data);
 
@@ -932,7 +928,7 @@ class FunctionCall
     //             return $this->response;
     //         }else{
     //             if($assistant->inaudible_voice) $this->voice_file_play($this->response,$assistant->inaudible_tone);
-    //         }     
+    //         }
 
     //     }elseif(request()->query('process') == '1'){
     //      //   info("on transcribe " . $data['voice']);
@@ -951,7 +947,7 @@ class FunctionCall
 
     //             info('Answer from LLM' . $ans);
 
-    //         }               
+    //         }
     //         else { $inaudiable = true; goto out; }
 
     //         if($ans){
@@ -975,7 +971,7 @@ class FunctionCall
     //             $this->response->say($ans);
 
     //          }else{
-    //             // $inaudiable = true; 
+    //             // $inaudiable = true;
     //             info('redirect to last destination');
 
     //             $this->notifyAndCreateTicket($assistant, $data);
@@ -1007,7 +1003,7 @@ class FunctionCall
     //     $options = [
     //         'action'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$assistant->id, 'gather'=>'1' ]),
     //         'speechTimeout'=>5,
-    //         'transcript'=>false, 
+    //         'transcript'=>false,
     //         'input' => 'speech'
     //     ];
 
@@ -1019,7 +1015,7 @@ class FunctionCall
     //     if($modify){
     //         self::modify_call($data['call_id'],['responseXml'=>$this->response->xml()]);
     //         return;
-    //     } 
+    //     }
     //     // $this->response = self::execute($assistant->function_id,$assistant->destination_id,$this->response,$this->params);
     //     return $this->response;
     // }
@@ -1039,7 +1035,7 @@ class FunctionCall
 
 
         /* $dest = $this->params['dest'];
-        foreach($outbound_route->trunks as $trunk)            
+        foreach($outbound_route->trunks as $trunk)
             $this->response->dial($dest,['channel_id'=>$trunk->sip_user_id,'answerOnBridge'=>'true','record'=>'record-from-answer',
         ]); */
     }
@@ -1073,8 +1069,8 @@ class FunctionCall
         $xml = new \SimpleXMLElement("<$tag>$val</$tag>");
         foreach($attrs as $k => $v)
             $xml->addAttribute($k,$v);
-        
-        return $xml;            
+
+        return $xml;
     } */
 
     public static function sip_code_to_msg($resp_code)

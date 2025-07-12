@@ -22,7 +22,9 @@ class Organization extends Model
         'credit',
         'call_limit',
         'max_extension',
-        'expire_date'
+        'expire_date',
+        'is_default',
+        'is_primary',
     ];
 
     /**

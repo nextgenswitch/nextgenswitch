@@ -68,6 +68,7 @@ use App\Models\Organization;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CallQueueExtensionsController;
 use App\Http\Controllers\Agent\DashboardController as AgentDashboardController;
+use App\Http\Controllers\SetupController;
 use Illuminate\Support\Carbon;
 
 Route::get('/clear', function () {
@@ -104,6 +105,10 @@ Route::get('/dashboard/ui', function () {
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
+Route::get('setup', [SetupController::class, 'showForm'])->name('setup');
+Route::post('setup', [SetupController::class, 'handleForm']);
+
 
 Auth::routes();
 Route::get('reg-information', [RegisterController::class, 'regInfo'])->name('reg.info');
@@ -169,7 +174,10 @@ Route::group(['middleware' => 'auth'], function () {
             Route::post('/firewall/store', [FirewallController::class, 'store'])->name('settings.firewall.store');
 
             Route::get('/switch/{group}', [SettingController::class, 'index'])->name('settings.setting.index');
+            
             Route::post('/store', [SettingController::class, 'store'])->name('settings.setting.store');
+            Route::get('/dba', [DashboardController::class, 'dbadmin'])->name('settings.setting.dba');
+            Route::post('/dba', [DashboardController::class, 'dbadmin'])->name('settings.setting.dba.post');
         });
 
 
@@ -1196,6 +1204,8 @@ Route::group(['middleware' => 'auth'], function () {
                 ->name('sms_profiles.sms_profile.updateField');
             Route::put('/bulk', [SmsProfilesController::class, 'bulkAction'])
                 ->name('sms_profiles.sms_profile.bulk');
+            Route::post('/send-test-sms', [SmsProfilesController::class, 'sendTestSMS'])
+                ->name('sms_profiles.sms_profile.test');
         });
 
         Route::group([
@@ -1219,6 +1229,9 @@ Route::group(['middleware' => 'auth'], function () {
                 ->name('mail_profiles.mail_profile.updateField');
             Route::put('/bulk', [MailProfilesController::class, 'bulkAction'])
                 ->name('mail_profiles.mail_profile.bulk');
+
+            Route::post('/send-test-email', [MailProfilesController::class, 'sendTestEmail'])
+                ->name('mail_profiles.mail_profile.test');
         });
 
 
@@ -1322,6 +1335,21 @@ Route::group(['middleware' => 'auth'], function () {
         })->name('test.popup');
 
         Route::get('test', function () {
+
+            $gemini = new \App\Tts\Gemini('AIzaSyDMv3W7tTtwuw6ehH248aIUUvR8lpTgZZ8');
+            $res = $gemini->llm("Hello, how are you?", "You are a helpful assistant. i will ask you a question and you will answer me in a dialoge format. never provide any formatting in your answer. always provide the output as a dialoge format customer and agent. provide as plain text");
+            return $res;
+
+            $data = [
+                'organization_id' => 1,
+                'to' => 'atik@infosoftbd.com',
+                'subject' => 'Received voice record from Test',
+                'body' => 'হ্যালো এই প্রোডাক্টটি কি অ্যাভেলেবেল আছে?',
+                'template' => 'plain',
+            ];
+
+            return FunctionCall::send_mail($data);
+
 
             // dd(auth()->user()->hasRole('Super Admin'));
 

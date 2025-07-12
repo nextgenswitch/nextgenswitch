@@ -8,8 +8,8 @@
                       <th>{{ __('Title') }}</th>
                       <th>{{ __('Ip') }}</th>
                       <th>
-                        <a href="{{ route('ip_black_lists.ip_black_list.create') }}" class="btn btn-primary btn-sm btnForm"
-                              title="{{ __('Add new IP into blacklist') }}">
+                          <a href="{{ route('ip_black_lists.ip_black_list.create') }}"
+                              class="btn btn-primary btn-sm btnForm" title="{{ __('Add new IP into blacklist') }}">
                               <span class="fa fa-plus" aria-hidden="true"></span>{{ __('Add IP') }}
                           </a>
                       </th>
@@ -20,8 +20,11 @@
                       <tr>
 
                           <td>{{ optional($ipBlackList)->title }}</td>
-                          <td>{{ $ipBlackList->ip }}/{{ $ipBlackList->subnet }}</td>
-                          
+                          <td>{{ $ipBlackList->ip }} @if ($ipBlackList->subnet)
+                                  /{{ $ipBlackList->subnet }}
+                              @endif
+                          </td>
+
 
                           <td>
 

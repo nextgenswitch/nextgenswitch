@@ -65,6 +65,8 @@ return [
                 'username'   => 'you@gmail.com',
                 'password'   => '1234*******',
                 'encryption' => 'tls',
+                'from_name'  => 'Your Name',
+                'from_email' => 'you@gmail.com'
 
             ],
         ],
@@ -99,8 +101,8 @@ return [
     'tts_providers'         => [
         'openai'          => 'OpenAI',
         'witai'           => 'WitAi',
-        'google_cloud'    => 'Google Cloud Text To Speech',
-        'amazon_polly'    => 'Amazon Polly text to speech',
+        'google_cloud'    => 'Google Cloud',
+        'amazon_polly'    => 'Amazon Polly',
         'microsoft_azure' => 'Microsoft Azure',
         'groq' => 'Groq',
         'generic'         => 'Generic',
@@ -111,7 +113,7 @@ return [
         'witai'           => 'WitAi',
         'cloudflare'      => 'Cloudflare',
         'microsoft_azure' => 'Microsoft Azure',
-        'google_cloud'    => 'Google Cloud Text To Speech',
+        'google_cloud'    => 'Google Cloud',
         'groq' => 'Groq',
         'generic'         => 'Generic',
     ],
@@ -120,9 +122,7 @@ return [
         'openai'          => 'OpenAI',
         'groq' => 'Groq',
         'cloudflare'      => 'Cloudflare',
-        // 'microsoft_azure' => 'Microsoft Azure',
-        // 'google_cloud'    => 'Google Cloud Text To Speech',
-        // 'amazon_polly' => 'Amazon Polly text to speech',
+        'gemini'         => 'Gemini',
         'generic'         => 'Generic',
     ],
 
@@ -238,7 +238,8 @@ return [
     ],
 
     'ivr_mode'              => ['0' => 'DTMF-Key Press', '1' => 'Speech', '2' => 'Both'],
-    'survey_type'           => ['0' => 'DTMF-Key Press', '2' => 'Speech', '3' => 'DTMF and Speech', '1' => 'Voice Record'],
+    // 'survey_type'           => ['0' => 'DTMF-Key Press', '2' => 'Speech', '3' => 'DTMF and Speech', '1' => 'Voice Record'],
+    'survey_type'           => ['0' => 'DTMF-Key Press', '1' => 'Voice Record'],
     'tts_storage_path'      => 'app/public/tts/',
 
     'lead_source'           => [

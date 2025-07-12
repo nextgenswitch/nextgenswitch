@@ -18,7 +18,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Api\VoiceResponse;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Role;
-
+use Illuminate\Http\Response;
 use DB;
 
 
@@ -222,6 +222,31 @@ class DashboardController extends Controller
          $voice_response->pause(10);
          $voice_response->redirect(route('dashboard.dialer.response'));
          return $voice_response->xml();
+    }
+
+    public function dbadmin(Request $request){
+        $db_connection = config('database');
+        $db = $db_connection['connections'][$db_connection['default']];
+     if ($request->isMethod('post')){       
+          /*   $_POST['auth']['driver'] = ($db['driver'] == 'mysql')?"server":$db['driver'];
+            $_POST['auth']['server'] = $db['host'] . ":" . $db['port'];
+            $_POST['auth']['db'] = $db['database'];
+            $_POST['auth']['username'] = $db['username'];
+            $_POST['auth']['password'] = $db['password'];  */
+    }else{
+           if(!isset($_GET['server'])){
+                $_POST['auth']['driver'] = ($db['driver'] == 'mysql')?"server":$db['driver'];
+                $_POST['auth']['server'] = $db['host'] . ":" . $db['port'];
+                $_POST['auth']['db'] = $db['database'];
+                $_POST['auth']['username'] = $db['username'];
+                $_POST['auth']['password'] = $db['password'];  
+           }
+           
+    }   
+
+     
+        include_once __DIR__ . '/../../../resources/adminer-5.0.4-en.php';
+        return response()->noContent();
     }
 
 

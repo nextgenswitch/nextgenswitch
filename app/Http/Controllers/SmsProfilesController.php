@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\Organization;
-use App\Models\SmsProfile;
-use Illuminate\Http\Request;
-use Exception;
 use Schema;
+use Exception;
+use App\Models\SmsProfile;
+use App\Models\Organization;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\FunctionCall;
 
 class SmsProfilesController extends Controller
 {
@@ -19,81 +20,79 @@ class SmsProfilesController extends Controller
      */
     public function index(Request $request)
     {
-  
+
         $q = $request->get('q') ?: '';
         $perPage = $request->get('per_page') ?: 10;
         $filter = $request->get('filter') ?: '';
         $sort = $request->get('sort') ?: '';
-        $smsProfile = SmsProfile::where( 'organization_id', auth()->user()->organization_id );
-        if(!empty($q))  $smsProfile->where('name', 'LIKE', '%' . $q . '%');
+        $smsProfile = SmsProfile::where('organization_id', auth()->user()->organization_id);
+        if (!empty($q))  $smsProfile->where('name', 'LIKE', '%' . $q . '%');
 
-        if(!empty($filter)){
-            $filtera = explode(':',$filter);
-            $smsProfile->where($filtera[0], '=',$filtera[1]);
+        if (!empty($filter)) {
+            $filtera = explode(':', $filter);
+            $smsProfile->where($filtera[0], '=', $filtera[1]);
         }
 
-        if(!empty($sort)){
-            $sorta = explode(':',$sort);
-            $smsProfile->orderBy($sorta[0],$sorta[1]);
-        }else
-            $smsProfile->orderBy('created_at','DESC'); 
-        
+        if (!empty($sort)) {
+            $sorta = explode(':', $sort);
+            $smsProfile->orderBy($sorta[0], $sorta[1]);
+        } else
+            $smsProfile->orderBy('created_at', 'DESC');
+
 
 
 
 
         $smsProfiles = $smsProfile->paginate($perPage);
-        
-        $smsProfiles->appends(['sort'=>$sort,'filter'=>$filter,'q' => $q,'per_page'=>$perPage]); 
 
-        if(!empty($request->get('csv'))){
+        $smsProfiles->appends(['sort' => $sort, 'filter' => $filter, 'q' => $q, 'per_page' => $perPage]);
+
+        if (!empty($request->get('csv'))) {
 
             $fileName = 'smsProfiles.csv';
-         
-
-                $headers = array(
-                    "Content-type"        => "text/csv",
-                    "Content-Disposition" => "attachment; filename=$fileName",
-                    "Pragma"              => "no-cache",
-                    "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-                    "Expires"             => "0"
-                );
 
 
-                //$column = ['name','email','password']; // specify columns if need
-                $columns = Schema::getColumnListing((new SmsProfile)->getTable());  
-               
-                $callback = function() use($smsProfiles, $columns) {
-                    $file = fopen('php://output', 'w');
-                    fputcsv($file, $columns);
+            $headers = array(
+                "Content-type"        => "text/csv",
+                "Content-Disposition" => "attachment; filename=$fileName",
+                "Pragma"              => "no-cache",
+                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+                "Expires"             => "0"
+            );
 
-                    foreach ($smsProfiles as $smsProfile) {
-            
 
-                        //$row['Title']  = $task->title;
-                        
-                        foreach($columns as $column)
-                             $row[$column] = $smsProfile->{$column};
+            //$column = ['name','email','password']; // specify columns if need
+            $columns = Schema::getColumnListing((new SmsProfile)->getTable());
 
-                        fputcsv($file, $row);
-                    }
+            $callback = function () use ($smsProfiles, $columns) {
+                $file = fopen('php://output', 'w');
+                fputcsv($file, $columns);
 
-                    fclose($file);
-                };
+                foreach ($smsProfiles as $smsProfile) {
 
-                return response()->stream($callback, 200, $headers);
+
+                    //$row['Title']  = $task->title;
+
+                    foreach ($columns as $column)
+                        $row[$column] = $smsProfile->{$column};
+
+                    fputcsv($file, $row);
+                }
+
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
         }
 
-        
-                
 
-        if($request->ajax()){
+
+
+        if ($request->ajax()) {
             return view('sms_profiles.table', compact('smsProfiles'));
-        } 
-        
+        }
+
         return view('sms_profiles.index', compact('smsProfiles'));
-
-
     }
 
     /**
@@ -103,8 +102,8 @@ class SmsProfilesController extends Controller
      */
     public function create(Request $request)
     {
-        if($request->ajax())
-            return view('sms_profiles.form')->with(['action'=>route('sms_profiles.sms_profile.store'),'smsProfile' => null,'method'=>'POST']);
+        if ($request->ajax())
+            return view('sms_profiles.form')->with(['action' => route('sms_profiles.sms_profile.store'), 'smsProfile' => null, 'method' => 'POST']);
         else
             return view('sms_profiles.create');
     }
@@ -118,31 +117,30 @@ class SmsProfilesController extends Controller
      */
     public function store(Request $request)
     {
-            $data = $this->getData($request);     
-            $data['organization_id'] = auth()->user()->organization_id;
+        $data = $this->getData($request);
+        $data['organization_id'] = auth()->user()->organization_id;
 
-            $data['status'] = isset($data['status']) ? 1 : 0;
-            $data['default'] = isset($data['default']) ? 1 : 0;
+        $data['status'] = isset($data['status']) ? 1 : 0;
+        $data['default'] = isset($data['default']) ? 1 : 0;
 
 
-            $options = $request->input('options');
-            $ops = array();
+        $options = $request->input('options');
+        $ops = array();
 
-            if(is_array($options) && count($options)){
-                
-                foreach($options['name'] as $key => $name){
-                    if(isset($options['value'][$key])){
-                        $ops[$name] = $options['value'][$key];
-                    }
+        if (is_array($options) && count($options)) {
+
+            foreach ($options['name'] as $key => $name) {
+                if (isset($options['value'][$key])) {
+                    $ops[$name] = $options['value'][$key];
                 }
             }
-            $data['options'] = json_encode($ops);
+        }
+        $data['options'] = json_encode($ops);
 
-            SmsProfile::create($data);
-            if($request->ajax())  return response()->json(['success'=>true]);
-            return redirect()->route('sms_profiles.sms_profile.index')
-                ->with('success_message', __('Sms Profile was successfully added.'));
-      
+        SmsProfile::create($data);
+        if ($request->ajax())  return response()->json(['success' => true]);
+        return redirect()->route('sms_profiles.sms_profile.index')
+            ->with('success_message', __('Sms Profile was successfully added.'));
     }
 
 
@@ -155,13 +153,13 @@ class SmsProfilesController extends Controller
      */
     public function edit($id, Request $request)
     {
-        if(! SmsProfile::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists() )
+        if (! SmsProfile::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists())
             return back();
         $smsProfile = SmsProfile::findOrFail($id);
 
 
-        if($request->ajax())
-            return view('sms_profiles.form', compact('smsProfile'))->with(['action'=>route('sms_profiles.sms_profile.update',$id),'method'=>'PUT']);
+        if ($request->ajax())
+            return view('sms_profiles.form', compact('smsProfile'))->with(['action' => route('sms_profiles.sms_profile.update', $id), 'method' => 'PUT']);
         else
             return view('sms_profiles.edit', compact('smsProfile'));
     }
@@ -176,34 +174,33 @@ class SmsProfilesController extends Controller
      */
     public function update($id, Request $request)
     {
-        if(! SmsProfile::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists() )
+        if (! SmsProfile::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists())
             return back();
 
-            $data = $this->getData($request);
-            
-            $data['status'] = isset($data['status']) ? 1 : 0;
-            $data['default'] = isset($data['default']) ? 1 : 0;
+        $data = $this->getData($request);
+
+        $data['status'] = isset($data['status']) ? 1 : 0;
+        $data['default'] = isset($data['default']) ? 1 : 0;
 
 
-            $options = $request->input('options');
-            $ops = array();
+        $options = $request->input('options');
+        $ops = array();
 
-            if(is_array($options) && count($options)){
-                
-                foreach($options['name'] as $key => $name){
-                    if(isset($options['value'][$key])){
-                        $ops[$name] = $options['value'][$key];
-                    }
+        if (is_array($options) && count($options)) {
+
+            foreach ($options['name'] as $key => $name) {
+                if (isset($options['value'][$key])) {
+                    $ops[$name] = $options['value'][$key];
                 }
             }
-            $data['options'] = json_encode($ops);
+        }
+        $data['options'] = json_encode($ops);
 
-            $smsProfile = SmsProfile::findOrFail($id);
-            $smsProfile->update($data);
-             if($request->ajax())    return response()->json(['success'=>true]);
-            return redirect()->route('sms_profiles.sms_profile.index')
-                ->with('success_message', __('Sms Profile was successfully updated.'));
-            
+        $smsProfile = SmsProfile::findOrFail($id);
+        $smsProfile->update($data);
+        if ($request->ajax())    return response()->json(['success' => true]);
+        return redirect()->route('sms_profiles.sms_profile.index')
+            ->with('success_message', __('Sms Profile was successfully updated.'));
     }
 
     /**
@@ -213,20 +210,20 @@ class SmsProfilesController extends Controller
      *
      * @return Illuminate\Http\RedirectResponse | Illuminate\Routing\Redirector
      */
-    public function destroy($id,Request $request)
+    public function destroy($id, Request $request)
     {
         try {
-            if(! SmsProfile::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists() )
-            return back();
+            if (! SmsProfile::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists())
+                return back();
             $smsProfile = SmsProfile::findOrFail($id);
             $smsProfile->delete();
 
-            if($request->ajax()) return response()->json(['success'=>true]);
+            if ($request->ajax()) return response()->json(['success' => true]);
             else  return redirect()->route('sms_profiles.sms_profile.index')
                 ->with('success_message', __('Sms Profile was successfully deleted.'));
         } catch (Exception $exception) {
 
-            if($request->ajax())  return response()->json(['success'=>false]);
+            if ($request->ajax())  return response()->json(['success' => false]);
             else   return back()->withInput()
                 ->withErrors(['unexpected_error' => __('Unexpected error occurred while trying to process your request.')]);
         }
@@ -240,22 +237,21 @@ class SmsProfilesController extends Controller
      * @return Illuminate\Http\RedirectResponse | Illuminate\Routing\Redirector
      */
 
-    public function updateField($id,Request $request){
-          
+    public function updateField($id, Request $request)
+    {
+
         try {
-            if(! SmsProfile::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists() )
-            return back();
-            $smsProfile = SmsProfile::findOrFail($id);  
-          
+            if (! SmsProfile::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists())
+                return back();
+            $smsProfile = SmsProfile::findOrFail($id);
+
             $smsProfile->update($request->all());
 
-           
-            return response()->json(['success'=>true]);
-                   
-        } catch (Exception $exception) {
-            return response()->json(['success'=>false]);
-        }
 
+            return response()->json(['success' => true]);
+        } catch (Exception $exception) {
+            return response()->json(['success' => false]);
+        }
     }
 
     /**
@@ -264,53 +260,78 @@ class SmsProfilesController extends Controller
      * @return Illuminate\Http\RedirectResponse | Illuminate\Routing\Redirector
      */
 
-    public function bulkAction(Request $request){
-        
-       try{
-           
+    public function bulkAction(Request $request)
+    {
+
+        try {
+
             $data = $request->all();
-            $ids =  explode(',',$data['ids']);
-            if(isset($data['mass_delete']) && $data['mass_delete'] == 1){
-                SmsProfile::whereIn('id',$ids)->delete();
-            }else{
+            $ids =  explode(',', $data['ids']);
+            if (isset($data['mass_delete']) && $data['mass_delete'] == 1) {
+                SmsProfile::whereIn('id', $ids)->delete();
+            } else {
 
-                foreach($data as $field=>$val){
+                foreach ($data as $field => $val) {
 
-                      if(!in_array($field, ['ids','_token','_method','mass_delete'])  && Schema::hasColumn((new SmsProfile)->getTable(), $field) )
-                          SmsProfile::whereIn('id',$ids)->update([$field=>$val]);
+                    if (!in_array($field, ['ids', '_token', '_method', 'mass_delete'])  && Schema::hasColumn((new SmsProfile)->getTable(), $field))
+                        SmsProfile::whereIn('id', $ids)->update([$field => $val]);
                 }
             }
-            return response()->json(['success'=>true]);
-
-       } catch (Exception $exception) {
-            return response()->json(['success'=>false]);
-       }
-
-       
-    }    
+            return response()->json(['success' => true]);
+        } catch (Exception $exception) {
+            return response()->json(['success' => false]);
+        }
+    }
 
 
 
-    
+
     /**
      * Get the request's data from the request.
      *
-     * @param Illuminate\Http\Request\Request $request 
+     * @param Illuminate\Http\Request\Request $request
      * @return array
      */
     protected function getData(Request $request)
     {
         $rules = [
-                'default' => 'nullable|string|min:1',
+            'default' => 'nullable|string|min:1',
             'name' => 'required|string|min:1|max:191',
             'provider' => 'required|string|min:1|max:191',
-            'status' => 'nullable|string|min:1', 
+            'status' => 'nullable|string|min:1',
         ];
-        
+
         $data = $request->validate($rules);
 
 
         return $data;
     }
 
+    public function sendTestSMS(Request $request)
+    {
+        $data = $request->validate([
+            'sms_profile_id' => 'required|exists:sms_profiles,id',
+            'to' => 'required',
+            'from' => 'string|max:255',
+            'body' => 'string',
+        ]);
+
+        $smsProfile = SmsProfile::where('organization_id', auth()->user()->organization_id)->where('id', $data['sms_profile_id'])->first();
+
+        $data['sms_profile'] = $smsProfile;
+        $data['organization_id'] = auth()->user()->organization_id;
+
+
+        $res = FunctionCall::send_sms($data);
+        info('Sending test SMS');
+        info($res);
+
+        if ($res['success']) {
+            return redirect()->back()->with('success_message', __('Test SMS sent successfully.'));
+        } else {
+
+            return redirect()->route('sms_profiles.sms_profile.index')
+                ->with('error_message', __('Failed to send test SMS'));
+        }
+    }
 }

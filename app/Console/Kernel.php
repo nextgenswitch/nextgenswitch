@@ -13,11 +13,12 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-         $schedule->command('app:hourly-update')->hourly();
-         $schedule->command('app:daily-update')->daily();
-         $schedule->command('records:clear')->daily();
-         $schedule->command('app:minute-update')->everyMinute();
-         $schedule->command('app:update-call-status')->everyTwoMinutes();
+        $schedule->command('app:hourly-update')->hourly();
+        $schedule->command('app:daily-update')->daily();
+        $schedule->command('records:clear')->daily();
+        $schedule->command('app:minute-update')->everyMinute();
+        $schedule->command('app:update-call-status')->everyTwoMinutes();
+        // $schedule->command('firewall:ip-block')->everyThirtySeconds();
     }
 
     /**
@@ -25,7 +26,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }

@@ -14,21 +14,31 @@
             </thead>
             <tbody>
                 @foreach ($mails as $mail)
-         
                     <tr>
-                       
+
                         <td>{{ $mail->caller_id }}</td>
 
-                    
+
                         <td class="voice-preview">
-                            @if($mail->voice_path)
-                            <span class="btn btn-outline-primary btn-sm play" src="{{ url('storage/' . $mail->voice_path) }}"><i class="fa fa-play"></i></span>
-                            <span class="btn btn-outline-primary btn-sm stop d-none"><i class="fa fa-stop"></i></span>
+                            @if ($mail->voice_path)
+                                <span class="btn btn-outline-primary btn-sm play"
+                                    src="{{ url('storage/' . $mail->voice_path) }}"><i class="fa fa-play"></i></span>
+                                <span class="btn btn-outline-primary btn-sm stop d-none"><i
+                                        class="fa fa-stop"></i></span>
                             @endif
                         </td>
 
 
-                        <td>{{ $mail->transcript }}</td>
+                        <td>
+                            @if (strlen($mail->transcript) > 100)
+                                {{ Str::limit($mail->transcript, 100) }}
+                                <a href="#" class="see-more btn btn-sm btn-primary"
+                                    data-transcript="{{ e($mail->transcript) }}">See
+                                    more</a>
+                            @else
+                                {{ $mail->transcript }}
+                            @endif
+                        </td>
                         <td>{{ date_time_format($mail->created_at) }}</td>
                     </tr>
                 @endforeach

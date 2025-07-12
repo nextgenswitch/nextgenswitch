@@ -12,11 +12,13 @@
 
             <div class="btn-group btn-group-sm pull-right" role="group">
 
-                <a href="{{ route('mail_profiles.mail_profile.index') }}" class="btn btn-primary" title="{{ __('Show All Email Profile') }}">
+                <a href="{{ route('mail_profiles.mail_profile.index') }}" class="btn btn-primary"
+                    title="{{ __('Show All Email Profile') }}">
                     <span class="fa fa-list" aria-hidden="true"></span>
                 </a>
 
-                <a href="{{ route('mail_profiles.mail_profile.create') }}" class="btn btn-primary" title="{{ __('Create New Email Profile') }}">
+                <a href="{{ route('mail_profiles.mail_profile.create') }}" class="btn btn-primary"
+                    title="{{ __('Create New Email Profile') }}">
                     <span class="fa fa-plus" aria-hidden="true"></span>
                 </a>
 

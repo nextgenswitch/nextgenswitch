@@ -1,6 +1,6 @@
 @if (app('request')->ajax())
-    <form method="{{ $method }}" action="{{ $action }}" enctype="multipart/form-data" accept-charset="UTF-8" id="create_form"
-        name="create_form" class="form-horizontal">
+    <form method="{{ $method }}" action="{{ $action }}" enctype="multipart/form-data" accept-charset="UTF-8"
+        id="create_form" name="create_form" class="form-horizontal">
         @csrf
 @endif
 
@@ -25,7 +25,7 @@
             @enderror
         </div>
     </div>
-<!-- 
+    <!--
     <div class="col-lg-12">
         <div class="form-group @error('organization_id') has-error @enderror">
             {!! Form::label('organization_id', __('Organization'), ['class' => 'control-label']) !!}
@@ -43,25 +43,31 @@
             ) !!}
 
             @error('organization_id')
-                <p class="help-block  text-danger"> {{ $message }} </p>
-            @enderror
+    <p class="help-block  text-danger"> {{ $message }} </p>
+@enderror
         </div>
     </div> -->
 
 
-    
+
     <div class="col-lg-12">
         <div class="form-group @error('provider') has-error @enderror">
             {!! Form::label('provider', __('Providers'), ['class' => 'control-label']) !!}
             <span class="text-required">*</span>
 
             @php
-                if((isset($ttsProfile->type) && $ttsProfile->type == 0)) $providers = config('enums.tts_providers'); 
-                if((isset($ttsProfile->type) && $ttsProfile->type == 1)) $providers = config('enums.stt_providers');
-                if((isset($ttsProfile->type) && $ttsProfile->type == 2)) $providers = config('enums.llm_providers');
-                
+                if (isset($ttsProfile->type) && $ttsProfile->type == 0) {
+                    $providers = config('enums.tts_providers');
+                }
+                if (isset($ttsProfile->type) && $ttsProfile->type == 1) {
+                    $providers = config('enums.stt_providers');
+                }
+                if (isset($ttsProfile->type) && $ttsProfile->type == 2) {
+                    $providers = config('enums.llm_providers');
+                }
+
             @endphp
-            {!! Form::select('provider',  $providers, old('provider', optional($ttsProfile)->provider), [
+            {!! Form::select('provider', $providers, old('provider', optional($ttsProfile)->provider), [
                 'class' => 'form-control',
             ]) !!}
 
@@ -110,7 +116,7 @@
 
     <div class="col-12 {{ $witai ? 'd-block' : 'd-none' }}" id="config_witai">
         <div class="card mb-2">
-            <div class="card-header"> {{ __("WitAi Configuration") }}</div>
+            <div class="card-header"> {{ __('WitAi Configuration') }}</div>
             <div class="card-body">
                 <div class="row">
 
@@ -167,7 +173,7 @@
 
     <div class="col-12 {{ $microsoft_azure ? 'd-block' : 'd-none' }}" id="config_microsoft_azure">
         <div class="card mb-2">
-            <div class="card-header"> {{ __("Microsoft Azure Configuration") }}</div>
+            <div class="card-header"> {{ __('Microsoft Azure Configuration') }}</div>
             <div class="card-body">
                 <div class="row">
 
@@ -225,7 +231,7 @@
 
     <div class="col-12 {{ $generic ? 'd-block' : 'd-none' }}" id="config_generic">
         <div class="card mb-2">
-            <div class="card-header"> {{ __("Generic Configuration") }}</div>
+            <div class="card-header"> {{ __('Generic Configuration') }}</div>
             <div class="card-body">
                 <div class="row">
 
@@ -288,14 +294,14 @@
                         <div class="form-group @error('google_cloud.config') has-error @enderror">
                             {!! Form::label('google_cloud_json', __('Credentials Json File content'), ['class' => 'control-label']) !!}
                             <span class="text-required">*</span>
-                
+
                             {!! Form::textarea('google_cloud[config]', old('google_cloud.config', optional($ttsProfile)->config), [
                                 'class' => 'form-control char-count' . ($errors->has('google_cloud.config') ? ' is-invalid' : null),
                                 'required' => false,
                                 'id' => 'google_cloud_json',
                                 'placeholder' => __('Put credentials Json file content here...'),
                             ]) !!}
-                
+
                             @error('google_cloud.config')
                                 <p class="help-block  text-danger"> {{ $message }} </p>
                             @enderror
@@ -396,86 +402,118 @@
     </div>
 
     @php
-            $openai = $ttsProfile->openai ?? null;
-        @endphp
+        $openai = $ttsProfile->openai ?? null;
+    @endphp
 
-        <div class="col-12 {{ $openai ? 'd-blone' : 'd-none' }}" id="config_openai">
-            <div class="card mb-2">
-                <div class="card-header"> {{ __("OpenAI Configuration") }}</div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-lg-12">
-                            <div class="form-group @error('openai.api_key') has-error @enderror">
-                                {!! Form::label('openai_api_key', __('API Key'), ['class' => 'control-label']) !!}
-                                <span class="text-required">*</span>
+    <div class="col-12 {{ $openai ? 'd-blone' : 'd-none' }}" id="config_openai">
+        <div class="card mb-2">
+            <div class="card-header"> {{ __('OpenAI Configuration') }}</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="form-group @error('openai.api_key') has-error @enderror">
+                            {!! Form::label('openai_api_key', __('API Key'), ['class' => 'control-label']) !!}
+                            <span class="text-required">*</span>
 
-                                {!! Form::text('openai[api_key]', old('openai.api_key', optional($openai)->api_key), [
-                                    'class' => 'form-control' . ($errors->has('openai.api_key') ? ' is-invalid' : null),
-                                    'minlength' => '1',
-                                    'maxlength' => '255',
-                                    'id' => 'openai_api_key',
-                                    'required' => false,
-                                    'placeholder' => __('Enter api key here...'),
-                                ]) !!}
+                            {!! Form::text('openai[api_key]', old('openai.api_key', optional($openai)->api_key), [
+                                'class' => 'form-control' . ($errors->has('openai.api_key') ? ' is-invalid' : null),
+                                'minlength' => '1',
+                                'maxlength' => '255',
+                                'id' => 'openai_api_key',
+                                'required' => false,
+                                'placeholder' => __('Enter api key here...'),
+                            ]) !!}
 
-                                @error('openai.api_key')
-                                    <p class="help-block  text-danger"> {{ $message }} </p>
-                                @enderror
-                            </div>
+                            @error('openai.api_key')
+                                <p class="help-block  text-danger"> {{ $message }} </p>
+                            @enderror
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    
-        @php
-            $groq = $ttsProfile->groq ?? null;
-        @endphp
+    </div>
 
-        <div class="col-12 {{ $groq ? 'd-block' : 'd-none' }}" id="config_groq">
-            <div class="card mb-2">
-                <div class="card-header"> {{ __("Groq Configuration") }}</div>
-                <div class="card-body">
-                    <div class="row">
+    @php
+        $gemini = $ttsProfile->gemini ?? null;
+    @endphp
 
+    <div class="col-12 {{ $gemini ? 'd-blone' : 'd-none' }}" id="config_gemini">
+        <div class="card mb-2">
+            <div class="card-header"> {{ __('Gemini Configuration') }}</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="form-group @error('gemini.api_key') has-error @enderror">
+                            {!! Form::label('gemini_api_key', __('API Key'), ['class' => 'control-label']) !!}
+                            <span class="text-required">*</span>
 
-                        <div class="col-lg-12">
-                            <div class="form-group @error('groq.api_key') has-error @enderror">
-                                {!! Form::label('groq', __('API Key'), ['class' => 'control-label']) !!}
-                                <span class="text-required">*</span>
+                            {!! Form::text('gemini[api_key]', old('gemini.api_key', optional($gemini)->api_key), [
+                                'class' => 'form-control' . ($errors->has('gemini.api_key') ? ' is-invalid' : null),
+                                'minlength' => '1',
+                                'maxlength' => '255',
+                                'id' => 'gemini_api_key',
+                                'required' => false,
+                                'placeholder' => __('Enter api key here...'),
+                            ]) !!}
 
-                                {!! Form::text('groq[api_key]', old('groq.api_key', optional($groq)->api_key), [
-                                    'class' => 'form-control' . ($errors->has('groq.api_key') ? ' is-invalid' : null),
-                                    'minlength' => '1',
-                                    'maxlength' => '255',
-                                    'id' => 'groq',
-                                    'required' => false,
-                                    'placeholder' => __('Enter api key here...'),
-                                ]) !!}
-
-                                @error('cloudflare.api_key')
-                                    <p class="help-block  text-danger"> {{ $message }} </p>
-                                @enderror
-                            </div>
+                            @error('gemini.api_key')
+                                <p class="help-block  text-danger"> {{ $message }} </p>
+                            @enderror
                         </div>
-
-                      
-
-
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-    @if(optional($ttsProfile)->type == 1 || optional($ttsProfile)->type == 2)
-        
+    @php
+        $groq = $ttsProfile->groq ?? null;
+    @endphp
+
+    <div class="col-12 {{ $groq ? 'd-block' : 'd-none' }}" id="config_groq">
+        <div class="card mb-2">
+            <div class="card-header"> {{ __('Groq Configuration') }}</div>
+            <div class="card-body">
+                <div class="row">
+
+
+                    <div class="col-lg-12">
+                        <div class="form-group @error('groq.api_key') has-error @enderror">
+                            {!! Form::label('groq', __('API Key'), ['class' => 'control-label']) !!}
+                            <span class="text-required">*</span>
+
+                            {!! Form::text('groq[api_key]', old('groq.api_key', optional($groq)->api_key), [
+                                'class' => 'form-control' . ($errors->has('groq.api_key') ? ' is-invalid' : null),
+                                'minlength' => '1',
+                                'maxlength' => '255',
+                                'id' => 'groq',
+                                'required' => false,
+                                'placeholder' => __('Enter api key here...'),
+                            ]) !!}
+
+                            @error('cloudflare.api_key')
+                                <p class="help-block  text-danger"> {{ $message }} </p>
+                            @enderror
+                        </div>
+                    </div>
+
+
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (optional($ttsProfile)->type == 1 || optional($ttsProfile)->type == 2)
         @php
             $cloudflare = $ttsProfile->cloudflare ?? null;
         @endphp
 
         <div class="col-12 {{ $cloudflare ? 'd-block' : 'd-none' }}" id="config_cloudflare">
             <div class="card mb-2">
-                <div class="card-header"> {{ __("Cloudflare Configuration") }}</div>
+                <div class="card-header"> {{ __('Cloudflare Configuration') }}</div>
                 <div class="card-body">
                     <div class="row">
 
@@ -525,13 +563,9 @@
                 </div>
             </div>
         </div>
-
-       
-        
-
     @endif
 
-    
+
 
     <div class="col-lg-12">
         <div class="form-group @error('language') has-error @enderror">
@@ -573,15 +607,15 @@
             {!! Form::label('is_default', __('Default ?'), ['class' => 'control-label']) !!}
 
             <div class="checkbox">
-                
-                    {!! Form::checkbox(
-                        'is_default',
-                        '1',
-                        old('is_default', isset($ttsProfile->is_default) && $ttsProfile->is_default == 1 ? true : null),
-                        ['id' => 'is_default', 'class' => '' . ($errors->has('is_default') ? ' is-invalid' : null)],
-                    ) !!}
-                    {{ __('Yes') }}
-                
+
+                {!! Form::checkbox(
+                    'is_default',
+                    '1',
+                    old('is_default', isset($ttsProfile->is_default) && $ttsProfile->is_default == 1 ? true : null),
+                    ['id' => 'is_default', 'class' => '' . ($errors->has('is_default') ? ' is-invalid' : null)],
+                ) !!}
+                {{ __('Yes') }}
+
             </div>
 
             @error('status')
@@ -603,21 +637,21 @@
             setTimeout(() => {
                 $(document).find('#provider').trigger("change")
             }, 1000);
-            
-           /*  var providers = [
-                'gtts',
-                'witai',
-                'google_cloud',
-                'amazon_polly',
-                'cloudflare',
-                'openai',
-                'generic',
-                'microsoft_azure',
-                'groq'
-            ]; */
+
+            /*  var providers = [
+                 'gtts',
+                 'witai',
+                 'google_cloud',
+                 'amazon_polly',
+                 'cloudflare',
+                 'openai',
+                 'generic',
+                 'microsoft_azure',
+                 'groq'
+             ]; */
 
             @php
-              $providervar = json_encode(array_keys($providers));
+                $providervar = json_encode(array_keys($providers));
             @endphp
             var providers = {!! $providervar !!};
 
@@ -629,15 +663,14 @@
                 console.log(val)
 
                 $.each(providers, (index, item) => {
-                    if(val == item){
+                    if (val == item) {
                         $('#config_' + item).addClass('d-block')
                         $('#config_' + item).removeClass('d-none')
 
                         $(item).find("input").each((idx, itm) => {
-                            $(itm).prop('required',true);
+                            $(itm).prop('required', true);
                         })
-                    }
-                    else{
+                    } else {
 
                         $(item).find("input").each((idx, itm) => {
                             $(itm).prop('required', false);

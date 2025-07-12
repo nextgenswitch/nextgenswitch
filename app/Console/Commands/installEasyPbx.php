@@ -45,6 +45,15 @@ class installEasyPbx extends Command
      */
     public function handle()
     {
+
+        if (posix_getuid() === 0){
+           // good to go, running as root
+            $this->info('Running as root user.');
+        } else {
+            $this->error('This command must be run as root or with sudo privileges.');
+            return;
+        }   
+
         $this->info('Welcome to EasyPBX installation!');
         $this->checkDependencies(['sox', 'lame', 'supervisorctl', 'redis-cli', 'iptables', 'mysql', 'apache']);
 
@@ -141,6 +150,10 @@ class installEasyPbx extends Command
             }
 
             $this->setupPermissions();
+
+            $process = Process::fromShellCommandline("supervisorctl reread && supervisorctl update");
+            $process->run();
+
 
             $this->info('EasyPBX installed successfully!');
         } else {
@@ -354,6 +367,8 @@ class installEasyPbx extends Command
             "find {$basePath}/public -type f -exec chmod 644 {} \\;",
             "find {$basePath}/public -type d -exec chmod 755 {} \\;",
             "chmod -R 0777 {$basePath}/storage",
+            "mkdir -p {$basePath}/storage/app/public/records",
+            "cp  {$basePath}/setup/iptables-rules {$basePath}/storage/",
             // "ln -s {$basePath}/public/sounds {$basePath}/storage/app/public/sounds",
             // "ln -s {$basePath}/storage/app/public {$basePath}/public/storage",
             // "ln -s {$basePath}/storage/app/public/records /usr/infosoftbd/nextgenswitch/records"
@@ -380,6 +395,7 @@ class installEasyPbx extends Command
             "{$basePath}/public/sounds" => "{$basePath}/storage/app/public/sounds",
             "{$basePath}/storage/app/public" => "{$basePath}/public/storage",
             "{$basePath}/storage/app/public/records" => "/usr/infosoftbd/nextgenswitch/records",
+            "{$basePath}/storage/iptables-rules" => "/usr/infosoftbd/nextgenswitch/iptables-rules",
         ];
 
         foreach ($links as $target => $link) {
@@ -395,8 +411,9 @@ class installEasyPbx extends Command
             } else {
                 $this->warn("Symbolic link already exists: {$link}");
             }
+        
         }
-
+       
 
         $this->info('Project permissions and symbolic links set successfully.');
     }

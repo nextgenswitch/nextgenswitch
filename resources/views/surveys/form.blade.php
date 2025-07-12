@@ -121,7 +121,7 @@
     </div>
 
 
-    <div class="col-lg-12">
+    <div class="col-lg-6">
         <div class="form-group @error('max_retry') has-error @enderror">
             {!! Form::label('max_retry', __('Retry If No Input'), ['class' => 'control-label']) !!}
             <span class="text-required">*</span>
@@ -139,7 +139,23 @@
             @enderror
         </div>
     </div>
+    <div class="col-lg-6">
+        <div class="form-group @error('timeout') has-error @enderror">
+            {!! Form::label('timeout', __('Timeout'), ['class' => 'control-label']) !!}
+           
 
+            {!! Form::number('timeout', old('timeout', optional($survey)->timeout), [
+                'class' => 'form-control' . ($errors->has('timeout') ? ' is-invalid' : null),
+                'minlength' => '0',
+                'maxlength' => '30',
+                'placeholder' => __('Enter timeout in sec'),
+            ]) !!}
+
+            @error('timeout')
+                <p class="help-block  text-danger"> {{ $message }} </p>
+            @enderror
+        </div>
+    </div>
 
     <div class="col-lg-6">
         <div class="form-group @error('email') has-error @enderror">

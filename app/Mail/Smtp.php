@@ -8,15 +8,18 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Config;
 
-class Smtp implements MailService {
+class Smtp implements MailService
+{
 
     protected $options = [];
 
-    function __construct( $options ) {
+    function __construct($options)
+    {
         $this->options = $options;
     }
 
-    public function send( $to, $subject, $body, $template ) {
+    public function send($to, $subject, $body, $template)
+    {
 
         $data = [
             'to'       => $to,
@@ -25,7 +28,7 @@ class Smtp implements MailService {
             'template' => $template,
         ];
 
-        dispatch( new ProcessMail($this->options, $data) );
+        dispatch(new ProcessMail($this->options, $data));
         return 'Mail waiting to be sent';
     }
 }

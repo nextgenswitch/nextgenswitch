@@ -68,7 +68,8 @@ class RingGroupWorker{
             $this->redirect_failed_destination($ring_group,$parent_call_id);
             return false;
         }
-        Cache::put("RingExtension:" . $parent_call_id,$call_to_send,3600);      
+        Cache::put("RingExtension:" . $parent_call_id,$call_to_send,3600);  
+        //Cache::put("RingCall:" . $parent_call_id,$group_calls,3600);      
         return true;       
 
     }
@@ -109,7 +110,8 @@ class RingGroupWorker{
     function cache_cleanup($call_id){
 
         $group_calls = Cache::pull("RingCall:" . $call_id,[]);
-            Log::debug($group_calls);
+        Log::debug("hangup exisitng calls on ring group");
+        Log::debug($group_calls);
 
             foreach($group_calls as $queue_call)
                 self::hangup($queue_call);
@@ -150,6 +152,7 @@ class RingGroupWorker{
             Log::info($status_data);
 
             if(Cache::get("RingCallStatus:" .$parent_call_id,-1) == -1){ // ring call does not exist
+                Log::info("Ring call not exist !! " . "RingCallStatus:" .$parent_call_id);
                 $this->cache_cleanup($parent_call_id);
                 return;
             }
@@ -158,7 +161,7 @@ class RingGroupWorker{
             
             $group_calls = Cache::pull("RingCall:" . $parent_call_id,[]);
             $key = array_search($status_data['call_id'], $group_calls);
-
+            Log::info("Ring status callback " . $key);
             if((int) $status_data['status-code'] < CallStatusEnum::Disconnected->value) {              
                 if($key === false) $group_calls[] = $status_data['call_id'];
                 Cache::put("RingCall:" . $parent_call_id,$group_calls,3600);
@@ -205,13 +208,17 @@ class RingGroupWorker{
             $response->redirect(route('api.func_call',['func_id'=>$ring_group->function_id,'dest_id'=>$ring_group->destination_id]));
          
         }elseif(request()->query('join') == 1){
-           
+            Cache::put("RingCallStatus:" .$data["call_id"],CallStatusEnum::Dialing->value,3600);
             if($this->send_calls($data["call_id"])){
                 if($ring_group->answer_channel && $ring_group->ringback_tone)
-                $response->play(storage_path( 'app/public/sounds/ring_tone.wav' ),['loop'=>10,'localfile'=>true]);   
-                Cache::put("RingCallStatus:" .$data["call_id"],CallStatusEnum::Dialing->value,3600);
-            }else
+                $response->play(storage_path( 'app/public/sounds/ring_tone.wav' ),['loop'=>10,'localfile'=>true]);  
+                //Log::debug("storing ring call here " . "RingCallStatus:" .$data["call_id"]);
+                Cache::put("RingCallStatus:" .$data["call_id"],CallStatusEnum::Ringing->value,3600);
+            }else{
+                Cache::forget("RingCallStatus:" .$data["call_id"]);
                 $response->leave();
+            }
+                
             
         }else{
          

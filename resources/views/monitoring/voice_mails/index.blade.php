@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @push('css')
-<link rel="stylesheet" type="text/css" href="{{ asset('js/flatpickr/flatpickr.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('js/flatpickr/flatpickr.min.css') }}">
 @endpush
 
 @section('content')
@@ -43,11 +43,12 @@
                                         aria-haspopup="true" aria-expanded="false">
                                         {{ __('Export') }}
                                     </button>
-                                    <div class="dropdown-menu shadow-dropdown dropdown-menu-right" aria-labelledby="btnGroupDrop1">
+                                    <div class="dropdown-menu shadow-dropdown dropdown-menu-right"
+                                        aria-labelledby="btnGroupDrop1">
                                         <a class="dropdown-item" href="#" id="csvD">{{ __('CSV') }}</a>
                                         <a class="dropdown-item" href="#" id="printTable">{{ __('Print') }}</a>
                                     </div>
-                                     
+
                                 </div>
 
 
@@ -58,13 +59,14 @@
                                             data-toggle="tooltip" data-placement="left" title="{{ __('Filter By') }}"><i
                                                 class="fa fa-filter"></i></span></button>
 
-                                    <div class="dropdown-menu shadow-dropdown dropdown-menu-right" aria-labelledby="btnFilter">
+                                    <div class="dropdown-menu shadow-dropdown dropdown-menu-right"
+                                        aria-labelledby="btnFilter">
                                         <a class="dropdown-item" href="{!! route('monitoring.voice_mails.index') !!}">{{ __('All') }}</a>
-                                        
+
                                     </div>
                                 </div>
 
-                                
+
 
                             </div>
 
@@ -76,7 +78,7 @@
                         @include('monitoring.voice_mails.table')
                     </div>
 
-                
+
                 </div>
             </div>
 
@@ -85,19 +87,54 @@
 
         </div>
     </div>
+
+    <div class="modal fade" id="seeMoreModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('Transcript') }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+
+
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 
+
 @push('script')
-<script src="{{ asset('js/flatpickr/flatpickr.js') }}"></script>
-<script src="{{ asset('js/play.js') }}"></script>
+    <script src="{{ asset('js/flatpickr/flatpickr.js') }}"></script>
+    <script src="{{ asset('js/play.js') }}"></script>
     <script>
         $(function() {
 
-            $('#filter_group').change(function(){
-                window.location.href = "{{URL::to('/monitoring/voice-record-logs?filter=voice_record_id:')}}" + $(this).val();
+            const urlParams = new URLSearchParams(window.location.search);
+            const filterValue = urlParams.get('filter');
+            if (filterValue && filterValue.startsWith('voice_record_id:')) {
+                const id = filterValue.split(':')[1];
+                $('#filter_group').val(id);
+            }
+
+            $('#filter_group').change(function() {
+                window.location.href =
+                    "{{ URL::to('/monitoring/voice-record-logs?filter=voice_record_id:') }}" + $(this)
+                    .val();
             });
-            
+
+
+            $("#crud_contents").on('click', '.see-more', function(e) {
+                e.preventDefault();
+                var transcript = $(this).data('transcript');
+                $('#seeMoreModal .modal-body').html(transcript);
+                $("#seeMoreModal").modal('show');
+            });
+
         })
     </script>
 @endpush

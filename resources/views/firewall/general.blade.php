@@ -14,7 +14,7 @@
     <div class="col-md-6">
         <div class="row">
             <div class="col-6 text-right">
-                <label for="enable_firewall"> Enable Firewall </label>
+                <label for="enable_firewall"> {{ __('Enable Firewall') }} </label>
             </div>
             <div class="col-6">
                 <div class="toggle">
@@ -32,7 +32,7 @@
     <div class="col-md-6">
         <div class="row">
             <div class="col-4">
-                <label for="failed_attempts_allow"> Failed attempts allow </label>
+                <label for="failed_attempts_allow"> {{ __('Failed attempts allow') }} </label>
                 <span class="text-required">*</span>
             </div>
 
@@ -62,7 +62,7 @@
     <div class="col-md-6">
         <div class="row">
             <div class="col-6 text-right">
-                <label for="ban_time"> Ban Time </label>
+                <label for="ban_time"> {{ __('Ban Time (seconds)') }} </label>
                 <span class="text-required">*</span>
             </div>
 
@@ -86,21 +86,17 @@
     <div class="col-md-6">
         <div class="row">
             <div class="col-4">
-                <label for="find_time"> Find time (seconds) </label>
+                <label for="find_time"> {{ __('Find time (seconds)') }} </label>
                 <span class="text-required">*</span>
             </div>
 
             <div class="col-8">
                 <div class="form-group @error('find_time') has-error @enderror">
-                    {!! Form::number(
-                        'settings[find_time]',
-                        old('settings.find_time', $settings['find_time']),
-                        [
-                            'class' => 'form-control' . ($errors->has('find_time') ? ' is-invalid' : null),
-                            'required' => true,
-                            'placeholder' => __('Enter find time here...'),
-                        ],
-                    ) !!}
+                    {!! Form::number('settings[find_time]', old('settings.find_time', $settings['find_time']), [
+                        'class' => 'form-control' . ($errors->has('find_time') ? ' is-invalid' : null),
+                        'required' => true,
+                        'placeholder' => __('Enter find time here...'),
+                    ]) !!}
                     @error('find_time')
                         <p class="help-block  text-danger"> {{ $message }} </p>
                     @enderror
@@ -114,7 +110,7 @@
 
 <div class="row">
     <div class="col-3 text-right">
-        <label for="notification_email">Notification email</label>
+        <label for="notification_email">{{ __('Notification email') }}</label>
     </div>
     <div class="col-9">
         <div class="form-group @error('notification_email') has-error @enderror">

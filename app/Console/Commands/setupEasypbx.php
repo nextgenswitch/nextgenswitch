@@ -10,59 +10,56 @@ use Illuminate\Support\Facades\Artisan;
 
 class setupEasypbx extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'easypbx:setup';
+    protected $signature = 'easypbx:setup
+        {--org= : Organization name}
+        {--domain= : Organization domain}
+        {--contact= : Contact number}
+        {--email= : Email address}
+        {--password= : Password}
+        {--address= : Company address}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Command description';
+    protected $description = 'Initial setup for EasyPBX system';
 
-    /**
-     * Execute the console command.
-     */
     public function handle()
     {
-        $orgName = $this->ask('Enter your organization name', 'NextGenSwitch');
-        $domain = $this->ask('Enter your organization domain', 'localhost');
-        $contact = $this->ask('Enter your contact no', '+100000000');
+        $orgName = $this->option('org') ?? $this->ask('Enter your organization name', 'NextGenSwitch');
+        $domain = $this->option('domain') ?? $this->ask('Enter your organization domain', 'localhost');
+        $contact = $this->option('contact') ?? $this->ask('Enter your contact no', '+100000000');
 
-        $email = null;
+        $email = $this->option('email');
         while (!$email) {
             $email = $this->ask('Enter your email address');
-
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $this->error('Please provide a valid email address.');
                 $email = null;
             }
         }
 
-
-        $pass = null;
+        $pass = $this->option('password');
         while (!$pass) {
             $pass = $this->secret('Enter your password (at least 6 characters)');
-
-            if (empty($pass) || strlen($pass) < 6) {
+            if (strlen($pass) < 6) {
                 $this->error('Please provide a valid password.');
                 $pass = null;
             }
         }
 
-        $address = $this->ask('Enter your company address', "Change it");
+        $address = $this->option('address') ?? $this->ask('Enter your company address', 'Change it');
 
         $this->info("Organization : $orgName");
-        $this->info("Domian : $domain");
-        $this->info("Contact no : $contact");
-        $this->info("Email Address : $email");
-        $this->info("Address : $address");
+        $this->info("Domain       : $domain");
+        $this->info("Contact no   : $contact");
+        $this->info("Email        : $email");
+        $this->info("Address      : $address");
 
-        if ($this->confirm('Do you want to continue?')) {
+        $isInteractive = $this->option('org') === null ||
+            $this->option('domain') === null ||
+            $this->option('contact') === null ||
+            $this->option('email') === null ||
+            $this->option('password') === null ||
+            $this->option('address') === null;
+
+        if (!$isInteractive || $this->confirm('Do you want to continue?')) {
 
             User::createRoleAndPermisssions();
 
@@ -72,22 +69,21 @@ class setupEasypbx extends Command
                 'contact_no' => $contact,
                 'email' => $email,
                 'address' => $address,
-                'default' => true,
-                'is_primary' => true,
+                'is_default' => 1,
+                'is_primary' => 1,
             ]);
-
 
             $user = User::create([
                 'organization_id' => $organization->id,
                 'name' => $orgName,
                 'email' => $email,
                 'password' => Hash::make($pass),
+                'status' => 1
             ]);
-
 
             Artisan::call("easypbx:permission superAdmin $user->id");
 
-            $this->info('Done! please login from web portal http://127.0.0.1/');
+            $this->info('Done! Please login from web portal http://127.0.0.1/');
         }
     }
 }
