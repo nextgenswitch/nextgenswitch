@@ -36,26 +36,32 @@ class SetupController extends Controller
             return redirect()->route('login')->with('error_message', 'Setup already completed. Please log in.');
         }
 
+        
+
         $data = $request->validate([
             'org_name' => 'required|string|max:255',
-            'domain' => ['required', 'regex:/^(?!:\/\/)([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/'],
+            'domain' => ['nullable', 'regex:/^(?!:\/\/)([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/'],
             'contact' => 'required|string|max:20',
             'email' => 'required|email|max:255',
             'password' => 'required|string|min:6',
             'address' => 'nullable|string|max:255',
         ]);
 
+        
+
         // Here you would typically save the data to the database or perform other actions.
         try {
+
             Artisan::call('easypbx:setup', [
                 '--org' => $data['org_name'],
-                '--domain' => $data['domain'],
+                '--domain' => $data['domain'] ?? 'localhost',
                 '--contact' => $data['contact'],
                 '--email' => $data['email'],
                 '--password' => $data['password'],
-                '--address' => $data['address'] ?? null,
+                '--address' => $data['address'] ?? "Not Provided",
             ]);
         } catch (\Exception $e) {
+            die($e->getMessage());
             return redirect()->back()->withInput()->with(['error_message' => 'Setup failed: ' . $e->getMessage()]);
         }
 

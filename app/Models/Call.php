@@ -89,6 +89,10 @@ class Call extends Model {
         return $this->belongsTo( 'App\Models\Organization', 'organization_id' );
     }
 
+    public function bridgeCall() {
+        return $this->hasMany( 'App\Models\Call', 'parent_call_id' );
+    }
+
     /**
      * Get the sipUser for this model.
      *

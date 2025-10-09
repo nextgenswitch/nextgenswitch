@@ -78,6 +78,7 @@ class setupEasypbx extends Command
                 'name' => $orgName,
                 'email' => $email,
                 'password' => Hash::make($pass),
+                'role' => 'superAdmin',
                 'status' => 1
             ]);
 

@@ -1,6 +1,6 @@
 <header class="app-header">
 
-    
+
 
     <a class="app-sidebar__toggle" href="#" data-toggle="sidebar" aria-label="Hide Sidebar"></a>
 
@@ -57,19 +57,19 @@
                 data-toggle="dropdown" aria-label="Open Profile Menu">
                 <img src="{{ asset('images/profile.png') }}" height="48px" alt="">
                 <div class="author">
-                    <p class="name"> {{ session('agent')->username }} </p>
+                    <p class="name"> </p>
                     <span class="title">Agent</span>
                 </div>
             </a>
 
             <ul class="shadow-dropdown dropdown-menu settings-menu dropdown-menu-right">
-                @if (auth()->check() &&  auth()->user()->is_user)
-                    <li>
-                        <a class="dropdown-item" href="{{ route('users.user.index') }}">
-                            <i data-feather="users"></i> {{ __('Users') }}
-                        </a>
-                    </li>
-                @endif
+
+                <li>
+                    <a class="dropdown-item" href="{{ route('users.user.index') }}">
+                        <i data-feather="users"></i> {{ __('Users') }}
+                    </a>
+                </li>
+
 
                 <li>
                     <a class="dropdown-item" href="{{ route('user.profile.index') }}">

@@ -10,12 +10,8 @@ class installEasyPbx extends Command
 {
 
     /*  EXAMPLE USAGE
-        php artisan easypbx:install \
-        --db-host=localhost \
-        --db-port=3306 \
-        --db-user=root \
-        --db-pass=secret \
-        --db-name=easypbx
+        php artisan easypbx:install --db-driver=mysql --db-url="mysql://user:pass@localhost:3306/easypbx"
+        php artisan easypbx:install --db-driver=sqlite --sqlite-path="/full/path/to/database.sqlite"
     */
 
 
@@ -25,11 +21,9 @@ class installEasyPbx extends Command
      * @var string
      */
     protected $signature = 'easypbx:install
-    {--db-host= : Database host}
-    {--db-port= : Database port}
-    {--db-user= : Database user}
-    {--db-pass= : Database password}
-    {--db-name= : Database name}';
+    {--db-driver= : Database driver (mysql|sqlite)}
+    {--db-url= : Database URL for MySQL (e.g., mysql://user:pass@host:3306/dbname)}
+    {--sqlite-path= : SQLite database file path}';
 
 
     /**
@@ -45,22 +39,109 @@ class installEasyPbx extends Command
      */
     public function handle()
     {
-
-        if (posix_getuid() === 0){
-           // good to go, running as root
-            $this->info('Running as root user.');
+        // Ensure running as root (or with sudo)
+        $isRoot = false;
+        if (PHP_OS_FAMILY !== 'Windows') {
+            if (function_exists('posix_geteuid')) {
+                $isRoot = posix_geteuid() === 0;
+            } else {
+                $uid = null;
+                try {
+                    $uid = @trim((string) shell_exec('id -u 2>/dev/null'));
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+                if ($uid !== '' && ctype_digit($uid)) {
+                    $isRoot = ($uid === '0');
+                } else {
+                    $user = @trim((string) shell_exec('whoami 2>/dev/null'));
+                    $isRoot = ($user === 'root');
+                }
+            }
         } else {
+            // On Windows, skip root check
+            $isRoot = true;
+        }
+
+        if (!$isRoot) {
             $this->error('This command must be run as root or with sudo privileges.');
             return;
-        }   
+        }
 
-        $this->info('Welcome to EasyPBX installation!');
-        $this->checkDependencies(['sox', 'lame', 'supervisorctl', 'redis-cli', 'iptables', 'mysql', 'apache']);
+        $this->info('Welcome to NextGenSwitch installation!');
+        //$this->checkDependencies(['sox', 'lame', 'supervisorctl', 'redis-cli', 'iptables', 'mysql', 'apache']);
+        $this->checkDependencies(['sox', 'lame', 'supervisorctl','apache']);
 
         if (!(file_exists('/usr/infosoftbd/nextgenswitch/nextgenswitch') && !is_dir('/usr/infosoftbd/nextgenswitch/nextgenswitch'))) {
-            $this->error('EasyPBX is not installed. Please install first.');
-            return;
+            $this->warn('NextGenSwitch not detected. Attempting to unzip bundled package...');
+
+            $zipPath = base_path('setup/nextgenswitch.zip');
+            $destDir = '/usr/infosoftbd/nextgenswitch';
+
+            if (!file_exists($zipPath)) {
+                $this->error("Package not found: {$zipPath}");
+                return;
+            }
+
+            if (!is_dir($destDir)) {
+                if (!@mkdir($destDir, 0755, true) && !is_dir($destDir)) {
+                    $this->error("Failed to create directory: {$destDir}");
+                    return;
+                }
+            }
+
+            $unpacked = false;
+
+            // Try system unzip first
+            $unzipBin = trim((string) @shell_exec('command -v unzip 2>/dev/null'));
+            if ($unzipBin !== '') {
+                $cmd = escapeshellcmd($unzipBin) . ' -o ' . escapeshellarg($zipPath) . ' -d ' . escapeshellarg($destDir);
+                $process = Process::fromShellCommandline($cmd);
+                $process->run();
+                if ($process->isSuccessful()) {
+                    $unpacked = true;
+                    $this->info("Unzipped with system unzip to {$destDir}");
+                } else {
+                    $this->warn('System unzip failed: ' . $process->getErrorOutput());
+                }
+            }
+
+            // Fallback to ZipArchive if available
+            if (!$unpacked && class_exists('\ZipArchive')) {
+                $zip = new \ZipArchive();
+                if ($zip->open($zipPath) === true) {
+                    $zip->extractTo($destDir);
+                    $zip->close();
+                    $unpacked = true;
+                    $this->info("Unzipped with ZipArchive to {$destDir}");
+                }
+            }
+
+            if (!$unpacked) {
+                $this->error('Failed to unpack NextGenSwitch. Please install manually.');
+                return;
+            }
+
+            // Ensure required directories after unzip
+            try {
+                $logsDir = rtrim($destDir, '/') . '/logs';
+                $mediaDir = rtrim($destDir, '/') . '/media';
+                foreach ([$logsDir, $mediaDir] as $dirToEnsure) {
+                    if (!is_dir($dirToEnsure)) {
+                        if (!@mkdir($dirToEnsure, 0755, true) && !is_dir($dirToEnsure)) {
+                            $this->warn("Failed to create directory: {$dirToEnsure}");
+                        } else {
+                            $this->info("Created directory: {$dirToEnsure}");
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $this->warn('Post-unzip directory setup encountered an error: ' . $e->getMessage());
+            }
         }
+
+        // Ensure system user and permissions for NextGenSwitch
+        $this->ensureNextGenSwitchUserAndPermissions();
 
         if (!$this->checkPhpExtensions()) {
             $this->error('Please install the missing PHP extensions.');
@@ -71,83 +152,129 @@ class installEasyPbx extends Command
 
         $this->updateHttpdConfig(base_path());
 
+        // Ensure NextGenSwitch lua config from sample and set API URL
+        $this->ensureLuaConfig('http://127.0.0.1/api/switch');
 
+        // Choose database driver and connection details
+        $dbDriver = $this->option('db-driver') ?? $this->choice('Choose database driver', ['mysql', 'sqlite'], 'mysql');
 
-        $dbHost = $this->option('db-host') ?? $this->ask('Enter your database host', 'localhost');
-        $dbHostPort = $this->option('db-port') ?? $this->ask('Enter your database port', '3306');
-        $dbUser = $this->option('db-user') ?? $this->ask('Enter your database user', 'root');
-        $dbPass = $this->option('db-pass') ?? $this->secret('Enter your database password');
-        $dbName = $this->option('db-name') ?? $this->ask('Enter your database name', 'easypbx');
+        $dbUrl = null;
+        $sqlitePath = null;
 
+        if ($dbDriver === 'mysql') {
+            $dbUrl = $this->option('db-url') ?? $this->ask('Enter your MySQL DATABASE_URL', 'mysql://root@localhost:3306/easypbx');
+            $this->info("Database Driver : mysql");
+            $this->info("Database URL    : {$dbUrl}");
+        } else {
+            $defaultSqlitePath = storage_path('database.sqlite');
+            $sqlitePath = $this->option('sqlite-path') ?? $this->ask('Enter path for SQLite database file', $defaultSqlitePath);
+            $this->info("Database Driver : sqlite");
+            $this->info("SQLite Path     : {$sqlitePath}");
+        }
 
-        $this->info("Database Host : $dbHost");
-        $this->info("Database Port : $dbHostPort");
-        $this->info("Database User : $dbUser");
-        $this->info("Database Password : $dbPass");
-        $this->info("Database Name : $dbName");
-
-        $interactive = !$this->option('db-host') || !$this->option('db-port') || !$this->option('db-user') || !$this->option('db-pass') || !$this->option('db-name');
+        $interactive = is_null($this->option('db-driver'))
+            || ($dbDriver === 'mysql' && is_null($this->option('db-url')))
+            || ($dbDriver === 'sqlite' && is_null($this->option('sqlite-path')));
 
         if (!$interactive || $this->confirm('Do you want to continue?')) {
 
-            $this->info('Installing EasyPBX...');
+            $this->info('Installing NextGenSwitch...');
 
             $envPath = base_path('.env');
             $envContent = file_get_contents($envPath);
 
-            $envContent = preg_replace('/DB_HOST=.*/', "DB_HOST=$dbHost", $envContent);
-            $envContent = preg_replace('/DB_PORT=.*/', "DB_PORT=$dbHostPort", $envContent);
-            $envContent = preg_replace('/DB_DATABASE=.*/', "DB_DATABASE=$dbName", $envContent);
-            $envContent = preg_replace('/DB_USERNAME=.*/', "DB_USERNAME=$dbUser", $envContent);
-            $envContent = preg_replace('/DB_PASSWORD=.*/', "DB_PASSWORD=$dbPass", $envContent);
+            // Helper to upsert .env key
+            $upsertEnv = function (string $content, string $key, string $value) {
+                $pattern = '/^' . preg_quote($key, '/') . '=.*/m';
+                if (preg_match($pattern, $content)) {
+                    return preg_replace($pattern, $key . '=' . $value, $content);
+                }
+                return rtrim($content, "\r\n") . PHP_EOL . $key . '=' . $value . PHP_EOL;
+            };
+
+            if ($dbDriver === 'mysql') {
+                // Use DATABASE_URL for MySQL
+                $envContent = $upsertEnv($envContent, 'DB_CONNECTION', 'mysql');
+                $envContent = $upsertEnv($envContent, 'DATABASE_URL', $dbUrl);
+            } else {
+                // Ensure sqlite file exists
+                $dir = dirname($sqlitePath);
+                if (!is_dir($dir)) {
+                    @mkdir($dir, 0755, true);
+                }
+                if (!file_exists($sqlitePath)) {
+                    @touch($sqlitePath);
+                    @chmod($sqlitePath, 0777);
+                }
+
+                $envContent = $upsertEnv($envContent, 'DB_CONNECTION', 'sqlite');
+                $envContent = $upsertEnv($envContent, 'DB_DATABASE', $sqlitePath);
+            }
+
+            // Detect Redis availability and connectivity; set cache driver accordingly
+            $redisHost = env('REDIS_HOST', '127.0.0.1');
+            $redisPort = (int) env('REDIS_PORT', 6379);
+            $hasClient = extension_loaded('redis') || class_exists('Predis\\Client');
+            $canConnect = false;
+            if ($hasClient) {
+                try {
+                    if (extension_loaded('redis')) {
+                        $r = new \Redis();
+                        if (@$r->connect($redisHost, $redisPort, 1.0)) {
+                            $pong = @$r->ping();
+                            $canConnect = ($pong === true) || ($pong === '+PONG') || ($pong === 'PONG');
+                        }
+                    } elseif (class_exists('Predis\\Client')) {
+                        $client = new \Predis\Client([
+                            'scheme' => 'tcp',
+                            'host' => $redisHost,
+                            'port' => $redisPort,
+                        ]);
+                        $client->connect();
+                        $client->ping();
+                        $canConnect = true;
+                    }
+                } catch (\Throwable $e) {
+                    $canConnect = false;
+                }
+            }
+
+            if ($hasClient && $canConnect) {
+                $envContent = $upsertEnv($envContent, 'CACHE_DRIVER', 'redis');
+                config(['cache.default' => 'redis']);
+                $this->info('Cache driver set to redis.');
+            } else {
+                $envContent = $upsertEnv($envContent, 'CACHE_DRIVER', 'file');
+                config(['cache.default' => 'file']);
+                $this->warn('Redis not available; using file cache.');
+            }
 
             file_put_contents($envPath, $envContent);
 
-            try {
-                $pdo = new \PDO("mysql:host=$dbHost;port=$dbHostPort", $dbUser, $dbPass);
-                $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            // Removed database existence check and creation per request
 
-                // Check if the database already exists
-                $query = $pdo->query("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$dbName'");
-                if ($query->rowCount() > 0) {
-                    $this->warn("Database `$dbName` already exists. Installation terminated.");
-                    return;
-                }
-
-                // Create the database if it does not exist
-                $pdo->exec("CREATE DATABASE IF NOT EXISTS `$dbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
-                $this->info("Database `$dbName` created successfully.");
-            } catch (\PDOException $e) {
-                $this->error('Failed to create the database: ' . $e->getMessage());
-                return;
-            }
-
-            $sqlFilePath = base_path('setup/easypbx.sql');
-            if (file_exists($sqlFilePath)) {
-                $command = sprintf(
-                    'mysql -h%s -P%s -u%s -p%s %s < %s',
-                    escapeshellarg($dbHost),
-                    escapeshellarg($dbHostPort),
-                    escapeshellarg($dbUser),
-                    escapeshellarg($dbPass),
-                    escapeshellarg($dbName),
-                    escapeshellarg($sqlFilePath)
-                );
-
-                $output = null;
-                $returnVar = null;
-                exec($command, $output, $returnVar);
-
-                if ($returnVar !== 0) {
-                    $this->error('Failed to import the SQL file.');
-                    return;
-                } else {
-                    $this->info('SQL file imported successfully.');
-                }
+            // Run Laravel migrations using selected driver
+            if ($dbDriver === 'mysql') {
+                config([
+                    'database.default' => 'mysql',
+                    'database.connections.mysql.url' => $dbUrl,
+                ]);
             } else {
-                $this->error('SQL file not found at ' . $sqlFilePath);
+                config([
+                    'database.default' => 'sqlite',
+                    'database.connections.sqlite.database' => $sqlitePath,
+                ]);
+            }
+
+            $exitCode = $this->call('migrate', [
+                '--force' => true,
+            ]);
+
+            if ($exitCode !== 0) {
+                $this->error('Failed to run database migrations.');
                 return;
             }
+            $this->info('Database migrations ran successfully.');
 
             $this->setupPermissions();
 
@@ -155,7 +282,7 @@ class installEasyPbx extends Command
             $process->run();
 
 
-            $this->info('EasyPBX installed successfully!');
+            $this->info('NextGenSwitch installed successfully!');
         } else {
             $this->info('Installation cancelled.');
         }
@@ -345,6 +472,122 @@ class installEasyPbx extends Command
         } else {
             $this->info("Unsupported distribution for HTTPD configuration.");
         }
+    }
+
+    private function ensureNextGenSwitchUserAndPermissions(): void
+    {
+        $user = 'nextgenswitch';
+        $group = 'nextgenswitch';
+        $dir = '/usr/infosoftbd/nextgenswitch';
+
+        $nologin = '/bin/false';
+        if (file_exists('/usr/sbin/nologin')) {
+            $nologin = '/usr/sbin/nologin';
+        } elseif (file_exists('/sbin/nologin')) {
+            $nologin = '/sbin/nologin';
+        }
+
+        $commands = [
+            // Create group if not exists
+            "getent group {$group} > /dev/null 2>&1 || groupadd --system {$group}",
+            // Create user if not exists
+            "id -u {$user} > /dev/null 2>&1 || useradd --system --gid {$group} --no-create-home --shell {$nologin} {$user}",
+            // Ensure directory exists
+            "mkdir -p {$dir}",
+            // Ownership and sane permissions
+            "chown -R {$user}:{$group} {$dir}",
+            "find {$dir} -type d -exec chmod 755 {} \\; 2>/dev/null || true",
+            "find {$dir} -type f -exec chmod 644 {} \\; 2>/dev/null || true",
+            // Ensure executables have execute permission
+            "chmod 755 {$dir}/nextgenswitch {$dir}/nextgenswitchctl 2>/dev/null || true",
+        ];
+
+        foreach ($commands as $command) {
+            $process = Process::fromShellCommandline($command);
+            $process->run();
+
+            if (!$process->isSuccessful()) {
+                // Not fatal for all steps; warn and continue
+                $this->warn("Command failed or not applicable: {$command}\n" . $process->getErrorOutput());
+            } else {
+                $this->info("Executed: {$command}");
+            }
+        }
+
+        $this->info("Ensured system user '{$user}' and access to {$dir}");
+    }
+
+    private function ensureLuaConfig(string $apiUrl): void
+    {
+        $configDir = '/usr/infosoftbd/nextgenswitch/lua';
+        $configFile = $configDir . '/config.lua';
+        $sampleFile = $configFile . '.sample';
+
+        if (!is_dir($configDir)) {
+            $this->warn("Lua config directory not found: {$configDir}");
+            return;
+        }
+
+        // Replace config.lua with sample, if sample exists
+        if (file_exists($sampleFile)) {
+            if (file_exists($configFile)) {
+                @unlink($configFile);
+            }
+            if (!@copy($sampleFile, $configFile)) {
+                $this->warn("Failed to copy sample config: {$sampleFile} -> {$configFile}");
+                // Continue; we may still be able to edit existing file if present
+            } else {
+                $this->info("Initialized Lua config from sample: {$configFile}");
+            }
+        } elseif (!file_exists($configFile)) {
+            $this->warn("Neither config.lua nor config.lua.sample found in {$configDir}");
+            return;
+        }
+
+        // Ensure SERVER_API_URL is set to the desired value
+        if (!file_exists($configFile) || !is_readable($configFile)) {
+            $this->warn("Config file not readable: {$configFile}");
+            return;
+        }
+
+        $contents = @file_get_contents($configFile);
+        if ($contents === false) {
+            $this->warn("Failed to read: {$configFile}");
+            return;
+        }
+
+        $updated = false;
+
+        // Build replacement lines
+        $newLineLocal = 'local SERVER_API_URL = "' . $apiUrl . '"';
+        $newLineGlobal = 'SERVER_API_URL = "' . $apiUrl . '"';
+
+        if (preg_match('/(^|\n)\s*local\s+SERVER_API_URL\s*=\s*([\"\"]).*?\2/s', $contents)) {
+            $contents = preg_replace('/(^|\n)\s*local\s+SERVER_API_URL\s*=\s*([\"\"]).*?\2/s', "\n{$newLineLocal}", $contents, 1, $count);
+            $updated = $updated || ($count > 0);
+        }
+
+        // Else try replacing global assignment
+        if (!$updated && preg_match('/(^|\n)\s*SERVER_API_URL\s*=\s*([\"\"]).*?\2/s', $contents)) {
+            $contents = preg_replace('/(^|\n)\s*SERVER_API_URL\s*=\s*([\"\"]).*?\2/s', "\n{$newLineGlobal}", $contents, 1, $count);
+            $updated = $updated || ($count > 0);
+        }
+
+        // If still not present, append a new line
+        if (!$updated) {
+            $contents = rtrim($contents, "\r\n") . "\n{$newLineGlobal}\n";
+            $updated = true;
+        }
+
+        // Normalize any accidental backslash-quoted values to single-quoted Lua strings
+        $contents = preg_replace('/(^|\\n)\\s*(local\\s+)?SERVER_API_URL\\s*=\\s*\\\\\"(.*?)\\\\\"/s', '$1$2SERVER_API_URL = \'$3\'', $contents);
+
+        if (@file_put_contents($configFile, $contents) === false) {
+            $this->warn("Failed to write updated config: {$configFile}");
+            return;
+        }
+
+        $this->info("Updated SERVER_API_URL in {$configFile} to {$apiUrl}");
     }
 
     private function getHttpdConfigDir(string $distro): ?string

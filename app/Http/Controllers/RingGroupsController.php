@@ -342,6 +342,8 @@ class RingGroupsController extends Controller {
             $ids  = explode( ',', $data['ids'] );
 
             if ( isset( $data['mass_delete'] ) && $data['mass_delete'] == 1 ) {
+                $extension_ids = RingGroup::whereIn( 'id', $ids )->pluck( 'extension_id' )->toArray();
+                Extension::whereIn( 'id', $extension_ids )->delete();
                 RingGroup::whereIn( 'id', $ids )->delete();
             } else {
 

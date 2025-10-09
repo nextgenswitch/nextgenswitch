@@ -293,7 +293,14 @@ class CallParkingsController extends Controller
             $data = $request->all();
             $ids =  explode(',',$data['ids']);
             if(isset($data['mass_delete']) && $data['mass_delete'] == 1){
+                $cparkings = CallParking::whereIn('id',$ids)->get();
+                
+                foreach($cparkings as $cparking){
+                    $cparking->removeExtensions();
+                }
+
                 CallParking::whereIn('id',$ids)->delete();
+
             }else{
 
                 foreach($data as $field=>$val){

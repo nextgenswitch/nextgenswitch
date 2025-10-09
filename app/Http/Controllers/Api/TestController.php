@@ -16,64 +16,27 @@ class TestController extends Controller
     public function index(Request $request){
      
 
-  //$output = shell_exec("gtts-cli \"c'est la vie\" --lang fr --output " . storage_path('app/public/testvoice.mp3'));
-  //echo "<pre>$output</pre>"; 
+   $prompt = <<<EOT
+You are the Infosoftbd Voice Assistant, representing Infosoftbd Solutions—a trusted Bangladeshi software partner offering cloud-based call center and PBX systems, AI-powered virtual call center agents, ecommerce platforms, IT outsourcing, and custom software solutions. Your goal is to deliver knowledgeable, user-friendly, and accurate responses to user queries about our offerings.You can speak in both Bangla and English. Please try to speak in Bangla unless user want to talks in English.
+User Instructions:
+ Describe Infosoftbd's services—call center solutions, PBX, Call Broadcasting solution, eCommerce development, IT outsourcing, custom software—clearly and understandably.
+ Explain how each offering benefits users (e.g., automation, analytics, multilingual voice, CRM integration).
+ Provide guidance on setup, integration, scalability, and best practices—tailored to both technical and non-technical users.
+ Offer concise and practical advice, and reference documentation or helpful resources when relevant.
+ If you're unsure, say: “I'm not sure—please check our documentation or contact Infosoftbd support.”
+Tone:
+ Professional and helpful.
+ Adapt technical level based on user context.
+ Don't invent features; only discuss what's verifiable.    
+EOT;
 
-  //dd(config('settings.switch.http_listen'));
-  //Log::info("Speech to text processing");
- /*  Cache::store('redis')->set('bar', 'baz', 600); // 10 Minutes
-  //Cache::store('redis')->set('bar2', 'baz', 600); // 10 Minutes
-  $value = Cache::get('bar');
-  dd($value);  */
-  //QueueCall::create(["call_id"=>'d1f4fc54-4b5e-4786-ad53-bc0918acd51b','queue_name'=>'queue_2' ,'organization_id'=>3]);
-   //FunctionCall::reg_channel(8);
-   //$queueJobs = new QueueSendCall();
-   //$this->dispatch( $queueJobs);
-   $response = new VoiceResponse();
-  /* $response->say("Please send a voice message after the beep");
-  $response->record(['action'=>url()->full()]);
-  $response->say("Voice record finished , thanks"); */
-  /* if($request->input('digits') != ''){
-    $response->say("You have pressed  " );
-    $response->say($request->input('digits'));
-  }
-  $response->say("Please press a value after the beep to test ");
-  $gather = $response->gather(['input'=>'dtmf','beep'=>true,'timeout'=>10,'action'=>'http://easypbx.laravel.infosoftbd.com/api']);
-  $gather->say("Press now");
-  $response->say("You did not press anything"); */
-  if($request->input('speech_result') != ''){
-    $response->say("You have told  ");
-    $response->say($request->input('speech_result'));
-  }
-  $response->say("Hello !! I am  a virtual assistant . Please tell me how can I help you");
-  $gather = $response->gather(['input'=>'speech','speechTimeout'=>0,'action'=>url()->full()]);
-  $response->redirect(); 
-  /* $response->say("please wait while we are dialing",['loop'=>1]); 
-  $dial = $response->dial("1100",["answerOnBridge"=>true,'record'=>'record-from-answer']);
-  $response->say("Agent not available , please try later , thanks "); */
-  //$dial = $response->dial("",['record'=>'record-from-answer']);
-  //$response->say("Your call has been modified , thanks .",['loop'=>3]); 
-  //$dial->queue('support',['url'=>'']);
-  /*$dial->say("Please wait while someone picking your call.");
-  $dial->say("All of our support agents are busy at this momemnt . Please wait ");
-  $dial->play("http://easypbx.laravel.infosoftbd.com/storage/sounds/music_on_hold.mp3");
-   */
-  return $response->xml();
-
-
-        
-        //$response = new VoiceResponse();
-       // $response->say("Hello . Welcome to Carhub. I am  your virtual assistant Sandra. Please tell me how can I help you");
-       // $gather = $response->gather(['input'=>'speech','timeout'=>100,'action'=>'http://easypbx.laravel.infosoftbd.com/api/switch/virtual-agent']);
-        //$response->say("please wait while we are dialing",['loop'=>1]); 
-        //$dial = $response->dial("1002",["answerOnBridge"=>true,'record'=>'record-from-answer']);
-        // $dial = $response->dial("",['record'=>'record-from-answer']);
-        //$dial->queue('support',['url'=>'']);
-        /*$dial->say("Please wait while someone picking your call.");
-        $dial->say("All of our support agents are busy at this momemnt . Please wait ");
-        $dial->play("http://easypbx.laravel.infosoftbd.com/storage/sounds/music_on_hold.mp3");
-         */
-       // return $response->xml();
+//$prompt = "You are a friendly AI Assistant";
+    info($prompt);
+    $connect = $response->connect();
+	$stream = $connect->stream(['name'=>'stream dd','url'=>'ws://103.189.236.236:8767/gemini']);
+$stream->parameter(["name"=>"prompt" ,"value" =>$prompt]);
+	$response->say("stream could not connected");
+    info( $response->xml());
        
     }
 

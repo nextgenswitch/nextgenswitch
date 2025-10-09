@@ -40,6 +40,8 @@ class Extension extends Model
                   'status',
                   'forwarding_number',
                   'dynamic_queue',
+                  'do_not_disturb',
+                  'forwarding',
               ];
 
 

@@ -76,7 +76,7 @@ class ActionParser {
 
             $actions[] = $verb;
         }elseif ( $tag == 'stream' ){
-            $verb = ['verb' => $tag,'direction'=>0];
+            $verb = ['verb' => $tag,'direction'=>0,'statusCallbackMethod'=>'POST','name'=>substr(str_shuffle('abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRTUVWXYZ2346789'),0,5)];
             foreach ( $elem->attributes() as $ak => $av ) {
                if ( $ak == 'url' ) {
                     $verb['url'] = (string) $av;
@@ -86,8 +86,27 @@ class ActionParser {
                     $verb['statusCallbackMethod'] = (string) $av;
                 }elseif ( $ak == 'statusCallback' ) {
                     $verb['statusCallback'] = (string) $av;
-                } 
+                }elseif ( $ak == 'record' ) {
+                    $verb['record'] = ( (string) $av == 'true' ) ? true : false;
+                }
+                
+                
             }
+            $st_params = [];
+
+            foreach ( $elem as $name => $child ) {
+                if ( $name == 'parameter' ) {
+                    $nm = "";$vl="";
+                    foreach ( $child->attributes() as $ak => $av ){
+                        if($ak == "name")   $nm =  (string) $av;
+                        if($ak == "value")   $vl =  (string) $av;
+                    }
+                    if(!empty($nm)) $st_params[$nm] = $vl; 
+                }
+
+            }
+            //info(json_encode($st_params));
+            $verb['params'] = json_encode($st_params);
 
             $actions[] = $verb;
 
@@ -101,8 +120,8 @@ class ActionParser {
                     $actions = array_merge( $actions,  $stream  );
                 }
             }
-            info("on stream tag");
-            info($actions);
+            // info("on stream tag");
+            // info($actions);
            
         } elseif ( $tag == 'gather' ) {
             $play = [];

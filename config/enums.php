@@ -22,6 +22,14 @@ return [
         5 => 'Call Parking',
     ],
 
+    'forwarding_type' => [
+        0 => 'Always',
+        1 => 'Disable',    
+        2 => 'When Busy',
+        3 => 'When No Answer',
+        4 => 'When unavailable'   
+    ],
+
     'ticket_status' => [
         1 => 'Answered',
         2 => 'On Hold',

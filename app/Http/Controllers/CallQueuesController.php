@@ -15,7 +15,8 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Schema;
 
-class CallQueuesController extends Controller {
+class CallQueuesController extends Controller
+{
 
     use FuncTrait;
 
@@ -25,35 +26,37 @@ class CallQueuesController extends Controller {
      * @return Illuminate\View\View
      */
 
-    
-    public function __construct(){
-        config(['menu.group' => 'menu-callcenter']);  
-    }  
-    public function index( Request $request ) {
 
-        $q         = $request->get( 'q' ) ?: '';
-        $perPage   = $request->get( 'per_page' ) ?: 10;
-        $filter    = $request->get( 'filter' ) ?: '';
-        $sort      = $request->get( 'sort' ) ?: '';
-        $callQueue = CallQueue::with( 'extension' )->where( 'organization_id', auth()->user()->organization_id );
+    public function __construct()
+    {
+        config(['menu.group' => 'menu-callcenter']);
+    }
+    public function index(Request $request)
+    {
 
-        if (  ! empty( $q ) ) {
-            $callQueue->where( 'name', 'LIKE', '%' . $q . '%' );
+        $q         = $request->get('q') ?: '';
+        $perPage   = $request->get('per_page') ?: 10;
+        $filter    = $request->get('filter') ?: '';
+        $sort      = $request->get('sort') ?: '';
+        $callQueue = CallQueue::with('extension')->where('organization_id', auth()->user()->organization_id);
+
+        if (! empty($q)) {
+            $callQueue->where('name', 'LIKE', '%' . $q . '%');
         }
 
-        if (  ! empty( $filter ) ) {
-            $filtera = explode( ':', $filter );
-            $callQueue->where( $filtera[0], '=', $filtera[1] );
+        if (! empty($filter)) {
+            $filtera = explode(':', $filter);
+            $callQueue->where($filtera[0], '=', $filtera[1]);
         }
 
-        if (  ! empty( $sort ) ) {
-            $sorta = explode( ':', $sort );
-            $callQueue->orderBy( $sorta[0], $sorta[1] );
+        if (! empty($sort)) {
+            $sorta = explode(':', $sort);
+            $callQueue->orderBy($sorta[0], $sorta[1]);
         } else {
-            $callQueue->orderBy( 'created_at', 'DESC' );
+            $callQueue->orderBy('created_at', 'DESC');
         }
 
-        if (  ! empty( $request->get( 'csv' ) ) ) {
+        if (! empty($request->get('csv'))) {
 
             $fileName   = 'call_queues.csv';
             $callQueues = $callQueue->get();
@@ -68,52 +71,48 @@ class CallQueuesController extends Controller {
 
             $columns = ['name', 'code', 'strategy', 'join_empty', 'leave_when_empty', 'member_timeout', 'queue_callback', 'queue_timeout', 'retry']; // specify columns if need
 
-            $callback = function () use ( $callQueues, $columns ) {
-                $file = fopen( 'php://output', 'w' );
-                fputcsv( $file, $columns );
+            $callback = function () use ($callQueues, $columns) {
+                $file = fopen('php://output', 'w');
+                fputcsv($file, $columns);
 
-                foreach ( $callQueues as $callQueue ) {
+                foreach ($callQueues as $callQueue) {
 
-                    foreach ( $columns as $column ) {
+                    foreach ($columns as $column) {
 
-                        if ( $column == 'code' ) {
-                            $row[$column] = optional( $callQueue->extension )->code;
-                        } 
-                        else if(in_array($column, ['join_empty', 'leave_when_empty', 'queue_callback'])){
+                        if ($column == 'code') {
+                            $row[$column] = optional($callQueue->extension)->code;
+                        } else if (in_array($column, ['join_empty', 'leave_when_empty', 'queue_callback'])) {
                             $row[$column] = $callQueue->{$column} ?  'Yes' : 'No';
-                        }
-
-                        else {
+                        } else {
                             $row[$column] = $callQueue->{$column};
                         }
-
                     }
 
-                    fputcsv( $file, $row );
+                    fputcsv($file, $row);
                 }
 
-                fclose( $file );
+                fclose($file);
             };
 
-            return response()->stream( $callback, 200, $headers );
+            return response()->stream($callback, 200, $headers);
         }
 
-        $callQueues = $callQueue->paginate( $perPage );
+        $callQueues = $callQueue->paginate($perPage);
 
-        $callQueues->appends( ['sort' => $sort, 'filter' => $filter, 'q' => $q, 'per_page' => $perPage] );
+        $callQueues->appends(['sort' => $sort, 'filter' => $filter, 'q' => $q, 'per_page' => $perPage]);
 
-        if ( $request->ajax() ) {
-            return view( 'call_queues.table', compact( 'callQueues' ) );
+        if ($request->ajax()) {
+            return view('call_queues.table', compact('callQueues'));
         }
 
-        return view( 'call_queues.index', compact( 'callQueues' ) );
-
+        return view('call_queues.index', compact('callQueues'));
     }
 
-    public function destinations( $function ) {
+    public function destinations($function)
+    {
 
-        if ( request()->ajax() ) {
-            return $this->dist_by_function( $function );
+        if (request()->ajax()) {
+            return $this->dist_by_function($function);
         }
 
         die();
@@ -125,20 +124,20 @@ class CallQueuesController extends Controller {
      * @return Illuminate\View\View
      */
 
-    public function create( Request $request ) {
-        $voice_files = VoiceFile::where( 'organization_id', auth()->user()->organization_id )->pluck( 'name', 'id' )->all();
+    public function create(Request $request)
+    {
+        $voice_files = VoiceFile::where('organization_id', auth()->user()->organization_id)->pluck('name', 'id')->all();
 
         $functions    = Func::getFuncList();
         $destinations = [];
         $callQueue    = [];
-        $extensions = Extension::select(DB::raw('CONCAT(name, " (", code, ")") AS full_name'),'id')->where( 'organization_id', auth()->user()->organization_id )->where( 'extension_type', 1 )->pluck( 'full_name', 'id' );
-      
-        if ( $request->ajax() ) {
-            return view( 'call_queues.form', compact( 'extensions', 'callQueue', 'voice_files', 'functions', 'destinations' ) )->with( ['action' => route( 'call_queues.call_queue.store' ), 'callQueue' => null, 'method' => 'POST'] );
-        } else {
-            return view( 'call_queues.create', compact( 'extensions', 'callQueue', 'voice_files', 'functions', 'destinations' ) );
-        }
+        $extensions = Extension::select(DB::raw('CONCAT(name, " (", code, ")") AS full_name'), 'id')->where('organization_id', auth()->user()->organization_id)->where('extension_type', 1)->pluck('full_name', 'id');
 
+        if ($request->ajax()) {
+            return view('call_queues.form', compact('extensions', 'callQueue', 'voice_files', 'functions', 'destinations'))->with(['action' => route('call_queues.call_queue.store'), 'callQueue' => null, 'method' => 'POST']);
+        } else {
+            return view('call_queues.create', compact('extensions', 'callQueue', 'voice_files', 'functions', 'destinations'));
+        }
     }
 
     /**
@@ -148,18 +147,19 @@ class CallQueuesController extends Controller {
      *
      * @return Illuminate\Http\RedirectResponse | Illuminate\Routing\Redirector
      */
-    public function store( Request $request ) {
+    public function store(Request $request)
+    {
 
         $orid = auth()->user()->organization_id;
-        $this->getData( $request );
+        $this->getData($request);
 
-        $queue_data = $request->except( ['_token', 'extensions'] );
+        $queue_data = $request->except(['_token', 'extensions']);
 
 
 
         $queue_data['organization_id'] = $orid;
 
-        $function = Func::select( 'id' )->where( 'func', 'call_queue' )->first();
+        $function = Func::select('id')->where('func', 'call_queue')->first();
 
         $extension = [
             'name'            => 'call queue',
@@ -171,9 +171,9 @@ class CallQueuesController extends Controller {
             'status'          => 1,
         ];
 
-        $extension = Extension::create( $extension );
+        $extension = Extension::create($extension);
 
-        $function = Func::select( 'id' )->where( 'func', $queue_data['function_id'] )->first();
+        $function = Func::select('id')->where('func', $queue_data['function_id'])->first();
 
         $queue_data['function_id']  = $function->id;
         $queue_data['extension_id'] = $extension->id;
@@ -187,29 +187,29 @@ class CallQueuesController extends Controller {
             'code'            => $queue_data['login_code'],
             'status'          => 1,
         ];
-        $joinextension = Extension::create( $joinextension );
+        $joinextension = Extension::create($joinextension);
         $queue_data['join_extension_id'] = $joinextension->id;
 
 
-        if ( isset( $queue_data['agent_function_id'] ) ) {
-            $agent_function                  = Func::select( 'id' )->where( 'func', $queue_data['agent_function_id'] )->first();
+        if (isset($queue_data['agent_function_id'])) {
+            $agent_function                  = Func::select('id')->where('func', $queue_data['agent_function_id'])->first();
             $queue_data['agent_function_id'] = $agent_function->id;
         }
 
-        $queue = CallQueue::create( $queue_data );
+        $queue = CallQueue::create($queue_data);
 
-        $extension->update( ['destination_id' => $queue->id] );
-        $joinextension->update( ['destination_id' => $queue->id] );
-        $exts_data = $request->input( 'extensions' );
+        $extension->update(['destination_id' => $queue->id]);
+        $joinextension->update(['destination_id' => $queue->id]);
+        $exts_data = $request->input('extensions');
 
-// return $exts_data;
+        // return $exts_data;
 
-        if ( count( $exts_data['extension_id'] ) && $exts_data['extension_id'][0] != null ) {
+        if (count($exts_data['extension_id']) && $exts_data['extension_id'][0] != null) {
             $data = [];
 
-            foreach ( $exts_data['extension_id'] as $key => $ext_id ) {
+            foreach ($exts_data['extension_id'] as $key => $ext_id) {
 
-                if (  ! $ext_id ) {
+                if (! $ext_id) {
                     continue;
                 }
 
@@ -217,24 +217,22 @@ class CallQueuesController extends Controller {
                 $row['call_queue_id']   = $queue->id;
                 $row['member_type']     = $exts_data['member_type'][$key];
                 $row['priority']        = $exts_data['priority'][$key];
-                $row['allow_diversion'] = isset( $exts_data['allow_diversion'][$key] ) ? 1 : 0;
+                $row['allow_diversion'] = isset($exts_data['allow_diversion'][$key]) ? 1 : 0;
 
                 $data[] = $row;
             }
 
-            if ( count( $data ) > 0 ) {
-                CallQueueExtension::insert( $data );
+            if (count($data) > 0) {
+                CallQueueExtension::insert($data);
             }
-
         }
 
-        if ( $request->ajax() ) {
-            return response()->json( ['success' => true] );
+        if ($request->ajax()) {
+            return response()->json(['success' => true]);
         }
 
-        return redirect()->route( 'call_queues.call_queue.index' )
-            ->with( 'success_message', __( 'Call Queue was successfully added.' ) );
-
+        return redirect()->route('call_queues.call_queue.index')
+            ->with('success_message', __('Call Queue was successfully added.'));
     }
 
     /**
@@ -244,27 +242,27 @@ class CallQueuesController extends Controller {
      *
      * @return Illuminate\View\View
      */
-    public function edit( $id, Request $request ) {
-    
-        if(! CallQueue::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists() )
-        return back();
+    public function edit($id, Request $request)
+    {
 
-        $callQueue = CallQueue::with( ['extension', 'joinExtension','queueExtensions', 'func'] )->findOrFail( $id );
+        if (! CallQueue::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists())
+            return back();
 
-        $voice_files = VoiceFile::where( 'organization_id', auth()->user()->organization_id )->pluck( 'name', 'id' )->all();
+        $callQueue = CallQueue::with(['extension', 'joinExtension', 'queueExtensions', 'func'])->findOrFail($id);
+
+        $voice_files = VoiceFile::where('organization_id', auth()->user()->organization_id)->pluck('name', 'id')->all();
         //dd($callQueue);
-        $callQueue->code = $callQueue->extension->code;
+        $callQueue->code = optional($callQueue->extension)->code;
         $callQueue->login_code = optional($callQueue->joinExtension)->code;
-        $destinations    = $this->dist_by_function( $callQueue->func->func, 0, true );
+        $destinations    = $this->dist_by_function($callQueue->func->func, 0, true);
         $functions       = Func::getFuncList();
-        $extensions = Extension::select(DB::raw('CONCAT(name, " (", code, ")") AS full_name'),'id')->where( 'organization_id', auth()->user()->organization_id )->where( 'extension_type', 1 )->pluck( 'full_name', 'id' );
-      
-        if ( $request->ajax() ) {
-            return view( 'call_queues.form', compact( 'extensions', 'callQueue', 'destinations', 'voice_files', 'functions' ) )->with( ['action' => route( 'call_queues.call_queue.update', $id ), 'method' => 'PUT'] );
-        } else {
-            return view( 'call_queues.edit', compact( 'extensions', 'callQueue', 'destinations', 'voice_files', 'functions' ) );
-        }
+        $extensions = Extension::select(DB::raw('CONCAT(name, " (", code, ")") AS full_name'), 'id')->where('organization_id', auth()->user()->organization_id)->where('extension_type', 1)->pluck('full_name', 'id');
 
+        if ($request->ajax()) {
+            return view('call_queues.form', compact('extensions', 'callQueue', 'destinations', 'voice_files', 'functions'))->with(['action' => route('call_queues.call_queue.update', $id), 'method' => 'PUT']);
+        } else {
+            return view('call_queues.edit', compact('extensions', 'callQueue', 'destinations', 'voice_files', 'functions'));
+        }
     }
 
     /**
@@ -275,24 +273,25 @@ class CallQueuesController extends Controller {
      *
      * @return Illuminate\Http\RedirectResponse | Illuminate\Routing\Redirector
      */
-    public function update( $id, Request $request ) {
+    public function update($id, Request $request)
+    {
 
-        if(! CallQueue::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists() )
-        return back();
+        if (! CallQueue::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists())
+            return back();
 
-        $callQueue = callQueue::findOrFail( $id );
-        $this->getData( $request, $callQueue->extension_id,$callQueue->join_extension_id );
+        $callQueue = callQueue::findOrFail($id);
+        $this->getData($request, $callQueue->extension_id, $callQueue->join_extension_id);
 
-        $data = $request->except( ['_token', '_method', 'extensions'] );
+        $data = $request->except(['_token', '_method', 'extensions']);
 
-        $extension = Extension::findOrFail( $callQueue->extension_id );
+        $extension = Extension::findOrFail($callQueue->extension_id);
 
-        $extension->update( ['code' => $data['code']] );
+        $extension->update(['code' => $data['code']]);
 
-        $join_extension = Extension::find( $callQueue->join_extension_id  );
+        $join_extension = Extension::find($callQueue->join_extension_id);
         //dd($join_extension);
-        if($join_extension) $join_extension->update( ['code' => $data['login_code']] );
-        else{
+        if ($join_extension) $join_extension->update(['code' => $data['login_code']]);
+        else {
             $joinextension = [
                 'name'            => 'call queue join',
                 'organization_id' => auth()->user()->organization_id,
@@ -302,33 +301,33 @@ class CallQueuesController extends Controller {
                 'code'            => $data['login_code'],
                 'status'          => 1,
             ];
-            $joinextension = Extension::create( $joinextension );
+            $joinextension = Extension::create($joinextension);
             $data['join_extension_id'] = $extension->id;
         }
 
 
 
-        $function = Func::select( 'id' )->where( 'func', $data['function_id'] )->first();
+        $function = Func::select('id')->where('func', $data['function_id'])->first();
 
         $data['function_id'] = $function->id;
 
-        if ( isset( $data['agent_function_id'] ) ) {
-            $agent_function            = Func::select( 'id' )->where( 'func', $data['agent_function_id'] )->first();
+        if (isset($data['agent_function_id'])) {
+            $agent_function            = Func::select('id')->where('func', $data['agent_function_id'])->first();
             $data['agent_function_id'] = $agent_function->id;
         }
 
-        $callQueue->update( $data );
+        $callQueue->update($data);
 
-        CallQueueExtension::where( 'call_queue_id', $callQueue->id )->delete();
+        CallQueueExtension::where('call_queue_id', $callQueue->id)->delete();
 
-        $exts_data = $request->input( 'extensions' );
+        $exts_data = $request->input('extensions');
 
-        if ( count( $exts_data['extension_id'] ) > 0 && $exts_data['extension_id'][0] != null ) {
+        if (count($exts_data['extension_id']) > 0 && $exts_data['extension_id'][0] != null) {
             $data = [];
 
-            foreach ( $exts_data['extension_id'] as $key => $ext_id ) {
+            foreach ($exts_data['extension_id'] as $key => $ext_id) {
 
-                if (  ! $ext_id ) {
+                if (! $ext_id) {
                     continue;
                 }
 
@@ -336,24 +335,22 @@ class CallQueuesController extends Controller {
                 $row['call_queue_id']   = $callQueue->id;
                 $row['member_type']     = $exts_data['member_type'][$key];
                 $row['priority']        = $exts_data['priority'][$key] ?: 0;
-                $row['allow_diversion'] = isset( $exts_data['allow_diversion'][$key] ) ? 1 : 0;
+                $row['allow_diversion'] = isset($exts_data['allow_diversion'][$key]) ? 1 : 0;
 
                 $data[] = $row;
             }
 
-            if ( count( $data ) ) {
-                CallQueueExtension::insert( $data );
+            if (count($data)) {
+                CallQueueExtension::insert($data);
             }
-
         }
 
-        if ( $request->ajax() ) {
-            return response()->json( ['success' => true] );
+        if ($request->ajax()) {
+            return response()->json(['success' => true]);
         }
 
-        return redirect()->route( 'call_queues.call_queue.index' )
-            ->with( 'success_message', __( 'Call Queue was successfully updated.' ) );
-
+        return redirect()->route('call_queues.call_queue.index')
+            ->with('success_message', __('Call Queue was successfully updated.'));
     }
 
     /**
@@ -363,35 +360,33 @@ class CallQueuesController extends Controller {
      *
      * @return Illuminate\Http\RedirectResponse | Illuminate\Routing\Redirector
      */
-    public function destroy( $id, Request $request ) {
+    public function destroy($id, Request $request)
+    {
         try {
-            if(! CallQueue::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists() )
-            return back();
+            if (! CallQueue::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists())
+                return back();
 
-            $callQueue = CallQueue::findOrFail( $id );
-            Extension::findOrFail( $callQueue->extension_id )->delete();
-            Extension::findOrFail( $callQueue->join_extension_id )->delete();
-            CallQueueExtension::where( 'call_queue_id', $callQueue->id )->delete();
+            $callQueue = CallQueue::findOrFail($id);
+            Extension::findOrFail($callQueue->extension_id)->delete();
+            Extension::findOrFail($callQueue->join_extension_id)->delete();
+            CallQueueExtension::where('call_queue_id', $callQueue->id)->delete();
             $callQueue->delete();
 
-            if ( $request->ajax() ) {
-                return response()->json( ['success' => true] );
+            if ($request->ajax()) {
+                return response()->json(['success' => true]);
             } else {
-                return redirect()->route( 'call_queues.call_queue.index' )
-                    ->with( 'success_message', __( 'Call Queue was successfully deleted.' ) );
+                return redirect()->route('call_queues.call_queue.index')
+                    ->with('success_message', __('Call Queue was successfully deleted.'));
             }
+        } catch (Exception $exception) {
 
-        } catch ( Exception $exception ) {
-
-            if ( $request->ajax() ) {
-                return response()->json( ['success' => false] );
+            if ($request->ajax()) {
+                return response()->json(['success' => false]);
             } else {
                 return back()->withInput()
-                    ->withErrors( ['unexpected_error' => __( 'Unexpected error occurred while trying to process your request.' )] );
+                    ->withErrors(['unexpected_error' => __('Unexpected error occurred while trying to process your request.')]);
             }
-
         }
-
     }
 
     /**
@@ -402,22 +397,21 @@ class CallQueuesController extends Controller {
      * @return Illuminate\Http\RedirectResponse | Illuminate\Routing\Redirector
      */
 
-    public function updateField( $id, Request $request ) {
+    public function updateField($id, Request $request)
+    {
 
         try {
-            if(! CallQueue::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists() )
-            return back();
+            if (! CallQueue::where('id', $id)->where('organization_id', auth()->user()->organization_id)->exists())
+                return back();
 
-            $callQueue = CallQueue::findOrFail( $id );
+            $callQueue = CallQueue::findOrFail($id);
 
-            $callQueue->update( $request->all() );
+            $callQueue->update($request->all());
 
-            return response()->json( ['success' => true] );
-
-        } catch ( Exception $exception ) {
-            return response()->json( ['success' => false] );
+            return response()->json(['success' => true]);
+        } catch (Exception $exception) {
+            return response()->json(['success' => false]);
         }
-
     }
 
     /**
@@ -426,33 +420,40 @@ class CallQueuesController extends Controller {
      * @return Illuminate\Http\RedirectResponse | Illuminate\Routing\Redirector
      */
 
-    public function bulkAction( Request $request ) {
+    public function bulkAction(Request $request)
+    {
 
-        /* try {
+        try {
 
             $data = $request->all();
-            $ids  = explode( ',', $data['ids'] );
+            $ids  = explode(',', $data['ids']);
 
-            if ( isset( $data['mass_delete'] ) && $data['mass_delete'] == 1 ) {
-                CallQueue::whereIn( 'id', $ids )->delete();
-            } else {
+            if (isset($data['mass_delete']) && $data['mass_delete'] == 1) {
+                $extension_ids = CallQueue::whereIn('id', $ids)->pluck('extension_id')->toArray();
+                $join_extension_ids = CallQueue::whereIn('id', $ids)->pluck('join_extension_id')->toArray();
+                Extension::whereIn('id', $extension_ids)->delete();
+                Extension::whereIn('id', $join_extension_ids)->delete();
+                CallQueueExtension::whereIn('call_queue_id', $ids)->delete();
 
-                foreach ( $data as $field => $val ) {
-
-                    if (  ! in_array( $field, ['ids', '_token', '_method', 'mass_delete'] ) && Schema::hasColumn(  ( new CallQueue )->getTable(), $field ) ) {
-                        CallQueue::whereIn( 'id', $ids )->update( [$field => $val] );
-                    }
-
-                }
-
+                CallQueue::whereIn('id', $ids)->delete();
             }
 
-            return response()->json( ['success' => true] );
+            // else {
 
-        } catch ( Exception $exception ) {
-            return response()->json( ['success' => false] );
+            //     foreach ( $data as $field => $val ) {
+
+            //         if (  ! in_array( $field, ['ids', '_token', '_method', 'mass_delete'] ) && Schema::hasColumn(  ( new CallQueue )->getTable(), $field ) ) {
+            //             CallQueue::whereIn( 'id', $ids )->update( [$field => $val] );
+            //         }
+
+            //     }
+
+            // }
+
+            return response()->json(['success' => true]);
+        } catch (Exception $exception) {
+            return response()->json(['success' => false]);
         }
- */
     }
 
     /**
@@ -461,22 +462,23 @@ class CallQueuesController extends Controller {
      * @param Illuminate\Http\Request\Request $request
      * @return array
      */
-    protected function getData( Request $request, $id = 0,$join_id = 0 ) {
+    protected function getData(Request $request, $id = 0, $join_id = 0)
+    {
 
-        $code_unique_rule = Rule::unique( 'extensions' )->where( function ( $query ) use ( $request ) {
-            return $query->where( 'code', $request->code )->where( 'organization_id', auth()->user()->organization_id );
-        } );
+        $code_unique_rule = Rule::unique('extensions')->where(function ($query) use ($request) {
+            return $query->where('code', $request->code)->where('organization_id', auth()->user()->organization_id);
+        });
 
-        if ( $id > 0 ) {
-            $code_unique_rule->ignore( $id );
+        if ($id > 0) {
+            $code_unique_rule->ignore($id);
         }
 
-        $join_code_unique_rule = Rule::unique( 'extensions','code' )->where( function ( $query ) use ( $request ) {
-            return $query->where( 'code', $request->login_code )->where( 'organization_id', auth()->user()->organization_id );
-        } );
+        $join_code_unique_rule = Rule::unique('extensions', 'code')->where(function ($query) use ($request) {
+            return $query->where('code', $request->login_code)->where('organization_id', auth()->user()->organization_id);
+        });
 
-        if ( $join_id > 0 ) {
-            $join_code_unique_rule->ignore( $join_id );
+        if ($join_id > 0) {
+            $join_code_unique_rule->ignore($join_id);
         }
 
         $rules = [
@@ -509,12 +511,11 @@ class CallQueuesController extends Controller {
             'extensions.extension_id.*' => 'nullable',
             'extensions.member_type.*'  => 'nullable|numeric|min:0|max:1',
             'extensions.priority.*'     => 'nullable|numeric|min:0|max:2147483647',
-            'login_code'                => ['nullable',$join_code_unique_rule]
+            'login_code'                => ['nullable', $join_code_unique_rule]
         ];
 
-        $data = $request->validate( $rules );
+        $data = $request->validate($rules);
 
         return $data;
     }
-
 }

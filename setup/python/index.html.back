@@ -1,0 +1,1427 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>EasyPBX SIP Web Dialer</title>
+  <!-- jQuery for easier DOM manipulation -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <!-- adapter.js ensures consistent WebRTC APIs across browsers -->
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 24px; background: #f3f4f8; color: #1f2933; }
+    h2 { margin-top: 0; }
+    .layout { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; }
+    .panel { background: #fff; border-radius: 12px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08); padding: 20px; flex: 1 1 320px; min-width: 280px; }
+    .panel h3 { margin-top: 0; margin-bottom: 16px; }
+    .field { display: flex; flex-direction: column; margin-bottom: 12px; }
+    .field-group { display: flex; gap: 12px; }
+    .field-group .field { flex: 1; }
+    .field label { font-size: 0.9rem; margin-bottom: 6px; font-weight: 600; color: #425466; }
+    .field input { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; }
+    .field.small { max-width: 180px; }
+    .button-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+    button { padding: 10px 18px; border-radius: 8px; border: none; background: #2563eb; color: #fff; font-size: 0.95rem; cursor: pointer; transition: background 0.2s ease; }
+    button:hover { background: #1d4ed8; }
+    button.secondary { background: #e2e8f0; color: #1f2933; }
+    button.secondary:hover { background: #cbd5e1; }
+    audio { display: block; margin-top: 10px; width: 100%; }
+    .status { margin: 8px 0 0; font-size: 0.9rem; color: #475569; }
+    #remote-audio audio { margin-bottom: 8px; }
+    .dtmf-pad { margin-top: 16px; }
+
+    .dtmf-pad label { display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 8px; }
+
+    .dtmf-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 220px; }
+
+    .dtmf-grid button { padding: 12px 0; font-size: 1.1rem; border-radius: 8px; border: 1px solid #cbd5e1; background: #f8fafc; color: #0f172a; cursor: pointer; transition: background 0.15s ease; }
+
+    .dtmf-grid button:hover { background: #e2e8f0; }
+
+    .dtmf-grid button:disabled { cursor: not-allowed; opacity: 0.5; background: #e2e8f0; }
+
+    .dtmf-pad .dtmf-note { margin-top: 6px; font-size: 0.8rem; color: #64748b; }
+
+    .dtmf-pad.dtmf-enabled .dtmf-note { color: #2563eb; }
+
+  </style>
+</head>
+<body>
+  <h2>EasyPBX SIP Web Dialer</h2>
+  <div class="layout">
+    <section class="panel" id="login-panel">
+      <h3>SIP Login</h3>
+      <form id="login-form">
+        <div class="field">
+          <label for="sip-server">SIP Server (Registrar)</label>
+          <input type="text" id="sip-server" placeholder="sip:example.com:5060" value="sg.nextgenswitch.com:8345" required>
+        </div>
+        <div class="field-group">
+          <div class="field">
+            <label for="sip-user">Username</label>
+            <input type="text" id="sip-user" placeholder="1002" value="1002" required>
+          </div>
+          <div class="field">
+            <label for="sip-pass">Password</label>
+            <input type="password" id="sip-pass" placeholder="******" value="123456" required>
+          </div>
+        </div>
+        <div class="field small">
+          <label for="sip-expire">Expires (seconds)</label>
+          <input type="number" id="sip-expire" min="60" value="3600">
+        </div>
+        <div class="button-row">
+          <button type="submit" id="login-btn">Connect &amp; Register</button>
+          <button type="button" id="logout-btn" class="secondary">Disconnect</button>
+        </div>
+      </form>
+      <p id="login-status" class="status">Not connected</p>
+    </section>
+
+    <section class="panel" id="call-panel">
+      <h3>Call Controls</h3>
+      <div class="field">
+        <label for="call-dest">Destination</label>
+        <input type="text" id="call-dest" placeholder="Number or SIP URI" value="5011">
+      </div>
+      <div class="button-row">
+        <button type="button" id="call-btn">Start Call</button>
+        <button type="button" id="hangup-btn" class="secondary">Hangup</button>
+        <button type="button" id="accept-btn" class="secondary">Accept Incoming</button>
+      </div>
+      <div class="dtmf-pad" id="dtmf-pad">
+
+        <label>In-Call Dialpad</label>
+
+        <div class="dtmf-grid">
+
+          <button type="button" class="dtmf-btn" data-tone="1">1</button>
+
+          <button type="button" class="dtmf-btn" data-tone="2">2</button>
+
+          <button type="button" class="dtmf-btn" data-tone="3">3</button>
+
+          <button type="button" class="dtmf-btn" data-tone="4">4</button>
+
+          <button type="button" class="dtmf-btn" data-tone="5">5</button>
+
+          <button type="button" class="dtmf-btn" data-tone="6">6</button>
+
+          <button type="button" class="dtmf-btn" data-tone="7">7</button>
+
+          <button type="button" class="dtmf-btn" data-tone="8">8</button>
+
+          <button type="button" class="dtmf-btn" data-tone="9">9</button>
+
+          <button type="button" class="dtmf-btn" data-tone="*">*</button>
+
+          <button type="button" class="dtmf-btn" data-tone="0">0</button>
+
+          <button type="button" class="dtmf-btn" data-tone="#">#</button>
+
+        </div>
+
+        <p class="dtmf-note" id="dtmf-note">Available once call is connected</p>
+
+      </div>
+
+      <p id="call-status" class="status">Idle</p>
+    </section>
+
+    <section class="panel" id="media-panel">
+      <h3>Media</h3>
+      <p id="status" class="status">WebRTC Idle</p>
+      <div id="remote-audio"></div>
+    </section>
+  </div>
+
+  <audio id="incoming-ring" preload="auto">
+    <source src="https://janussg.nextgenswitch.com/incoming_call.mp3" type="audio/mpeg">
+  </audio>
+
+<script>
+
+  // Button handler will call the class method
+
+  
+
+  let dtmfControls = null;
+  const OFFER_PATH = (typeof window !== 'undefined' && window.OFFER_PATH) ? window.OFFER_PATH : '/offer';
+
+
+
+  const updateWebrtcStatusLabel = ({ detail }) => {
+    const message = detail?.message ?? detail?.status ?? '';
+    if (!message) {
+      return;
+    }
+    const statusEl = document.getElementById('status');
+    if (statusEl) {
+      statusEl.textContent = message;
+    }
+  };
+
+  document.addEventListener('webrtcStatus', updateWebrtcStatusLabel);
+
+  // Wraps a single WebRTC media session bridged via Python backend
+  class WebrtcSession extends EventTarget {
+    // Prepare the peer connection state and UI bindings
+    constructor({ WsUrl = null } = {}) {
+      super();
+      this.WsUrl = WsUrl || Math.random().toString(36).substring(2, 15);
+      this.pc = null;
+      this.stream = null;
+      this.lastSignal = null;
+      this.lastStatusText = null;
+    }
+
+    // Update the status element text, if available
+    setStatus(text) {
+      const message = typeof text === 'string' ? text : '';
+      this.lastStatusText = message;
+      this.emit('status', { message, status: message });
+    }
+
+    // Broadcast events both on this instance and a document-level channel
+    emit(name, detail = {}) {
+      const payload = { WsUrl: this.WsUrl, ...detail };
+      this.dispatchEvent(new CustomEvent(name, { detail: payload }));
+      if (name) {
+        const globalName = `webrtc${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+        document.dispatchEvent(new CustomEvent(globalName, { detail: payload }));
+      }
+    }
+
+    // Capture mic audio, negotiate SDP, and start ICE negotiation
+    async connect() {
+      this.setStatus('Requesting mic...');
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        this.setStatus('Mic captured, creating peer connection...');
+
+        this.pc = new (window.RTCPeerConnection || RTCPeerConnection)();
+        const pc = this.pc;
+
+        this.stream.getTracks().forEach(track => pc.addTrack(track, this.stream));
+
+        pc.ontrack = e => {
+          const audio = document.createElement('audio');
+          audio.autoplay = true;
+          audio.controls = false;
+          audio.srcObject = e.streams[0];
+          const container = document.getElementById('remote-audio') || document.body;
+          container.appendChild(audio);
+        };
+
+        pc.oniceconnectionstatechange = () => {
+          if (!this.pc) {
+            return;
+          }
+          const state = pc.iceConnectionState;
+          if ((state === 'connected' || state === 'completed') && this.lastSignal !== 'connected') {
+            this.lastSignal = 'connected';
+            console.log('WebRTC connection state:', state);
+            this.setStatus(this.lastSignal);
+            this.emit('connected', { state });
+          }
+          if ((state === 'disconnected' || state === 'failed' || state === 'closed') && this.lastSignal !== 'disconnected') {
+            this.lastSignal = 'disconnected';
+            this.setStatus('WebRTC Disconnected');
+            console.warn('WebRTC connection state:', state);
+            this.emit('disconnected', { state });
+          }
+        };
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        const res = await fetch(OFFER_PATH, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sdp: pc.localDescription.sdp,
+            type: pc.localDescription.type,
+            WsUrl: this.WsUrl,
+          })
+        });
+
+        if (!res.ok) throw new Error('Failed to fetch answer from server');
+        const ans = await res.json();
+        if (!ans.sdp || !ans.type) throw new Error('Invalid answer from server');
+
+        await pc.setRemoteDescription(new RTCSessionDescription(ans));
+        this.setStatus('Starting ICE');
+        console.log('WebRTC connection established. Starting ICE negotiation.');
+      } catch (err) {
+        this.setStatus('Error: ' + err.message);
+        console.error(err);
+        this.lastSignal = 'disconnected';
+        this.emit('disconnected', { state: 'error', message: err.message });
+        this.cleanup();
+        throw err;
+      }
+    }
+
+    // Public helper to close the session with a human-friendly reason
+    disconnect(reason = 'WebRTC Disconnected') {
+      this.lastSignal = 'disconnected';
+      this.cleanup();
+      this.setStatus(reason);
+      this.emit('disconnected', { state: 'manual', reason });
+    }
+
+    // Resolve once the session transitions to connected (or reject on timeout)
+    async waitForConnected({ timeoutMs = 60000 } = {}) {
+      if (this.lastSignal === 'connected') {
+        return;
+      }
+      if (!this.pc) {
+        throw new Error('WebRTC session is not active');
+      }
+      if (this.lastSignal === 'disconnected') {
+        throw new Error('WebRTC session already disconnected');
+      }
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        let timeoutId = null;
+
+        const cleanupListeners = () => {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
+          this.removeEventListener('connected', onConnected);
+          this.removeEventListener('disconnected', onDisconnected);
+        };
+
+        const onConnected = () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanupListeners();
+          resolve();
+        };
+
+        const onDisconnected = (event) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanupListeners();
+          const detail = event.detail || {};
+          const suffix = detail.message ? ': ' + detail.message : '';
+          reject(new Error('WebRTC disconnected before establishing media connection' + suffix));
+        };
+
+        this.addEventListener('connected', onConnected);
+        this.addEventListener('disconnected', onDisconnected);
+
+        if (timeoutMs > 0) {
+          timeoutId = setTimeout(() => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            cleanupListeners();
+            reject(new Error('Timed out waiting for WebRTC connection'));
+          }, timeoutMs);
+        }
+      });
+    }
+
+    // Stop media tracks and dispose of the peer connection
+    cleanup() {
+      if (this.pc) {
+        try {
+          this.pc.oniceconnectionstatechange = null;
+          this.pc.ontrack = null;
+          this.pc.close();
+        } catch (e) {
+          console.warn('Error while closing peer connection', e);
+        }
+        this.pc = null;
+      }
+      if (this.stream) {
+        this.stream.getTracks().forEach(track => {
+          try {
+            track.stop();
+          } catch (e) {
+            console.warn('Error stopping track', e);
+          }
+        });
+        this.stream = null;
+      }
+    }
+  }
+  // Handles SIP-over-WebSocket signaling plus WebRTC setup for calls
+  class WebrtcDialer extends EventTarget {
+      // Initialize client identity, websocket endpoints, and defaults
+      constructor(wsUrl) {
+        super();
+        this.baseUrl = wsUrl;
+        this.clientId = this._generateId();
+        this.wsUrl = this.baseUrl + "?;client_id=" + this.clientId + ";channel=1";
+        console.log("WebSocket URL:", this.wsUrl);
+        const existingCallId = (typeof window !== 'undefined' && window.GLOBAL_CALL_ID) ? String(window.GLOBAL_CALL_ID) : null;
+        this.callChannelId = existingCallId && existingCallId.length ? existingCallId : this._generateId();
+        this.wsStatus = $('#ws-status');
+        this.ws = null;
+        this.registered = false;
+        this.webrtcSession = null;
+        this.activeCall = null; // track current accepted/placed call
+        this.pendingIncoming = null; // cache most recent inbound invite
+        this.registerOptions = {
+          reg_url: "sip:yourdomain:5060",
+          user: "username",
+          pass: "password",
+          expire:60,
+        };
+        this._wantWebrtc = false;
+        this._webrtcConnectPromise = null;
+        this._webrtcReconnectTimer = null;
+        this._updateGlobalMediaMetadata();
+      }
+      // Relay dialer events for UI consumers
+      emit(name, detail = {}) {
+        const payload = {
+          wsUrl: this.wsUrl,
+          ...detail,
+          clientId: this.clientId
+        };
+        this.dispatchEvent(new CustomEvent(name, { detail: payload }));
+        if (name && typeof document !== 'undefined') {
+          const globalName = `sipUa${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+          document.dispatchEvent(new CustomEvent(globalName, { detail: payload }));
+        }
+      }
+
+      _generateId() {
+        return Math.random().toString(36).substring(2, 15);
+      }
+
+      _buildMediaWsUrl() {
+        if (!this.baseUrl || !this._getCallChannelId()) {
+          return null;
+        }
+        return this.baseUrl + "?;client_id=" + this._getCallChannelId() + ";channel=2";
+      }
+
+      _updateGlobalMediaMetadata() {
+        if (typeof window === 'undefined') {
+          return;
+        }
+        window.GLOBAL_CALL_ID = this._getCallChannelId();
+        const mediaUrl = this._buildMediaWsUrl();
+        if (mediaUrl) {
+          window.GLOBAL_MEDIA_WS_URL = mediaUrl;
+        }
+      }
+
+      _setCallChannelId(callId) {
+        const normalized = (callId && String(callId).trim()) || null;
+        if (normalized) {
+          this.callChannelId = normalized;
+        } else if (!this.callChannelId) {
+          this.callChannelId = this._generateId();
+        }
+        this._updateGlobalMediaMetadata();
+        return this.callChannelId;
+      }
+
+      _getCallChannelId() {
+        if (!this.callChannelId) {
+          return this._setCallChannelId(null);
+        }
+        return this.callChannelId;
+      }
+
+      _shouldMaintainWebrtc() {
+        return this._wantWebrtc && this.ws && this.ws.readyState === WebSocket.OPEN;
+      }
+
+      _clearWebrtcReconnectTimer() {
+        if (this._webrtcReconnectTimer) {
+          clearTimeout(this._webrtcReconnectTimer);
+          this._webrtcReconnectTimer = null;
+        }
+      }
+
+      _scheduleWebrtcReconnect(delayMs = 2000) {
+        if (!this._shouldMaintainWebrtc()) {
+          return;
+        }
+        if (this._webrtcReconnectTimer) {
+          return;
+        }
+        this._webrtcReconnectTimer = setTimeout(() => {
+          this._webrtcReconnectTimer = null;
+          if (!this._shouldMaintainWebrtc()) {
+            return;
+          }
+          this.ensureWebrtcSession().catch(() => {
+            this._scheduleWebrtcReconnect(Math.min(delayMs * 2, 30000));
+          });
+        }, delayMs);
+      }
+
+      async ensureWebrtcSession({ force = false } = {}) {
+        this._wantWebrtc = true;
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+          throw new Error('WebSocket signaling not connected');
+        }
+        if (!force && this.webrtcSession && this.webrtcSession.lastSignal === 'connected') {
+          return this.webrtcSession;
+        }
+        if (this._webrtcConnectPromise) {
+          return this._webrtcConnectPromise;
+        }
+        let session = this.webrtcSession;
+        if (!session || force || session.lastSignal === 'disconnected') {
+          session = this._createWebrtcSession({ WsUrl: this._buildMediaWsUrl() });
+        }
+        this._webrtcConnectPromise = (async () => {
+          try {
+            await session.connect();
+            await session.waitForConnected({ timeoutMs: 60000 });
+            return session;
+          } finally {
+            this._webrtcConnectPromise = null;
+          }
+        })();
+        return this._webrtcConnectPromise;
+      }
+
+      // Establish the media bridge and return the ready session
+      async webrtcConnect({ WsUrl = null, force = false } = {}) {
+        if (WsUrl && typeof WsUrl === 'string') {
+          const match = WsUrl.match(/client_id=([^;]+)/);
+          if (match && match[1]) {
+            if (match[1] !== this._getCallChannelId()) {
+              this._setCallChannelId(match[1]);
+              force = true;
+            }
+          }
+        }
+        const session = await this.ensureWebrtcSession({ force });
+        return session;
+      }
+
+      // Internal factory that replaces any previous WebRTC session instance
+      _createWebrtcSession({ WsUrl = null } = {}) {
+        this.disconnectWebrtc('Reinitializing WebRTC connection', { keepDesired: true });
+        this._webrtcConnectPromise = null;
+        const targetUrl = WsUrl || this._buildMediaWsUrl();
+        const session = new WebrtcSession({
+          WsUrl: targetUrl
+        });
+        const forwardStatus = (event) => {
+          this.emit('webrtcStatus', { ...(event?.detail ?? {}), session });
+        };
+        const handleConnected = () => {
+          if (this.webrtcSession === session) {
+            this._clearWebrtcReconnectTimer();
+            this._updateGlobalMediaMetadata();
+          }
+        };
+        const handleDisconnected = () => {
+          session.removeEventListener('status', forwardStatus);
+          session.removeEventListener('connected', handleConnected);
+          session.removeEventListener('disconnected', handleDisconnected);
+          if (this.webrtcSession === session) {
+            this.webrtcSession = null;
+          }
+          if (this._shouldMaintainWebrtc()) {
+            this._scheduleWebrtcReconnect();
+          }
+        };
+        session.addEventListener('status', forwardStatus);
+        session.addEventListener('connected', handleConnected);
+        session.addEventListener('disconnected', handleDisconnected);
+        this.webrtcSession = session;
+        return session;
+      }
+
+      // Drop the active WebRTC session if present
+      disconnectWebrtc(reason = 'WebRTC Disconnected', { keepDesired = false } = {}) {
+        if (!keepDesired) {
+          this._wantWebrtc = false;
+        }
+        this._clearWebrtcReconnectTimer();
+        if (this.webrtcSession) {
+          try {
+            this.webrtcSession.disconnect(reason);
+          } catch (err) {
+            console.warn('Error disconnecting WebRTC session', err);
+          }
+          this.webrtcSession = null;
+        }
+        if (!keepDesired) {
+          this._webrtcConnectPromise = null;
+        }
+      }
+
+      // Push status updates into whichever DOM element is available
+      _updateWsStatus(text) {
+        if (!text) {
+          return;
+        }
+        if (this.wsStatus && typeof this.wsStatus.text === 'function') {
+          this.wsStatus.text(text);
+        } else {
+          $('#ws-status').text(text);
+        }
+      }
+
+      // Cancel any pending auto-renew timer
+      _clearRegisterTimer() {
+        if (this._registerTimer) {
+          clearTimeout(this._registerTimer);
+          this._registerTimer = null;
+        }
+        this._registerNextAt = null;
+      }
+
+      // Queue a future REGISTER to keep the binding alive
+      _scheduleRegisterRenew(expireSeconds) {
+        //console.log("Scheduling register renew:", expireSeconds);
+        this._clearRegisterTimer();
+        const seconds = Number(expireSeconds || this.registerOptions?.expire);
+        if (!Number.isFinite(seconds) || seconds <= 0) {
+          return;
+        }
+        const renewSeconds = Math.max(15, Math.floor(seconds * 0.85));
+        this._registerTimer = setTimeout(() => {
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.register();
+          }
+        }, renewSeconds * 1000);
+        this._registerNextAt = Date.now() + renewSeconds * 1000;
+      }
+
+      
+
+      // Store registration credentials/options for future use
+      setRegisterOptions(options = {}) {
+        if (!options || typeof options !== 'object') {
+          return this.registerOptions;
+        }
+        const normalizeSipUri = (uri) => {
+          if (uri === undefined || uri === null) {
+            return uri;
+          }
+          let value = String(uri).trim();
+          if (!value) {
+            return value;
+          }
+          if (!/^sip:/i.test(value)) {
+            value = `sip:${value}`;
+          }
+          const rest = value.slice(4);
+          const atIndex = rest.lastIndexOf('@');
+          const userPart = atIndex >= 0 ? rest.slice(0, atIndex + 1) : '';
+          let hostPort = atIndex >= 0 ? rest.slice(atIndex + 1) : rest;
+          let params = '';
+          const semiIndex = hostPort.indexOf(';');
+          if (semiIndex !== -1) {
+            params = hostPort.slice(semiIndex);
+            hostPort = hostPort.slice(0, semiIndex);
+          }
+          let hasPort = false;
+          if (hostPort.startsWith('[')) {
+            const closingIndex = hostPort.indexOf(']');
+            if (closingIndex !== -1) {
+              hasPort = closingIndex < hostPort.length - 1 && hostPort.charAt(closingIndex + 1) === ':';
+            }
+          } else if (hostPort.includes(':')) {
+            hasPort = true;
+          }
+          if (!hasPort && hostPort) {
+            hostPort = `${hostPort}:5060`;
+          }
+          return `sip:${userPart}${hostPort}${params}`;
+        };
+        const next = { ...this.registerOptions };
+        if (options.reg_url !== undefined && options.reg_url !== null) {
+          const normalizedUrl = normalizeSipUri(options.reg_url);
+          if (normalizedUrl) {
+            next.reg_url = normalizedUrl;
+          } else if (options.reg_url === '') {
+            next.reg_url = '';
+          } else {
+            next.reg_url = options.reg_url;
+          }
+        }
+        if (options.user) {
+          next.user = options.user;
+        }
+        if (typeof options.pass === 'string') {
+          next.pass = options.pass;
+        }
+        if (options.expire !== undefined) {
+          const expire = Number(options.expire);
+          if (Number.isFinite(expire) && expire > 0) {
+            next.expire = expire;
+          }
+        }
+        this.registerOptions = next;
+        return this.registerOptions;
+      }
+
+      // Open the websocket and begin registration flow
+      connect() {
+        this._clearRegisterTimer();
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          this._updateWsStatus('WebSocket: Already connected');
+          return;
+        }
+        this.ws = new WebSocket(this.wsUrl);
+        this._updateWsStatus('WebSocket: Connecting...');
+        this.ws.onopen = () => {
+          this._updateWsStatus('WebSocket: Connected');
+          this.emit('wsConnected', { readyState: this.ws.readyState, message: 'WebSocket connected' });
+          this.register();
+        };
+        this.ws.onclose = (event) => {
+          this._updateWsStatus('WebSocket: Disconnected');
+          this._clearRegisterTimer();
+          this.registered = false;
+          this.ws = null;
+          this.disconnectWebrtc('WebRTC disconnected with signaling closed');
+          this.emit('wsClosed', {
+            code: event?.code ?? null,
+            reason: event?.reason ?? null,
+            message: 'WebSocket disconnected',
+            clientClosed: false
+          });
+        };
+        this.ws.onerror = (event) => {
+          this._updateWsStatus('WebSocket: Error');
+          this.emit('wsError', { message: 'WebSocket error', error: event });
+        };
+        this.ws.onmessage = (msg) => {
+          this.handleWsMessage(msg);
+        };
+      }
+
+      // Close websocket and clear state (manual disconnect)
+      disconnect(reason = 'Client disconnected') {
+        this._clearRegisterTimer();
+        if (this.ws) {
+          try {
+            this.ws.close();
+          } catch (err) {
+            console.warn('Error closing WebSocket', err);
+          }
+        }
+        this.ws = null;
+        this.registered = false;
+        this._updateWsStatus('WebSocket: Disconnected');
+        this.emit('wsClosed', { message: reason, clientClosed: true });
+        this.disconnectWebrtc('WebRTC disconnected by client');
+      }
+
+      // Whether the websocket is currently open
+      isConnected(){
+        return this.ws && this.ws.readyState === WebSocket.OPEN;
+      }
+
+      // Whether the backend confirmed a REGISTER
+      isRegistered(){
+        return this.registered;
+      }
+
+      // Send a REGISTER request (or queue it until the websocket opens)
+      register(options = {}) {
+        const merged = this.setRegisterOptions(options);
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+          this._clearRegisterTimer();
+          if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+            return;
+          }
+          this.connect();
+          return;
+        }
+        if (!merged || !merged.reg_url || !merged.user || typeof merged.pass !== 'string') {
+          console.error('Missing register options', merged);
+          return;
+        }
+        const payload = {
+          action: 'REGISTER',
+          reg_url: merged.reg_url,
+          user: merged.user,
+          pass: merged.pass,
+          channel_id: this.clientId,
+          media_client_id: this._getCallChannelId(),
+          
+        };
+        this._wantWebrtc = false;
+        this._clearWebrtcReconnectTimer();
+        this.registered = false;
+        if (Number.isFinite(merged.expire) && merged.expire > 0) {
+          payload.expire = Math.floor(merged.expire);
+        }
+        this._clearRegisterTimer();
+        try {
+          this.ws.send(JSON.stringify(payload));
+        } catch (err) {
+          console.error('WebSocket register send failed:', err);
+          return;
+        }
+        this.emit('registerSent', { message: 'REGISTER sent', options: { ...merged }, raw: payload });
+      }
+      // Call function: establish WebRTC first, then send call message
+      async call(dest) {
+        if (!dest) {
+          console.error('Missing call destination');
+          return;
+        }
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+          console.error('WebSocket not open, cannot call');
+          return;
+        }
+        const callId = this._getCallChannelId();
+        let session;
+        try {
+          session = await this.ensureWebrtcSession();
+          await session.waitForConnected({ timeoutMs: 60000 });
+        } catch (err) {
+          console.error('Unable to establish WebRTC before dialing:', err);
+          throw err;
+        }
+        const mediaWsUrl = this._buildMediaWsUrl();
+        const callMsg = {
+          channel_id: callId,
+          action: 'CALL',
+          dest: dest
+        };
+        this.ws.send(JSON.stringify(callMsg));
+        console.log('WebSocket call sent:', callMsg);
+        this.activeCall = {
+          channelId: callId,
+          direction: 'outgoing',
+          destination: dest,
+          session,
+          mediaWsUrl
+        };
+        this.emit('callDialSent', { channelId: callId, destination: dest, mediaWsUrl, raw: callMsg });
+      }
+
+
+      async acceptIncoming(callInfo = null) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+          throw new Error('WebSocket not connected');
+        }
+        const incoming = callInfo || this.pendingIncoming;
+        if (!incoming) {
+          throw new Error('No incoming call metadata available');
+        }
+
+        let channelId = incoming.callId;
+        if (!channelId) {
+          channelId = this._getCallChannelId();
+        }
+        const existingCallId = this._getCallChannelId();
+        const needsNewSession = !!channelId && channelId !== existingCallId;
+        if (needsNewSession) {
+          this._setCallChannelId(channelId);
+        } else {
+          channelId = existingCallId;
+        }
+
+        let session;
+        try {
+          session = await this.ensureWebrtcSession({ force: needsNewSession });
+          await session.waitForConnected({ timeoutMs: 60000 });
+        } catch (err) {
+          console.error('Unable to establish WebRTC before accepting call:', err);
+          throw err;
+        }
+
+        const acceptMsg = {
+          channel_id: channelId,
+          action: 'ACCEPT'
+        };
+        this.ws.send(JSON.stringify(acceptMsg));
+        console.log('WebSocket accept sent:', acceptMsg);
+
+        const mediaWsUrl = this._buildMediaWsUrl();
+        this.activeCall = {
+          channelId,
+          direction: 'incoming',
+          session,
+          mediaWsUrl,
+          from: incoming.from ?? incoming.caller ?? null
+        };
+        this.emit('callAcceptSent', { channelId, raw: acceptMsg, incoming, mediaWsUrl });
+
+        this.pendingIncoming = null;
+        return { channelId, session, mediaWsUrl };
+      }
+
+  
+      hangup() {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+          console.error("WebSocket not open, cannot hangup");
+          return;
+        }
+        const channelId = this.activeCall?.channelId ?? this.clientId;
+        const hangupMsg = {
+          channel_id: channelId,
+          action: "HANGUP"
+        };
+        this.ws.send(JSON.stringify(hangupMsg));
+        console.log("WebSocket hangup sent:", hangupMsg);
+        this.activeCall = null;
+        this.emit('callHangupSent', { channelId, raw: hangupMsg });
+      }
+
+      sendDtmf(digits, { channelId = null, toneDuration = null, toneGap = null } = {}) {
+        if (digits === undefined || digits === null) {
+          console.error('No DTMF digits provided');
+          return false;
+        }
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+          console.error('WebSocket not open, cannot send DTMF');
+          return false;
+        }
+        const candidate = Array.isArray(digits) ? digits.join('') : String(digits);
+        const sanitized = candidate.replace(/\s+/g, '');
+        if (!sanitized) {
+          console.error('DTMF digits resolved to empty input');
+          return false;
+        }
+        const allowed = new Set(['0','1','2','3','4','5','6','7','8','9','*','#','A','B','C','D']);
+        const normalizedDigits = sanitized.toUpperCase().split('').filter(ch => allowed.has(ch)).join('');
+        if (!normalizedDigits) {
+          console.error('No valid DTMF digits after sanitizing input');
+          return false;
+        }
+        const activeChannel = channelId || this.activeCall?.channelId || this.pendingIncoming?.callId || this.clientId;
+        if (!activeChannel) {
+          console.error('No active channel available for DTMF');
+          return false;
+        }
+        const dtmfMessage = {
+          action: 'DTMF',
+          channel_id: activeChannel,
+          digits: normalizedDigits
+        };
+        if (toneDuration !== null && toneDuration !== undefined) {
+          const durationNumber = Number(toneDuration);
+          if (Number.isFinite(durationNumber) && durationNumber > 0) {
+            dtmfMessage.duration = Math.floor(durationNumber);
+          }
+        }
+        if (toneGap !== null && toneGap !== undefined) {
+          const gapNumber = Number(toneGap);
+          if (Number.isFinite(gapNumber) && gapNumber >= 0) {
+            dtmfMessage.gap = Math.floor(gapNumber);
+          }
+        }
+        try {
+          this.ws.send(JSON.stringify(dtmfMessage));
+          
+        } catch (err) {
+          console.error('WebSocket DTMF send failed:', err);
+          this.emit('dtmfFailed', { channelId: activeChannel, digits: normalizedDigits, error: err, raw: dtmfMessage });
+          return false;
+        }
+        this.emit('dtmfSent', { channelId: activeChannel, digits: normalizedDigits, raw: dtmfMessage });
+        return true;
+      }
+
+      handleWsMessage(msg) {
+        try {
+          const data = JSON.parse(msg.data);
+          console.log("WebSocket message (parsed):", data);
+          if (data.event === "REGISTER") {
+            let nextRegistered = this.registered;
+            if (data.status === "SUCCESS") {
+              nextRegistered = true;
+            } else if (data.status === "FAILED") {
+              nextRegistered = false;
+            }
+            this.registered = nextRegistered;
+            const serverCallId = data.call_id ?? data.callId ?? null;
+            if (serverCallId) {
+              this._setCallChannelId(serverCallId);
+            } else {
+              this._updateGlobalMediaMetadata();
+            }
+            const expireSecondsRaw = Number(data.expire ?? this.registerOptions?.expire ?? NaN);
+            const hasExpire = Number.isFinite(expireSecondsRaw) && expireSecondsRaw > 0;
+            if (hasExpire) {
+              this.registerOptions.expire = expireSecondsRaw;
+            }
+            let message;
+            if (data.status === "SUCCESS") {
+              const expireSegment = hasExpire ? ` (expires in ${Math.round(expireSecondsRaw)}s)` : '';
+              message = `REGISTER SUCCESS: code=${data.code || ''} reason=${data.reason || ''}${expireSegment}`;
+            } else if (data.status === "FAILED") {
+              if (data.error !== undefined) {
+                message = `REGISTER FAILED: error=${data.error}`;
+              } else {
+                message = `REGISTER FAILED: code=${data.code || ''} reason=${data.reason || ''}`;
+              }
+            } else {
+              message = "REGISTER: Unknown status";
+            }
+            const registerDetail = {
+              event: data.event,
+              status: data.status,
+              code: data.code ?? null,
+              reason: data.reason ?? null,
+              error: data.error ?? null,
+              registered: this.registered,
+              expire: hasExpire ? Math.round(expireSecondsRaw) : null,
+              callId: this._getCallChannelId(),
+              mediaWsUrl: this._buildMediaWsUrl(),
+              message,
+              raw: data
+            };
+            this.emit('register', registerDetail);
+            if (data.status === "SUCCESS") {
+              if (hasExpire) {
+                this._scheduleRegisterRenew(expireSecondsRaw);
+              } else {
+                this._clearRegisterTimer();
+              }
+              if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this._wantWebrtc = true;
+                this.ensureWebrtcSession().catch((err) => {
+                  console.warn('WebRTC connect after register failed', err);
+                  this._scheduleWebrtcReconnect();
+                });
+              }
+              this.emit('registerSuccess', registerDetail);
+            } else if (data.status === "FAILED") {
+              this._clearRegisterTimer();
+              this._wantWebrtc = false;
+              this.disconnectWebrtc('WebRTC disconnected due to register failure');
+              this.emit('registerFailed', registerDetail);
+            } else {
+              this._clearRegisterTimer();
+              this._wantWebrtc = false;
+              this.emit('registerUnknown', registerDetail);
+            }
+
+          } else if (data.event === "CALL") {
+            let message;
+            if (data.status === "PROGRESS") {
+              message = `Call ringing... code ${data.code || ''} reason ${data.reason || ''}`;
+            } else if (data.status === "ESTABLISHED") {
+              message = "Call answered";
+            } else if (data.status === "FAILED") {
+              message = `Call failed: ${data.reason || 'Unknown reason'}`;
+            } else if (data.status === "HANGUP") {
+              message = "Call hung up";
+            } else {
+              message = `Call status: ${data.status || 'UNKNOWN'}`;
+            }
+            const callDetail = {
+              event: data.event,
+              status: data.status,
+              code: data.code ?? null,
+              reason: data.reason ?? null,
+              destination: data.destination ?? null,
+              callId: data.call_id ?? data.callId ?? null,
+              channelId: data.channel_id ?? data.channelId ?? null,
+              from: data.from ?? data.from ?? null,
+              registered: this.registered,
+              message,
+              raw: data
+            };
+            if (callDetail.callId) {
+              this._setCallChannelId(callDetail.callId);
+            }
+            callDetail.mediaWsUrl = this._buildMediaWsUrl();
+            if (data.ws_url !== undefined || data.wsUrl !== undefined) {
+              callDetail.wsUrl = data.ws_url ?? data.wsUrl;
+            }
+            this.emit('call', callDetail);
+            if (data.status === "PROGRESS") {
+              this.emit('callProgress', callDetail);
+            } else if (data.status === "ESTABLISHED") {
+              this.emit('callEstablished', callDetail);
+              if (callDetail.channelId) {
+                this.activeCall = {
+                  ...(this.activeCall || {}),
+                  channelId: callDetail.channelId,
+                  session: this.webrtcSession,
+                  direction: this.activeCall?.direction || 'outgoing',
+                  mediaWsUrl: this._buildMediaWsUrl(),
+                  raw: callDetail
+                };
+              }
+            } else if (data.status === "INCOMING") {
+              this.emit('callIncoming', callDetail);
+              this.pendingIncoming = callDetail;
+            } else if (data.status === "FAILED") {
+              this.emit('callFailed', callDetail);
+              this.activeCall = null;
+              this.pendingIncoming = null;
+            } else if (data.status === "HANGUP") {
+              this.emit('callHangup', callDetail);
+              this.activeCall = null;
+              this.pendingIncoming = null;
+            } else {
+              this.emit('callUnknown', callDetail);
+            }
+          }
+          // Add more event handling as needed
+        } catch (e) {
+          console.log("WebSocket message (raw):", msg.data);
+        }
+      }
+    }
+
+    const attachDialerListeners = (client) => {
+      if (!client || client._listenersAttached) {
+        return;
+      }
+
+      // Show websocket status updates on the page
+      const setWsStatus = (text) => {
+        if (!text) {
+          return;
+        }
+        if (client.wsStatus && typeof client.wsStatus.text === 'function') {
+          client.wsStatus.text(text);
+        } else {
+          $('#ws-status').text(text);
+        }
+      };
+
+      // Display auth/registration related messages
+      const setLoginStatus = (text) => {
+        if (text) {
+          $('#login-status').text(text);
+        }
+      };
+
+      // Update the main call status label
+      const setCallStatus = (text) => {
+        if (text) {
+          $('#call-status').text(text);
+        }
+      };
+
+      const acceptBtn = $('#accept-btn');
+      const ringAudio = document.getElementById('incoming-ring');
+      client._incomingTone = ringAudio || null;
+      // Helper to keep the accept button hidden and re-enabled
+      const hideAcceptButton = () => {
+        if (acceptBtn.length) {
+          acceptBtn.hide();
+          acceptBtn.prop('disabled', false);
+        }
+      };
+
+      hideAcceptButton();
+      const setDtmfEnabled = (enabled) => {
+        if (dtmfControls && typeof dtmfControls.setEnabled === 'function') {
+          dtmfControls.setEnabled(Boolean(enabled));
+        }
+      };
+
+      setDtmfEnabled(false);
+
+      client.addEventListener('wsConnected', ({ detail }) => {
+        const message = detail?.message || 'WebSocket connected';
+        setWsStatus(message);
+        setLoginStatus(message);
+        setDtmfEnabled(false);
+        hideAcceptButton();
+      });
+
+      client.addEventListener('wsClosed', ({ detail }) => {
+        const message = detail?.message || 'WebSocket disconnected';
+        setWsStatus('WebSocket: Disconnected');
+        setLoginStatus(message);
+        setCallStatus('Idle');
+        setDtmfEnabled(false);
+        hideAcceptButton();
+      });
+
+      client.addEventListener('wsError', ({ detail }) => {
+        const message = detail?.message || 'WebSocket error';
+        setWsStatus('WebSocket: Error');
+        setLoginStatus(message);
+        setDtmfEnabled(false);
+      });
+
+      client.addEventListener('register', ({ detail }) => {
+        if (!detail) {
+          return;
+        }
+        setWsStatus(detail.message);
+        if (detail.registered) {
+          const nextRefresh = client._registerNextAt
+            ? Math.max(0, Math.round((client._registerNextAt - Date.now()) / 1000))
+            : null;
+          const suffix = nextRefresh ? ` - refreshing in ${nextRefresh}s` : '';
+          setLoginStatus(`${detail.message}${suffix}`);
+        } else {
+          setLoginStatus(detail.message);
+        }
+      });
+
+      client.addEventListener('registerFailed', ({ detail }) => {
+        if (!detail) {
+          return;
+        }
+        const note = detail.error ?? detail.reason ?? 'Unknown reason';
+        setLoginStatus(`REGISTER FAILED: ${note}`);
+      });
+
+      client.addEventListener('call', ({ detail }) => {
+        if (detail?.message) {
+          setCallStatus(detail.message);
+        }
+      });
+
+      client.addEventListener('callProgress', ({ detail }) => {
+        if (detail?.message) {
+          setCallStatus(detail.message);
+        }
+        hideAcceptButton();
+        setDtmfEnabled(false);
+      });
+
+      client.addEventListener('callEstablished', ({ detail }) => {
+        if (detail?.message) {
+          setCallStatus(detail.message);
+        } else {
+          setCallStatus('Call connected');
+        }
+        if (client._incomingTone) {
+          client._incomingTone.pause();
+          client._incomingTone.currentTime = 0;
+        }
+        hideAcceptButton();
+        setDtmfEnabled(true);
+      });
+
+      client.addEventListener('callIncoming', ({ detail }) => {
+        if (detail?.message) {
+          setCallStatus(detail.message);
+        } else {
+          setCallStatus('Incoming call');
+        }
+        setDtmfEnabled(false);
+        console.log("Incoming call detail:", detail);
+        if (client._incomingTone) {
+          try {
+            client._incomingTone.currentTime = 0;
+            client._incomingTone.play().catch(() => {});
+          } catch (err) {
+            console.warn('Unable to play ring tone', err);
+          }
+        }
+        if (acceptBtn.length) {
+          acceptBtn.show();
+          acceptBtn.prop('disabled', false);
+        }
+      });
+
+      client.addEventListener('callHangup', ({ detail }) => {
+        if (detail?.message) {
+          setCallStatus(detail.message);
+        } else {
+          setCallStatus('Call ended');
+        }
+        setDtmfEnabled(false);
+        if (client._incomingTone) {
+          client._incomingTone.pause();
+          client._incomingTone.currentTime = 0;
+        }
+        hideAcceptButton();
+      });
+
+      client.addEventListener('callUnknown', ({ detail }) => {
+        if (detail?.message) {
+          setCallStatus(detail.message);
+        }
+        setDtmfEnabled(false);
+      });
+
+      client.addEventListener('callFailed', ({ detail }) => {
+        const note = detail?.reason ?? detail?.code ?? 'Unknown reason';
+        setCallStatus(`Call failed: ${note}`);
+        if (client._incomingTone) {
+          client._incomingTone.pause();
+          client._incomingTone.currentTime = 0;
+        }
+        hideAcceptButton();
+        setDtmfEnabled(false);
+      });
+
+      client.addEventListener('callHangupSent', () => {
+        setDtmfEnabled(false);
+      });
+
+      client.addEventListener('callDialSent', () => {
+        setDtmfEnabled(false);
+      });
+
+      client._listenersAttached = true;
+    };
+
+    $(document).ready(function() {
+      const websock_url = "wss://" + window.location.hostname + "/websocket/";
+      let sipClient = null;
+
+      const dtmfPad = $('#dtmf-pad');
+      const dtmfButtons = dtmfPad.find('.dtmf-btn');
+      const dtmfNote = $('#dtmf-note');
+
+      dtmfControls = {
+        setEnabled(enabled) {
+          const isEnabled = Boolean(enabled);
+          if (dtmfPad.length) {
+            dtmfPad.toggleClass('dtmf-enabled', isEnabled);
+          }
+          if (dtmfButtons.length) {
+            dtmfButtons.prop('disabled', !isEnabled);
+          }
+          if (dtmfNote.length) {
+            dtmfNote.text(isEnabled ? 'Dialpad ready' : 'Available once call is connected');
+          }
+        }
+      };
+
+      dtmfControls.setEnabled(false);
+
+      dtmfButtons.on('click', function() {
+        const toneData = $(this).data('tone');
+        const tone = toneData === undefined || toneData === null ? '' : String(toneData).trim();
+        if (!tone) {
+          return;
+        }
+        if (!sipClient || typeof sipClient.sendDtmf !== 'function') {
+          $('#call-status').text('No active call');
+          return;
+        }
+        const sent = sipClient.sendDtmf(tone);
+        if (sent) {
+          $('#call-status').text(`Sent DTMF: ${tone}`);
+        } else {
+          $('#call-status').text('Unable to send DTMF');
+        }
+      });
+
+      const ensureClient = () => {
+        if (!sipClient) {
+          sipClient = new WebrtcDialer(websock_url);
+          attachDialerListeners(sipClient);
+        }
+        return sipClient;
+      };
+
+      const resetCallStatus = () => {
+        $('#call-status').text('Idle');
+      };
+
+      $('#login-form').on('submit', function(event) {
+        event.preventDefault();
+        const reg_url = $('#sip-server').val().trim();
+        const user = $('#sip-user').val().trim();
+        const pass = $('#sip-pass').val();
+        const expire = parseInt($('#sip-expire').val(), 10) || 3600;
+
+        if (!reg_url || !user || !pass) {
+          $('#login-status').text('Please provide server, username, and password.');
+          return;
+        }
+
+        const client = ensureClient();
+        const updatedOptions = client.setRegisterOptions({ reg_url, user, pass, expire });
+        if (updatedOptions?.reg_url) {
+          $('#sip-server').val(updatedOptions.reg_url);
+        }
+        $('#login-status').text('Connecting...');
+        if (client.isConnected()) {
+          client.register();
+        } else {
+          client.connect();
+        }
+
+        $('#logout-btn').on('click', function() {
+        if (sipClient) {
+          sipClient.disconnect('User disconnected');
+        }
+        $('#login-status').text('Disconnected');
+        $('#ws-status').text('WebSocket: Disconnected');
+        resetCallStatus();
+        if (dtmfControls && typeof dtmfControls.setEnabled === 'function') {
+          dtmfControls.setEnabled(false);
+        }
+      });
+
+      $('#call-btn').on('click', async function() {
+        const dest = $('#call-dest').val().trim();
+        if (!sipClient) {
+          $('#call-status').text('Please login first');
+          return;
+        }
+        if (!dest) {
+          $('#call-status').text('Please enter a destination');
+          return;
+        }
+        if (!sipClient.ws || sipClient.ws.readyState !== WebSocket.OPEN) {
+          $('#call-status').text('WebSocket not connected');
+          return;
+        }
+        try {
+          await sipClient.call(dest);
+          $('#call-status').text(`Call initiated to ${dest}`);
+        } catch (err) {
+          console.error('Call failed to start:', err);
+          $('#call-status').text((err && err.message) || 'Call could not be started');
+        }
+      });
+
+      $('#hangup-btn').on('click', function() {
+        if (!sipClient || !sipClient.ws || sipClient.ws.readyState !== WebSocket.OPEN) {
+          $('#call-status').text('WebSocket not connected');
+          return;
+        }
+        sipClient.hangup();
+        $('#call-status').text('Call hangup sent');
+        if (dtmfControls && typeof dtmfControls.setEnabled === 'function') {
+          dtmfControls.setEnabled(false);
+        }
+        if (sipClient && sipClient._incomingTone) {
+          sipClient._incomingTone.pause();
+          sipClient._incomingTone.currentTime = 0;
+        }
+      });
+
+      const acceptBtn = $('#accept-btn');
+      acceptBtn.hide();
+      acceptBtn.on('click', async function() {
+        if (!sipClient) {
+          $('#call-status').text('No active client');
+          return;
+        }
+        if (!sipClient.ws || sipClient.ws.readyState !== WebSocket.OPEN) {
+          $('#call-status').text('WebSocket not connected');
+          return;
+        }
+        try {
+          acceptBtn.prop('disabled', true);
+          $('#call-status').text('Accepting incoming call...');
+          await sipClient.acceptIncoming();
+        } catch (err) {
+          console.error('Accept incoming call failed:', err);
+          $('#call-status').text((err && err.message) || 'Unable to accept call');
+          acceptBtn.prop('disabled', false);
+          return;
+        }
+        acceptBtn.hide();
+      });
+    });
+
+});
+  </script>
+</body>
+</html>

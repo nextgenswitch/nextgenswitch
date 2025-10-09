@@ -12,6 +12,7 @@ use App\Models\TimeCondition;
 use App\Models\Survey;
 use App\Models\AiBot;
 use App\Models\VoiceRecord;
+use App\Models\Stream;
 
 trait FuncTrait {
 
@@ -61,6 +62,10 @@ trait FuncTrait {
         elseif($func == 'ai_assistant'){
             $data = AiBot::where('organization_id', $orid)->pluck('name', 'id')->toArray();
             $html = '<option value=""> Select AI Assistant</option>';
+        }
+        elseif($func == 'stream'){
+            $data = Stream::where('organization_id', $orid)->pluck('name', 'id')->toArray();
+            $html = '<option value=""> Select Stream</option>';
         }
 
 

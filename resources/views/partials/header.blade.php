@@ -115,7 +115,7 @@
 
                 @if (auth()->check() && auth()->user()->unreadNotifications->count() > 0)
                     <li id="notification-params" class="app-notification__footer"><a
-                            href="#">{{ __('See all notifications.') }}</a></li>
+                            href="{{ route('notifications.notification.index') }}">{{ __('See all notifications.') }}</a></li>
                 @endif
             </ul>
         </li>

@@ -58,7 +58,9 @@ use App\Http\Controllers\DialerCampaignsController;
 use App\Http\Controllers\DialerCampaignCallController;
 use App\Http\Controllers\TicketsController;
 use App\Http\Controllers\PlansController;
+use App\Http\Controllers\StreamHistoryController;
 use App\Http\Controllers\AiBotsController;
+use App\Http\Controllers\StreamController;
 use App\Http\Controllers\CallParkingsController;
 use App\Http\Controllers\ExtensionGroupsController;
 use App\Http\Controllers\Agent\Auth\LoginController;
@@ -89,12 +91,23 @@ Route::get('/clear', function () {
     return redirect()->back();
 });
 
-Route::group(['prefix' => 'agent', 'as' => 'agent.'], function () {
-    Route::get('/', [LoginController::class, 'showLoginForm']);
-    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+Route::group(['prefix' => 'test'], function () {
+    Route::get('dialer', function () {
+        return view('test.dialer');
+    });
+});
 
-    Route::post('/login', [LoginController::class, 'login'])->name('login');
-    Route::get('/dashboard', [AgentDashboardController::class, 'index'])->name('dashboard');
+Route::group(['prefix' => 'agent', 'as' => 'agent.'], function () {
+    Route::get('/', function () {
+        return view('agents.index');
+    });
+
+
+    // Route::get('/', [LoginController::class, 'showLoginForm']);
+    // Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+
+    // Route::post('/login', [LoginController::class, 'login'])->name('login');
+    // Route::get('/dashboard', [AgentDashboardController::class, 'index'])->name('dashboard');
 });
 
 
@@ -174,7 +187,7 @@ Route::group(['middleware' => 'auth'], function () {
             Route::post('/firewall/store', [FirewallController::class, 'store'])->name('settings.firewall.store');
 
             Route::get('/switch/{group}', [SettingController::class, 'index'])->name('settings.setting.index');
-            
+
             Route::post('/store', [SettingController::class, 'store'])->name('settings.setting.store');
             Route::get('/dba', [DashboardController::class, 'dbadmin'])->name('settings.setting.dba');
             Route::post('/dba', [DashboardController::class, 'dbadmin'])->name('settings.setting.dba.post');
@@ -230,6 +243,7 @@ Route::group(['middleware' => 'auth'], function () {
                 ->name('monitoring.voice_mails.preview');
 
             Route::get('/sms-histories', [MonitoringController::class, 'smsHistory'])->name('monitoring.sms.histories');
+            Route::get('/stream-histories', [StreamHistoryController::class, 'index'])->name('monitoring.stream_histories.index');
             Route::get('/trunk-logs', [MonitoringController::class, 'trunkLog'])->name('monitoring.trunk.log');
             Route::get('/surveys', [ReportController::class, 'survey'])->name('monitoring.surveys');
 
@@ -943,6 +957,31 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('/ai_conversations/{call_id}', [AiBotsController::class, 'conversations'])->name('ai_bots.ai_bot.conversations');
     });
 
+    Route::group([
+        'prefix' => 'streams',
+    ], function () {
+        Route::get('/', [StreamController::class, 'index'])
+            ->name('streams.stream.index');
+        Route::get('distinations/{function}', [StreamController::class, 'destinations'])
+            ->name('streams.stream.destinations');
+        Route::get('/create', [StreamController::class, 'create'])
+            ->name('streams.stream.create');
+        Route::get('/show/{stream}', [StreamController::class, 'show'])
+            ->name('streams.stream.show');
+        Route::get('/{stream}/edit', [StreamController::class, 'edit'])
+            ->name('streams.stream.edit');
+        Route::post('/', [StreamController::class, 'store'])
+            ->name('streams.stream.store');
+        Route::put('stream/{stream}', [StreamController::class, 'update'])
+            ->name('streams.stream.update');
+        Route::delete('/stream/{stream}', [StreamController::class, 'destroy'])
+            ->name('streams.stream.destroy');
+        Route::put('/bulk', [StreamController::class, 'bulkAction'])
+            ->name('streams.stream.bulk');
+
+        Route::put('field/{record}', [StreamController::class, 'updateField'])
+            ->name('streams.stream.updateField');
+    });
 
     Route::group([
         'prefix' => 'call_parkings',
@@ -1025,7 +1064,17 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('/forward', [DialerController::class, 'forward'])->name('dialer.forward');
         Route::get('/distinations/{function}', [DialerController::class, 'destinations'])->name('dialer.destinations');
         // Route::get('/end-call', [DialerController::class, 'endCall'])->name('dialer.end.call');
+        Route::get('/web', [DialerController::class, 'web'])->name('dialer.web');
+        Route::get('/customer/lookup/{number}', [DialerController::class, 'customerLookup'])->name('api.customer.lookup');
+        Route::get('/call/history/{caller}', [DialerController::class, 'callHistory'])->name('dialer.call.history');
+        Route::get('/contacts', [DialerController::class, 'contacts'])->name('dialer.contacts');
+    });
 
+    Route::group(['prefix' => 'user'], function () {
+        Route::get('/profile', [UserController::class, 'index'])->name('user.profile.index');
+        Route::put('/profile/update', [UserController::class, 'update'])->name('user.profile.update');
+        Route::get('/change-password', [UserController::class, 'showChangePasswordForm'])->name('user.change.password');
+        Route::post('/change-password', [UserController::class, 'changePassword']);
     });
 
     Route::group(['middleware' => 'permission:admin.*'], function () {
@@ -1114,12 +1163,7 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('dashboard/dialer_connect', [DashboardController::class, 'dialer_connect'])->name('dashboard.dialer.connect');
         Route::get('dashboard/dialer_dial', [DashboardController::class, 'dialer_dial'])->name('dashboard.dialer.dial');
 
-        Route::group(['prefix' => 'user'], function () {
-            Route::get('/profile', [UserController::class, 'index'])->name('user.profile.index');
-            Route::put('/profile/update', [UserController::class, 'update'])->name('user.profile.update');
-            Route::get('/change-password', [UserController::class, 'showChangePasswordForm'])->name('user.change.password');
-            Route::post('/change-password', [UserController::class, 'changePassword']);
-        });
+
 
         Route::group([
             'prefix' => 'users',

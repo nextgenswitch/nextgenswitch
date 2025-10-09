@@ -78,6 +78,22 @@ class VoiceResponse extends \SimpleXMLElement
         $tag = self::genXmlElelment('gather',null,$options);
         return $this->appendXML($tag);        
     }
+
+    public function connect(){
+        $tag = self::genXmlElelment('connect',null,[]);
+        return $this->appendXML($tag);       
+    }
+
+    public function stream($options = []){
+        $tag = self::genXmlElelment('stream',null,$options);
+        return $this->appendXML($tag);  
+    }
+
+    public function parameter($options = []){
+        $tag = self::genXmlElelment('parameter',null,$options);
+        return $this->appendXML($tag);  
+    }
+
     public function record($options = []){        
          $tag = self::genXmlElelment('record',null,$options);
          $this->appendXML($tag);        

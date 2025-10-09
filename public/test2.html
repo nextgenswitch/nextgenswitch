@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIP Web Dialer</title>
+    <!-- Bootstrap 4.3.1 CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Google Fonts - Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- Custom CSS for Modern Dialer UI --- */
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --background-color: #f4f7f6;
+            --panel-bg: #ffffff;
+            --text-color: #333;
+            --border-color: #dee2e6;
+            --green-status: #28a745;
+            --yellow-status: #ffc107;
+            --red-status: #dc3545;
+            --dialpad-bg: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 15px;
+        }
+
+        .app-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 1000px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        /* --- Login Overlay --- */
+        #login-overlay {
+            position: absolute; /* Changed from fixed */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1050;
+            opacity: 1;
+            transition: opacity 0.3s ease-in-out;
+            border-radius: 15px;
+        }
+        #login-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .login-container {
+            background: var(--panel-bg);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .login-container h2 {
+            margin-bottom: 25px;
+            color: var(--text-color);
+            font-weight: 600;
+        }
+        .login-container .alert {
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        .login-container .form-control {
+            height: 50px;
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+        }
+        .login-container .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: none;
+        }
+        .login-container .btn-login {
+            background: var(--primary-color);
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .dialer-container {
+            width: 100%;
+            background: var(--panel-bg);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .dialer-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .agent-info {
+            font-weight: 500;
+        }
+
+        .agent-status {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .status-indicator {
+            height: 10px;
+            width: 10px;
+            background-color: var(--green-status);
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 2px solid white;
+        }
+
+        .header-actions .btn-logout {
+            color: white;
+            opacity: 0.8;
+            font-size: 1.3rem;
+        }
+        .header-actions .btn-logout:hover {
+            opacity: 1;
+        }
+
+        .profile-icon {
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .profile-icon:hover {
+            opacity: 0.9;
+        }
+
+        /* Main Body */
+        .main-body {
+            display: flex;
+            flex: 1;
+        }
+
+        /* Dialer Panel */
+        .dialer-panel {
+            flex: 1.2;
+            padding: 30px;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .call-status-area {
+            position: relative;
+            text-align: center;
+            margin-bottom: 25px;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            background: #f8f9fa;
+            padding: 20px;
+            transition: background-color 0.3s ease;
+        }
+        .call-status-area.ringing { background-color: #e9f5ff; }
+        .call-status-area.connected { background-color: #eaf6ec; }
+        .call-status-area.on-hold { background-color: #fff8e8; }
+
+        .caller-id { font-size: 1.5rem; font-weight: 600; }
+        .call-timer { font-size: 1.1rem; color: var(--secondary-color); }
+        .call-state { font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
+        .call-state.connected { color: var(--green-status); }
+        .call-state.on-hold { color: var(--yellow-status); }
+
+        .dtmf-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            opacity: 0;
+            transition: opacity 0.5s ease-out;
+            pointer-events: none;
+        }
+        .dtmf-display.show {
+            opacity: 0.6;
+        }
+
+        .in-call-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .btn-call-action {
+            background: #e9ecef;
+            color: var(--secondary-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.1rem;
+            transition: all 0.2s ease;
+        }
+        .btn-call-action:hover {
+            background: #ced4da;
+            color: var(--text-color);
+        }
+        .btn-call-action.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        #phone-number-input {
+            width: 100%;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 2rem;
+            text-align: center;
+            font-weight: 500;
+            padding: 10px 45px 10px 10px;
+            margin-bottom: 20px;
+            transition: all 0.2s ease;
+        }
+        #phone-number-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        }
+        #phone-number-input:disabled {
+            background-color: #f0f2f5;
+            cursor: not-allowed;
+        }
+        .backspace-btn {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.4rem;
+            color: var(--secondary-color);
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .backspace-btn:hover { color: var(--red-status); }
+
+        .dialpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .dialpad-btn {
+            background: var(--dialpad-bg);
+            border: none;
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 1.8rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .dialpad-btn:hover {
+            background-color: #e9ecef;
+        }
+        .dialpad-btn:active {
+            transform: scale(0.95);
+            background-color: #d1d6db;
+        }
+        .dialpad-btn .subtext {
+            font-size: 0.8rem;
+            color: var(--secondary-color);
+        }
+
+        .main-actions {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        .btn-action {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+        .btn-call {
+            background-color: var(--green-status);
+            color: white;
+        }
+        .btn-hangup {
+            background-color: var(--red-status);
+            color: white;
+        }
+
+        /* Sidebar Panel */
+        .sidebar-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #f8f9fa;
+        }
+
+        .log-list, .contact-list {
+            overflow-y: auto;
+            flex-grow: 1;
+            padding: 15px;
+        }
+
+        .log-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .log-item:hover {
+            background-color: #e9ecef;
+        }
+        .log-item:last-child {
+            border-bottom: none;
+        }
+
+        .call-icon {
+            font-size: 1.2rem;
+            margin-right: 15px;
+            width: 25px;
+            text-align: center;
+        }
+        .call-icon.incoming { color: var(--green-status); }
+        .call-icon.outgoing { color: var(--primary-color); }
+        .call-icon.missed { color: var(--red-status); }
+
+        .item-details {
+            flex-grow: 1;
+        }
+        .item-name {
+            font-weight: 500;
+        }
+        .item-meta {
+            font-size: 0.8rem;
+            color: var(--secondary-color);
+        }
+
+        /* Incoming Call Modal */
+        #incoming-call-modal .modal-content {
+            border-radius: 15px;
+            text-align: center;
+            padding: 20px;
+        }
+        #incoming-call-modal .caller-avatar {
+            font-size: 4rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+        #incoming-call-modal .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        #incoming-call-modal .modal-body p {
+            font-size: 1.1rem;
+            color: var(--secondary-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-body {
+                flex-direction: column;
+            }
+            .dialer-panel {
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+            .dialer-container {
+                height: 95vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-wrapper">
+        <div id="login-overlay">
+            <div class="login-container">
+                <h2>Agent Login</h2>
+                <form id="login-form">
+                    <div class="alert alert-danger d-none" role="alert" id="login-alert">
+                        Invalid Agent ID or Password.
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="agent-id" placeholder="Agent ID" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" class="form-control" id="agent-password" placeholder="Password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block btn-login">Login</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="dialer-container">
+            <!-- Header -->
+            <div class="dialer-header">
+                <div class="agent-info">
+                <div class="agent-name">John Doe</div>
+                <div class="agent-status">
+                    <span class="status-indicator"></span> Available
+                </div>
+            </div>
+            <div class="header-actions d-flex align-items-center">
+                 <!-- Test button for incoming call simulation -->
+                <button id="simulate-incoming-btn" class="btn btn-sm btn-outline-light mr-3">Incoming Call</button>
+                <button class="btn btn-link btn-logout mr-2" id="logout-btn" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+                <div class="profile-icon">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Body -->
+        <div class="main-body">
+            <!-- Dialer Panel -->
+            <div class="dialer-panel">
+                <!-- Call Status Display -->
+                <div class="call-status-area" id="call-status-area">
+                    <div id="welcome-message">
+                        <h4>Ready to make a call</h4>
+                        <p class="text-muted">Use the dialpad below</p>
+                    </div>
+                    <div id="call-info" class="d-none">
+                        <div class="caller-id" id="caller-id-display"></div>
+                        <div class="call-timer" id="call-timer-display">00:00</div>
+                        <div class="call-state" id="call-state-display"></div>
+                        <div id="dtmf-display" class="dtmf-display"></div>
+                         <div class="in-call-actions mt-3">
+                            <button class="btn btn-call-action" id="mute-btn" title="Mute"><i class="fas fa-microphone-slash"></i></button>
+                            <button class="btn btn-call-action" id="hold-btn" title="Hold"><i class="fas fa-pause"></i></button>
+                            <button class="btn btn-call-action" id="transfer-btn" title="Transfer"><i class="fas fa-random"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Number Input -->
+                <div class="position-relative">
+                    <input type="text" id="phone-number-input" placeholder="Enter number...">
+                    <button class="backspace-btn" id="backspace-btn"><i class="fas fa-backspace"></i></button>
+                </div>
+
+                <!-- Dialpad -->
+                <div class="dialpad">
+                    <button class="dialpad-btn" data-value="1">1</button>
+                    <button class="dialpad-btn" data-value="2">2 <span class="subtext">ABC</span></button>
+                    <button class="dialpad-btn" data-value="3">3 <span class="subtext">DEF</span></button>
+                    <button class="dialpad-btn" data-value="4">4 <span class="subtext">GHI</span></button>
+                    <button class="dialpad-btn" data-value="5">5 <span class="subtext">JKL</span></button>
+                    <button class="dialpad-btn" data-value="6">6 <span class="subtext">MNO</span></button>
+                    <button class="dialpad-btn" data-value="7">7 <span class="subtext">PQRS</span></button>
+                    <button class="dialpad-btn" data-value="8">8 <span class="subtext">TUV</span></button>
+                    <button class="dialpad-btn" data-value="9">9 <span class="subtext">WXYZ</span></button>
+                    <button class="dialpad-btn" data-value="*">*</button>
+                    <button class="dialpad-btn" data-value="0">0</button>
+                    <button class="dialpad-btn" data-value="#">#</button>
+                </div>
+
+                <!-- Main Actions -->
+                <div class="main-actions">
+                    <button class="btn-action btn-call" id="call-btn"><i class="fas fa-phone"></i></button>
+                    <button class="btn-action btn-hangup d-none" id="hangup-btn"><i class="fas fa-phone-slash"></i></button>
+                </div>
+            </div>
+
+            <!-- Sidebar Panel -->
+            <div class="sidebar-panel">
+                <ul class="nav nav-tabs nav-fill">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-toggle="tab" href="#history">History</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-toggle="tab" href="#contacts">Contacts</a>
+                    </li>
+                </ul>
+                <div class="tab-content flex-grow-1">
+                    <div class="tab-pane container active" id="history">
+                        <div class="log-list">
+                            <!-- Example History Item -->
+                            <div class="log-item">
+                                <div class="call-icon missed"><i class="fas fa-phone-slash"></i></div>
+                                <div class="item-details">
+                                    <div class="item-name">Michael Scott</div>
+                                    <div class="item-meta">Today, 10:45 AM (Missed)</div>
+                                </div>
+                            </div>
+                            <div class="log-item">
+                                <div class="call-icon outgoing"><i class="fas fa-share"></i></div>
+                                <div class="item-details">
+                                    <div class="item-name">Dwight Schrute</div>
+                                    <div class="item-meta">Today, 10:30 AM (02:15)</div>
+                                </div>
+                            </div>
+                            <div class="log-item">
+                                <div class="call-icon incoming"><i class="fas fa-reply"></i></div>
+                                <div class="item-details">
+                                    <div class="item-name">Pam Beesly</div>
+                                    <div class="item-meta">Yesterday, 4:15 PM (05:30)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane container fade" id="contacts">
+                        <div class="contact-list">
+                            <!-- Contact items would be dynamically loaded here -->
+                             <p class="p-3 text-center text-muted">Contact list is empty.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Incoming Call Modal -->
+    <div class="modal fade" id="incoming-call-modal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <div class="caller-avatar">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <h5 class="modal-title" id="incoming-caller-id">Unknown Caller</h5>
+                    <p>Incoming Call...</p>
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-danger btn-lg mr-3" id="decline-btn" data-dismiss="modal">Decline</button>
+                        <button type="button" class="btn btn-success btn-lg" id="accept-btn" data-dismiss="modal">Accept</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- jQuery, Popper.js, Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+    <script>
+        // --- UI Interaction Logic (Frontend Only) ---
+        document.addEventListener('DOMContentLoaded', function() {
+            // Login elements
+            const loginOverlay = document.getElementById('login-overlay');
+            const loginForm = document.getElementById('login-form');
+            const dialerContainer = document.querySelector('.dialer-container');
+            const agentIdInput = document.getElementById('agent-id');
+            const agentPasswordInput = document.getElementById('agent-password');
+            const loginAlert = document.getElementById('login-alert');
+
+            // Dialer elements
+            const phoneNumberInput = document.getElementById('phone-number-input');
+            const dialpadBtns = document.querySelectorAll('.dialpad-btn');
+            const backspaceBtn = document.getElementById('backspace-btn');
+            const callBtn = document.getElementById('call-btn');
+            const hangupBtn = document.getElementById('hangup-btn');
+
+            // Call status elements
+            const callStatusArea = document.getElementById('call-status-area');
+            const welcomeMessage = document.getElementById('welcome-message');
+            const callInfo = document.getElementById('call-info');
+            const callerIdDisplay = document.getElementById('caller-id-display');
+            const callTimerDisplay = document.getElementById('call-timer-display');
+            const callStateDisplay = document.getElementById('call-state-display');
+
+            // In-call action buttons
+            const muteBtn = document.getElementById('mute-btn');
+            const holdBtn = document.getElementById('hold-btn');
+
+            // Incoming call elements
+            const incomingCallModal = $('#incoming-call-modal');
+            const incomingCallerId = document.getElementById('incoming-caller-id');
+            const acceptBtn = document.getElementById('accept-btn');
+            const declineBtn = document.getElementById('decline-btn');
+            const simulateIncomingBtn = document.getElementById('simulate-incoming-btn');
+
+            // Logout Button
+            const logoutBtn = document.getElementById('logout-btn');
+
+            // DTMF display element
+            const dtmfDisplay = document.getElementById('dtmf-display');
+            let dtmfTimeout;
+
+            let callTimerInterval;
+            let seconds = 0;
+            let isCallActive = false; // State to track if a call is active
+            let currentCallType = 'outgoing'; // 'outgoing', 'incoming'
+            let isOnHold = false;
+            let isMuted = false;
+            let callConnectTimeout;
+
+            // --- Login/Logout Logic ---
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const agentId = agentIdInput.value;
+                const password = agentPasswordInput.value;
+
+                // --- Simulated Validation ---
+                // In a real app, this would be an API call
+                if (agentId === 'admin' && password === 'password') {
+                    loginAlert.classList.add('d-none'); // Hide alert on success
+                    loginOverlay.classList.add('hidden');
+                } else {
+                    loginAlert.classList.remove('d-none'); // Show alert on failure
+                }
+            });
+
+            logoutBtn.addEventListener('click', function() {
+                // If a call is active, hang it up first
+                if (isCallActive) {
+                    hangupBtn.click();
+                }
+                // Reset the login form fields
+                loginForm.reset();
+                loginAlert.classList.add('d-none'); // Hide alert on logout
+                loginOverlay.classList.remove('hidden');
+            });
+
+            // --- Add to Call History ---
+            function addCallToHistory(number, durationInSeconds, type) {
+                const logList = document.querySelector('.log-list');
+                const newLogItem = document.createElement('div');
+                newLogItem.classList.add('log-item');
+
+                let iconClass = '';
+                let iconName = '';
+
+                switch(type) {
+                    case 'incoming':
+                        iconClass = 'incoming';
+                        iconName = 'fa-reply';
+                        break;
+                    case 'outgoing':
+                        iconClass = 'outgoing';
+                        iconName = 'fa-share';
+                        break;
+                    case 'missed':
+                        iconClass = 'missed';
+                        iconName = 'fa-phone-slash';
+                        break;
+                }
+
+                const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const durationText = type === 'missed' ? '(Missed)' : `(${formatTime(durationInSeconds)})`;
+
+                newLogItem.innerHTML = `
+                    <div class="call-icon ${iconClass}"><i class="fas ${iconName}"></i></div>
+                    <div class="item-details">
+                        <div class="item-name">${number}</div>
+                        <div class="item-meta">Today, ${time} ${durationText}</div>
+                    </div>
+                `;
+
+                logList.prepend(newLogItem); // Add new log to the top
+            }
+
+
+            // --- DTMF Tone Simulation ---
+            function sendDtmf(value) {
+                // In a real app, this would send the DTMF tone over the SIP connection
+                console.log(`Sending DTMF Tone: ${value}`);
+
+                // Show visual feedback
+                dtmfDisplay.textContent = value;
+                dtmfDisplay.classList.add('show');
+
+                clearTimeout(dtmfTimeout);
+                dtmfTimeout = setTimeout(() => {
+                    dtmfDisplay.classList.remove('show');
+                }, 800);
+            }
+
+            // Handle dialpad clicks
+            dialpadBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const value = this.dataset.value;
+                    if (isCallActive) {
+                        sendDtmf(value);
+                    } else {
+                        phoneNumberInput.value += value;
+                    }
+                });
+            });
+
+            // Handle backspace
+            backspaceBtn.addEventListener('click', function() {
+                if (!isCallActive) { // Only allow backspace if not in a call
+                    phoneNumberInput.value = phoneNumberInput.value.slice(0, -1);
+                }
+            });
+
+            // --- Incoming Call Simulation ---
+            function showIncomingCall(number) {
+                incomingCallerId.textContent = number;
+                incomingCallModal.modal('show');
+            }
+
+            function hideIncomingCall() {
+                incomingCallModal.modal('hide');
+            }
+
+            simulateIncomingBtn.addEventListener('click', () => showIncomingCall('+1-202-555-0149'));
+
+            acceptBtn.addEventListener('click', function() {
+                const number = incomingCallerId.textContent;
+                hideIncomingCall();
+                currentCallType = 'incoming';
+                updateCallState('Connected', number);
+            });
+
+            declineBtn.addEventListener('click', function() {
+                const number = incomingCallerId.textContent;
+                addCallToHistory(number, 0, 'missed');
+                hideIncomingCall();
+            });
+
+
+            // --- Call Simulation ---
+
+            function formatTime(totalSeconds) {
+                const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+                const secs = (totalSeconds % 60).toString().padStart(2, '0');
+                return `${minutes}:${secs}`;
+            }
+
+            function startTimer() {
+                seconds = 0;
+                callTimerDisplay.textContent = formatTime(seconds);
+                callTimerInterval = setInterval(() => {
+                    if (!isOnHold) {
+                        seconds++;
+                        callTimerDisplay.textContent = formatTime(seconds);
+                    }
+                }, 1000);
+            }
+
+            function stopTimer() {
+                clearInterval(callTimerInterval);
+            }
+
+            function updateCallState(state, number) {
+                welcomeMessage.classList.add('d-none');
+                callInfo.classList.remove('d-none');
+                callerIdDisplay.textContent = number;
+                callStateDisplay.textContent = state;
+                isCallActive = true; // Set call state to active
+                phoneNumberInput.disabled = true; // Disable input field during call
+
+                // Manage Call/Hangup button visibility
+                callBtn.classList.add('d-none');
+                hangupBtn.classList.remove('d-none');
+
+                callStatusArea.classList.remove('ringing', 'connected', 'on-hold');
+                if (state.toLowerCase() === 'connected') {
+                    callStatusArea.classList.add('connected');
+                    startTimer();
+                } else if (state.toLowerCase() === 'ringing') {
+                    callStatusArea.classList.add('ringing');
+                }
+            }
+
+            // Call button action
+            callBtn.addEventListener('click', function() {
+                const numberToCall = phoneNumberInput.value;
+                if (numberToCall) {
+                    currentCallType = 'outgoing';
+                    updateCallState('Ringing', numberToCall);
+                    // Simulate call connecting after a delay
+                    clearTimeout(callConnectTimeout); // Clear previous timeout if any
+                    callConnectTimeout = setTimeout(() => {
+                         if(isCallActive && callerIdDisplay.textContent === numberToCall){
+                             updateCallState('Connected', numberToCall);
+                         }
+                    }, 3000);
+                }
+            });
+
+            // Hangup button action
+            hangupBtn.addEventListener('click', function() {
+                clearTimeout(callConnectTimeout); // Important: cancel connection timeout
+
+                if (callStateDisplay.textContent !== "Ringing") {
+                    addCallToHistory(callerIdDisplay.textContent, seconds, currentCallType);
+                } else {
+                     addCallToHistory(callerIdDisplay.textContent, 0, 'outgoing'); // Log as 0 duration if hung up while ringing
+                }
+
+                stopTimer();
+                callInfo.classList.add('d-none');
+                welcomeMessage.classList.remove('d-none');
+                callStatusArea.classList.remove('ringing', 'connected', 'on-hold');
+                phoneNumberInput.value = "";
+                phoneNumberInput.disabled = false; // Re-enable input field
+                isCallActive = false; // Set call state to inactive
+                holdBtn.classList.remove('active');
+                muteBtn.classList.remove('active');
+                isOnHold = false;
+                isMuted = false;
+
+                // Restore button states
+                hangupBtn.classList.add('d-none');
+                callBtn.classList.remove('d-none');
+            });
+
+            // Hold button action
+            holdBtn.addEventListener('click', function() {
+                if (!isCallActive) return;
+                isOnHold = !isOnHold;
+                this.classList.toggle('active');
+                if (isOnHold) {
+                    callStateDisplay.textContent = "On Hold";
+                    callStatusArea.classList.add('on-hold');
+                    callStatusArea.classList.remove('connected');
+                } else {
+                    callStateDisplay.textContent = "Connected";
+                    callStatusArea.classList.remove('on-hold');
+                    callStatusArea.classList.add('connected');
+                }
+            });
+
+            // Mute button action
+            muteBtn.addEventListener('click', function() {
+                if (!isCallActive) return;
+                isMuted = !isMuted;
+                this.classList.toggle('active');
+            });
+
+        });
+    </script>
+</body>
+</html>
+
+
+
+

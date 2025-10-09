@@ -205,8 +205,9 @@ class CustomFuncsController extends Controller {
             return response()->json( ['success' => true] );
         }
 
-        return redirect()->route( 'custom_funcs.custom_func.index' )
-            ->with( 'success_message', __( 'Custom Function was successfully updated.' ) );
+        //return redirect()->route( 'custom_funcs.custom_func.index' )
+         //   ->with( 'success_message', __( 'Custom Function was successfully updated.' ) );
+        return back(); 
 
     }
 

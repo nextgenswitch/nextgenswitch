@@ -33,7 +33,7 @@
                        
                         {{ date_time_format($call->created_at) }}</td>
                         <td>{{ $call->queue_name }}</td>
-                        <td>{{ $call->call->caller_id }} </td>
+                        <td qcall="{{ $call->call_id }}" call="{{ $call->call->id }}">{{ $call->call->caller_id }} </td>
                         <td> @if($call->bridgeCall) {{ $call->bridgeCall->destination }}  @endif</td>
                         <td>{{ $call->call->destination }}</td>
                         

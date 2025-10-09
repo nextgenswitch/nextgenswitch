@@ -37,6 +37,9 @@ Route::group(['prefix' => 'v1', 'middleware' => 'api.auth'], function () {
 Route::post('/vtiger/status-callback', [VtigerController::class, 'statusCallback'])->name('vtiger.status.callback');
 
 
+
+
+
 Route::get('/', [SwitchController::class, 'index'])->name('index');
 Route::post('/', [SwitchController::class, 'index'])->name('index.post');
 Route::get('/calls', [SwitchController::class, 'calls'])->name('api.calls.list');

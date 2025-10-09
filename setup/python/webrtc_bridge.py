@@ -1,0 +1,368 @@
+#!/usr/bin/env python3
+"""
+WebRTC ↔ WebSocket μ-law bridge
+--------------------------------
+- Browser mic → μ-law → WS server
+- μ-law from WS → PCM16 → Browser
+- Debug prints for all frames
+"""
+
+import asyncio
+from fractions import Fraction
+import numpy as np
+import av
+import websockets
+import json
+import base64
+from aiortc import RTCPeerConnection, MediaStreamTrack, RTCSessionDescription
+from aiohttp import web
+
+try:
+    from websockets.connection import State as WSState
+except Exception:
+    WSState = None
+
+# ------------ Config ------------
+SAMPLE_RATE = 8000
+SAMPLES_PER_FRAME = 160  # 20ms frames
+
+# μ-law constants mirrored from rem/g711 implementation
+_ULAW_BIAS = 0x84
+_ULAW_CLIP = 32635
+
+
+# ------------ helpers ------------
+async def _ensure_ws_closed(ws):
+    if ws is None:
+        return
+
+    try:
+        state = getattr(ws, "state", None)
+        if WSState is not None and state is WSState.CLOSED:
+            return
+    except Exception:
+        pass
+
+    try:
+        await ws.close()
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        print(f"[WS] Error while closing websocket: {exc}")
+
+def ulaw2pcm(ulaw_bytes: bytes) -> bytes:
+    """Convert μ-law bytes to PCM16 (little endian) using rem/g711 mapping."""
+    ulaw = np.frombuffer(ulaw_bytes, dtype=np.uint8).astype(np.int32)
+    inv = np.bitwise_xor(ulaw, 0xFF)
+
+    sign = inv & 0x80
+    exponent = (inv >> 4) & 0x07
+    mantissa = inv & 0x0F
+
+    magnitude = ((mantissa << 3) + _ULAW_BIAS) << exponent
+    magnitude = magnitude - _ULAW_BIAS
+
+    pcm = np.where(sign != 0, -magnitude, magnitude)
+    pcm = np.clip(pcm, -32768, 32767)
+
+    return pcm.astype('<i2').tobytes()
+
+
+def pcm2ulaw(pcm_bytes: bytes, sample_rate=SAMPLE_RATE) -> bytes:
+    """Convert mono PCM16 (little endian) to μ-law bytes using the rem/g711 mapping."""
+    if sample_rate != SAMPLE_RATE:
+        raise ValueError(f"pcm2ulaw expected {SAMPLE_RATE} Hz, got {sample_rate}")
+
+    samples = np.frombuffer(pcm_bytes, dtype="<i2").astype(np.int32)
+
+    neg_mask = samples < 0
+    magnitude = np.abs(samples)
+    magnitude = np.minimum(magnitude, _ULAW_CLIP)
+    biased = magnitude + _ULAW_BIAS
+
+    log = np.floor(np.log2(biased)).astype(np.int32)
+    exponent = np.clip(log - 7, 0, 7)
+    mantissa = np.right_shift(biased, exponent + 3) & 0x0F
+
+    sign_bit = np.where(neg_mask, 0x80, 0x00)
+    ulaw = np.bitwise_not(sign_bit | (exponent << 4) | mantissa) & 0xFF
+
+    return ulaw.astype(np.uint8).tobytes()
+
+
+# ------------ WebRTC track for browser playback ------------
+class WSInboundTrack(MediaStreamTrack):
+    kind = "audio"
+
+    def __init__(self, incoming_queue):
+        super().__init__()
+        self._pts = 0
+        self.buffer = bytearray()
+        self.incoming_queue = incoming_queue
+
+
+    async def recv(self) -> av.AudioFrame:
+        frame_bytes = SAMPLES_PER_FRAME * 2
+        while len(self.buffer) < frame_bytes:
+            try:
+                # getting pcm data from WS bridge
+                pcm_chunk = await asyncio.wait_for(self.incoming_queue.get(), timeout=1.0)
+                self.buffer.extend(pcm_chunk)
+            except asyncio.TimeoutError:
+                missing = frame_bytes - len(self.buffer)
+                self.buffer.extend(b"\x00" * missing)
+
+        pcm_bytes = bytes(self.buffer[:frame_bytes])
+        del self.buffer[:frame_bytes]
+
+        # Build audio frame
+        frame = av.AudioFrame(format="s16", layout="mono", samples=SAMPLES_PER_FRAME)
+        frame.planes[0].update(pcm_bytes)
+        frame.sample_rate = SAMPLE_RATE
+        frame.time_base = Fraction(1, SAMPLE_RATE)
+        frame.pts = self._pts
+        self._pts += SAMPLES_PER_FRAME
+
+        # debug
+        #print(f"[WebRTC] Sending {len(pcm_bytes)} bytes to browser, pts={frame.pts}")
+
+        # Control timing: send frame every 20ms
+        await asyncio.sleep(SAMPLES_PER_FRAME / SAMPLE_RATE)
+        return frame            
+
+# ------------ WebSocket bridge ------------
+async def ws_bridge(pc, WsUrl, incoming_queue, mic_queue, stop_event=None):
+    stop = stop_event or asyncio.Event()
+    ws_holder = {"conn": None}
+
+    @pc.on("connectionstatechange")
+    async def _on_pc_state_change():
+        state = pc.connectionState
+        if state in {"failed", "disconnected", "closed"}:
+            if not stop.is_set():
+                stop.set()
+            await _ensure_ws_closed(ws_holder["conn"])
+            ws_holder["conn"] = None
+
+
+    uri = WsUrl
+    sender_task = receiver_task = None
+    print(f"[WS] Connecting to {uri}")
+    try:
+        async with websockets.connect(uri) as ws:
+            print(f"[WS] Connected to {uri}")
+            ws_holder["conn"] = ws
+
+            async def sender():
+                try:
+                    while not stop.is_set():
+                        try:
+                            frame = await asyncio.wait_for(mic_queue.get(), timeout=0.5)
+                        except asyncio.TimeoutError:
+                            continue
+
+                        if frame is None:
+                            break
+
+                        pcm_bytes = frame.to_ndarray().tobytes()
+                        try:
+                            ulawbytes = pcm2ulaw(pcm_bytes, sample_rate=frame.sample_rate)
+                        except ValueError:
+                            ulawbytes = pcm2ulaw(pcm_bytes)
+
+                        b64 = base64.b64encode(ulawbytes).decode("utf-8")
+                        msg = {"event": "media", "payload": b64}
+                        await ws.send(json.dumps(msg))
+                except (websockets.ConnectionClosed, asyncio.CancelledError):
+                    pass
+                except Exception as e:
+                    print(f"[WS] Sender error: {e}")
+                finally:
+                    stop.set()
+
+            async def receiver():
+                try:
+                    async for msg in ws:
+                        if not isinstance(msg, str):
+                            continue
+                        try:
+                            data = json.loads(msg)
+                        except json.JSONDecodeError as exc:
+                            print(f"[WS] Error decoding JSON: {exc}")
+                            continue
+
+                        if data.get("event") != "media" or "payload" not in data:
+                            continue
+
+                        try:
+                            pcm_bytes = base64.b64decode(data["payload"])
+                        except (ValueError, TypeError) as exc:
+                            print(f"[WS] Base64 decode error: {exc}")
+                            continue
+
+                        await incoming_queue.put(pcm_bytes)
+                except (websockets.ConnectionClosed, asyncio.CancelledError):
+                    pass
+                except Exception as e:
+                    print(f"[WS] Receiver error: {e}")
+                finally:
+                    stop.set()
+
+            sender_task = asyncio.create_task(sender())
+            receiver_task = asyncio.create_task(receiver())
+            stop_task = asyncio.create_task(stop.wait())
+
+            done, pending = await asyncio.wait(
+                {sender_task, receiver_task, stop_task},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+    except Exception as exc:
+        print(f"[WS] Bridge error: {exc}")
+        stop.set()
+    finally:
+        await _ensure_ws_closed(ws_holder["conn"])
+        ws_holder["conn"] = None
+
+        if pc.connectionState != "closed":
+            await pc.close()
+
+        if sender_task:
+            sender_task.cancel()
+        if receiver_task:
+            receiver_task.cancel()
+        await asyncio.gather(
+            *(t for t in [sender_task, receiver_task] if t),
+            return_exceptions=True,
+        )
+
+        current = asyncio.current_task()
+        if getattr(pc, "_ws_bridge_task", None) is current:
+            pc._ws_bridge_task = None
+
+# ------------ SDP modification ------------
+def modify_sdp(sdp):
+    lines = sdp.splitlines()
+    audio_line_index = next((i for i, line in enumerate(lines) if line.startswith("m=audio")), None)
+    if audio_line_index is not None:
+        parts = lines[audio_line_index].split()
+        pcmu_payload = "0"  # Payload type for PCMU
+        if pcmu_payload in parts:
+            parts = [parts[0], parts[1], parts[2], pcmu_payload] + [p for p in parts[3:] if p != pcmu_payload]
+            lines[audio_line_index] = " ".join(parts)
+    return "\r\n".join(lines)
+
+# ------------ WebRTC offer handler ------------
+async def offer_handler(request):
+    body = await request.json()
+    offer = RTCSessionDescription(sdp=body["sdp"], type=body["type"])
+    WsUrl = body.get("WsUrl")
+    print(f"[WebRTC] Received offer, WsUrl={WsUrl}")
+    pc = RTCPeerConnection()
+
+    incoming_queue = asyncio.Queue()
+    mic_queue = asyncio.Queue()
+    bridge_stop = asyncio.Event()
+
+    # Track for audio coming from WS
+    pc.addTrack(WSInboundTrack(incoming_queue))
+
+    @pc.on("track")
+    async def on_track(track):
+        print("[WebRTC] Got audio track from browser")
+        # import wave
+
+        # wav_file = wave.open("mic_audio.wav", "wb")
+        # wav_file.setnchannels(1)
+        # wav_file.setsampwidth(2)  # PCM16
+        # wav_file.setframerate(SAMPLE_RATE)
+
+        async def forward():
+            resampler = av.AudioResampler(format="s16", layout="mono", rate=SAMPLE_RATE)
+            try:
+                while True:
+                    frame = await track.recv()
+                    resampled = resampler.resample(frame)
+                    if resampled is None:
+                        continue
+
+                    frames = resampled if isinstance(resampled, list) else [resampled]
+                    for pcm_frame in frames:
+                        # wav_file.writeframes(pcm_frame.to_ndarray().tobytes())
+                        await mic_queue.put(pcm_frame)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                print(f"[WebRTC] Forward error: {exc}")
+            finally:
+                print("[WebRTC] Audio track ended")
+                # wav_file.close()
+                if not bridge_stop.is_set():
+                    bridge_stop.set()
+                await mic_queue.put(None)
+
+        asyncio.create_task(forward())
+
+    # Set remote description first
+    await pc.setRemoteDescription(offer)
+    # Create answer
+    answer = await pc.createAnswer()
+    #answer.sdp = modify_sdp(answer.sdp)  # Modify SDP to prioritize μ-law
+    await pc.setLocalDescription(answer)
+
+    # Start WS bridge with client_id and channel
+    pc._ws_bridge_task = asyncio.create_task(ws_bridge(pc, WsUrl, incoming_queue, mic_queue, bridge_stop))
+
+    return web.json_response({"sdp": pc.localDescription.sdp, "type": pc.localDescription.type})
+
+# ------------ HTML client ------------
+INDEX_HTML = """<!doctype html>
+<html>
+<body>
+<h2>WebRTC ↔ WebSocket μ-law Bridge</h2>
+<button id="start">Start</button>
+<p id="status"></p>
+<script>
+let pc;
+document.getElementById('start').onclick = async ()=>{
+  const s=document.getElementById('status');
+  s.textContent='Requesting mic...';
+  const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  pc=new RTCPeerConnection();
+  pc.ontrack=e=>{
+    const audio=document.createElement('audio');
+    audio.autoplay=true;
+    audio.controls = true;
+    audio.srcObject=e.streams[0];
+    document.body.appendChild(audio);
+  };
+  stream.getTracks().forEach(t=>pc.addTrack(t,stream));
+  const offer=await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  const res=await fetch('/offer',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({sdp:pc.localDescription.sdp, type:pc.localDescription.type})
+  });
+  const ans=await res.json();
+  await pc.setRemoteDescription(ans);
+  s.textContent='Connected';
+};
+</script>
+</body>
+</html>"""
+
+async def index_handler(_):
+    return web.Response(text=INDEX_HTML, content_type="text/html")
+
+# ------------ Run server ------------
+if __name__ == "__main__":
+    app = web.Application()
+    app.router.add_get("/", index_handler)
+    app.router.add_post("/offer", offer_handler)
+    web.run_app(app, port=8080)
+
+#source .env/bin/activate && nohup python webrtc_bridge.py > webrtc_bridge.log 2>&1 &

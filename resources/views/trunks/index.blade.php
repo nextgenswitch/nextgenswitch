@@ -172,8 +172,10 @@
             if($(this).is(':checked')){
                 $('#peerDiv').addClass('d-block')
                 $('#peerDiv').removeClass('d-none')
+                $("#passwordLabel").addClass('d-none');
             }
             else{
+                $("#passwordLabel").removeClass('d-none');
                 $('#peerDiv').addClass('d-none')
                 $('#peerDiv').removeClass('d-block')   
             }

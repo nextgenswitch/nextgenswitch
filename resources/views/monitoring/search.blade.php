@@ -11,6 +11,10 @@
             {!! Form::select('filter_group',$voiceRecordProfiles, null, ['placeholder'=>'Select any voice record profile','id'=>"filter_group",'class' => 'form-control form-control-sm ']) !!}
         @endif
 
+        @if ($type == 'streamHistory')
+            {!! Form::select('filter_group',$streamList, null, ['placeholder'=>'Select any AI stream','id'=>"filter_group",'class' => 'form-control form-control-sm ']) !!}
+        @endif
+
         @if ($type == 'callQueue')
             <!-- <input type="search" name="name" id="que_name" value="{{ app('request')->input('name') }}"
                 class="form-control app-search__input form-control-sm" placeholder="{{ __('Queue name') }}"> -->

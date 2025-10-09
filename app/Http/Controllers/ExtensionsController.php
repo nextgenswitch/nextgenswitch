@@ -255,6 +255,8 @@ class ExtensionsController extends Controller {
             'code'              => $data['code'],
             'forwarding_number' => $data['forwarding_number'],
             'status'            => isset( $data['status'] ) ? $data['status'] : '0',
+            'do_not_disturb'   => isset( $data['do_not_disturb'] ) ? $data['do_not_disturb'] : '0',
+            'forwarding'       => isset( $data['forwarding'] ) ? $data['forwarding'] : 0,
         ];
 
         Extension::create( $extension );
@@ -307,9 +309,11 @@ class ExtensionsController extends Controller {
             return back();
 
         $extension = Extension::findOrFail( $id );
-        $ext_data  = $request->only( ['name', 'code', 'status', 'forwarding_number'] );
+        $ext_data  = $request->only( ['name', 'code', 'status', 'forwarding_number', 'do_not_disturb', 'forwarding'] );
+        $ext_data['forwarding'] = isset( $ext_data['forwarding'] ) ? $ext_data['forwarding'] : 0;
 
         $ext_data['status'] = isset( $ext_data['status'] ) ? $ext_data['status'] : '0';
+        $ext_data['do_not_disturb'] = isset( $ext_data['do_not_disturb'] ) ? $ext_data['do_not_disturb'] : '0';
 
         $extension->update( $ext_data );
 
@@ -466,6 +470,8 @@ class ExtensionsController extends Controller {
             'code'              => ['required', 'numeric', 'min:1000', 'max:2147483647', $extension_unique_rule],
             'status'            => 'nullable|min:1',
             'record'            => 'nullable|min:1',
+            'do_not_disturb'   => 'nullable|boolean',
+            'forwarding'       => 'nullable|numeric|min:0|max:2147483647',
             'forwarding_number' => 'nullable',
             'allow_ip' => 'nullable',
             'call_limit'        => 'nullable|numeric|min:1',

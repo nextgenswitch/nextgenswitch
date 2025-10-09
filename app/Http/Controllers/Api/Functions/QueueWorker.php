@@ -59,7 +59,7 @@ class QueueWorker{
 
     function dial_extension($extension){
         info("dialing extension " . $extension->id . " " . $extension->destination_id);
-        if(SipChannel::where("sip_user_id",$extension->destination_id)->count() == 0) return false;
+        if(SipChannel::where("sip_user_id",$extension->destination_id)->count() == 0) goto forward_dial;
         if(QueueCall::where("call_queue_id",$this->id)->where('status','<=',CallStatusEnum::Established->value)->where('extension_id',$extension->id)->count() > 0) return false;
         if($extension->last_ans < $this->call_queue->wrap_up_time) return false;
         if($extension->last_dial < $this->call_queue->retry) return false;
@@ -72,12 +72,17 @@ class QueueWorker{
         ];
         $call = FunctionCall::send_call($dial); 
         //info($call);
-        if(isset($call['error']) || $call['status-code'] > CallStatusEnum::Disconnected->value){
-            $call = $this->dial_forward($extension);
-            if(!$call || (isset($call['error']) || $call['status-code'] > CallStatusEnum::Disconnected->value))
-                return false; 
-        } 
-        //if() return false;
+        if(isset($call['call_id'])){
+           goto out;
+        }
+          
+
+        forward_dial:
+        $call = $this->dial_forward($extension);
+        if(!$call || (isset($call['error']) || $call['status-code'] > CallStatusEnum::Disconnected->value))
+                return false;  
+   
+        out:  
         QueueCall::create(['call_id'=>$call['call_id'],'status'=>$call['status-code'],'extension_id'=>$extension->id,'call_queue_id'=>$this->id,'organization_id'=>$this->call_queue->organization_id]);      
         CallQueueExtension::where("call_queue_id",$this->id)->where('extension_id',$extension->id)->update(['last_dial'=>now()]);
         return $call;

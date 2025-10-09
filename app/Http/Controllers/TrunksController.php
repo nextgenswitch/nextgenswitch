@@ -202,6 +202,7 @@ class TrunksController extends Controller {
 
         $trunk = Trunk::findOrFail( $id );
         $data  = $this->getData( $request, $trunk->sip_user_id );
+        
 
 
         $trunk->update( ['name' => $data['name']] );
@@ -318,6 +319,10 @@ class TrunksController extends Controller {
                 $sid_ids = Trunk::whereIn( 'id', $ids )->pluck( 'sip_user_id' )->toArray();
                 SipUser::whereIn( 'id', $sid_ids )->delete();
 
+                $trunks = Trunk::whereIn( 'id', $ids )->get();
+                foreach ( $trunks as $trunk ) {
+                    FunctionCall::unreg_channel( $trunk->sip_user_id );
+                }
                 Trunk::whereIn( 'id', $ids )->delete();
 
             } else {
@@ -346,35 +351,40 @@ class TrunksController extends Controller {
      * @param Illuminate\Http\Request\Request $request
      * @return array
      */
-    protected function getData( Request $request, $id = 0 ) {
+    protected function getData(Request $request, $id = 0)
+    {
+        $usernameUniqueRule = Rule::unique('sip_users')
+            ->where(function ($query) use ($request) {
+                $query->where('peer', 0)->where('organization_id', auth()->user()->organization_id);
+            });
 
-        $username_unique_rule = Rule::unique( 'sip_users' )->where( function ( $query ) use ( $request ) {
-            return $query->where( 'username', $request->username )->where( 'peer', $request->peer )->where( 'organization_id', auth()->user()->organization_id );
-        } );
-
-        if ( $id > 0) {
-            $username_unique_rule->ignore( $id );
+        if ($id > 0) {
+            $usernameUniqueRule->ignore($id);
         }
 
         $rules = [
-            'name'      => 'required|string|min:1|max:255',
-            'username'  => ['required', 'string', 'min:3', 'max:100', $username_unique_rule],
-            'password'  => 'required|string|min:6|max:32',
-            'transport' => 'nullable|numeric|min:0|max:2',
-            'host'      => 'nullable',
-            'port'      => 'nullable|numeric',
-            'peer'      => 'nullable',
-            'record'    => 'nullable',
-            'call_limit' => 'nullable|numeric|min:0'
+            'name'       => ['required', 'string', 'min:1', 'max:255'],
+            'username'   => ['required', 'string', 'min:3', 'max:100', $usernameUniqueRule],
+            'password'   => ['required', 'string', 'min:6', 'max:32'],
+            'transport'  => ['nullable', 'numeric', 'min:0', 'max:2'],
+            'host'       => ['nullable'],
+            'port'       => ['nullable', 'numeric'],
+            'peer'       => ['nullable'],
+            'record'     => ['nullable'],
+            'call_limit' => ['nullable', 'numeric', 'min:0'],
         ];
 
-        if ( $id > 0 ) {
-            $rules['password']  = 'nullable|string|min:6|max:32';
+        if ($request->boolean('peer')) {
+            $rules['host']     = ['required', 'string', 'min:3', 'max:255'];
+            $rules['username'] = ['required', 'string', 'min:3', 'max:100'];
+            $rules['password'] = ['nullable', 'string'];
+        } elseif ($id > 0) {
+            $rules['password'] = ['nullable', 'string', 'min:6', 'max:32'];
         }
-
-        $data = $request->validate( $rules );
-
-        return $data;
+        
+        
+        return $request->validate($rules);
     }
+
 
 }

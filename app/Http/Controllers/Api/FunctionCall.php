@@ -30,9 +30,12 @@ use App\Enums\CallStatusEnum;
 use App\Models\OutboundRoute;
 use App\Models\Ticket;
 use App\Models\AiBot;
+use App\Models\SipChannel;
 use App\Models\AiAssistantCall;
 use App\Models\TimeCondition;
 use App\Models\CallParking;
+use App\Models\Stream;
+use App\Models\StreamHistory;
 use App\Tts\OpenAi;
 use App\Tts\Tts;
 use App\Sms\Sms;
@@ -44,8 +47,10 @@ use App\Http\Controllers\Api\Functions\QueueWorker;
 use App\Http\Controllers\Api\Functions\OutboundWorker;
 use App\Http\Controllers\Api\Functions\RingGroupWorker;
 use App\Http\Controllers\Api\Functions\CallParkingWorker;
+use App\Http\Controllers\Api\Functions\ShortCodeHandler;
 use App\Models\CallQueueExtension;
 use App\Http\Controllers\Api\Functions\AiAssistantHandler;
+use App\Models\CallQueue;
 
 class FunctionCall
 {
@@ -304,7 +309,7 @@ class FunctionCall
             $oroutes = OutboundRoute::where("organization_id", $org_id)->where("is_active", true)->orderBy('priority', 'desc')->get();
 
             foreach ($oroutes as $oroute) {
-                if (self::matchPattern($oroute->pattern, $dest)) {
+                if (self::matchPattern($oroute->pattern, $dest, $caller_id)) {
                     //Log::debug("matched pattern " . $dest);
                     //Log::debug($oroute->pattern);
 
@@ -324,12 +329,47 @@ class FunctionCall
         return $response;
     }
 
+    // public static function matchPattern($pattern, &$dest, $caller_id = null)
+    // {
+    //     //Log::debug($pattern);
+
+    //     if (is_array($pattern)) {
+    //         foreach ($pattern as $patt) {
+    //             if ($caller_id && !empty($patt->cid_pattern)) {
+    //                 if (self::matchPattern($patt->cid_pattern, $caller_id) == false) return false;
+    //             }
+    //             if (self::matchPattern($patt->pattern, $dest)) {
+    //                 if (!empty($patt->prefix_remove)) {
+    //                     if (strcmp($patt->prefix_remove, substr($dest, 0, strlen($patt->prefix_remove))) == 0) $dest = substr($dest, strlen($patt->prefix_remove));
+    //                 }
+    //                 if (!empty($patt->prefix_append)) {
+    //                     $dest = $patt->prefix_append . $dest;
+    //                 }
+    //                 return true;
+    //             }
+    //         }
+    //     } else {
+    //         if (substr($pattern, 0, 1) == '/') {
+    //             if (@preg_match($pattern, $dest, $matches)) return true;
+    //         } elseif ($pattern == '*') return true;
+    //         elseif (strcmp($pattern, substr($dest, 0, strlen($pattern))) == 0) return true;
+    //     }
+    //     //Log::debug("matching pattern ". $pattern . " " .$dest . " " . strcmp($pattern,substr($dest,0,strlen($pattern))));
+    //     return false;
+    // }
+
     public static function matchPattern($pattern, &$dest, $caller_id = null)
     {
-        //Log::debug($pattern);
+        // info("pattern " );
+        // Log::debug($pattern);
+
+        // info("dest " . $dest);
+        // info("caller_id " . $caller_id);
+
 
         if (is_array($pattern)) {
             foreach ($pattern as $patt) {
+
                 if ($caller_id && !empty($patt->cid_pattern)) {
                     if (self::matchPattern($patt->cid_pattern, $caller_id) == false) return false;
                 }
@@ -344,6 +384,10 @@ class FunctionCall
                 }
             }
         } else {
+            // info("Else pattern " );
+            // Log::debug($pattern);
+            // Log::debug($dest);
+
             if (substr($pattern, 0, 1) == '/') {
                 if (@preg_match($pattern, $dest, $matches)) return true;
             } elseif ($pattern == '*') return true;
@@ -622,29 +666,56 @@ class FunctionCall
         return $ring_worker->process($this->response);
     }
 
+    // function getCode($input)
+    // {
+    //     if (preg_match('/^\*[^*]+/', $input, $matches)) {
+    //         return $matches[0];
+    //     }
+    //     return $input;
+    // }
+
+    // function extractNumber($input)
+    // {
+    //     if (preg_match('/^\*\d+\*([^\#%]+)(?:#|%23)?$/', $input, $matches)) {
+    //         return $matches[1];
+    //     }
+    //     return null;
+    // }
+
+    public function getResponse()
+    {
+        return $this->response;
+    }
+
+
+    public function getFuncId()
+    {
+        return $this->func_id;
+    }
+
+
+    function getRequestData()
+    {
+
+        if (request()->isJson()) {
+            return request()->json()->all();
+        }
+
+        $raw = request()->getContent();
+        $decoded = json_decode($raw, true);
+
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return $decoded;
+        }
+
+        return request()->all();
+    }
+
+
+
     function short_code($code)
     {
-        if ($code == '*52') {
-            if (request()->input('digits') != "") {
-                $call = Call::find(request()->input('call_id'));
-
-                if (request()->input('digits') == '1') {
-                    Extension::where(["destination_id" => $call->sip_user_id, 'extension_type' => 1])->update(['dynamic_queue' => 1]);
-                    return $this->response;
-                } else if (request()->input('digits') == '2') {
-                    Extension::where(["destination_id" => $call->sip_user_id, 'extension_type' => 1])->update(['dynamic_queue' => 0]);
-                    return $this->response;
-                } else
-                    $this->response->say("You have entered wrong input.");
-            }
-
-            $gather = $this->response->gather(['numDigits' => 1, 'action' => route('api.func_call', ['func_id' => $this->func_id, 'dest_id' => $code])]);
-            $gather->say('Please press 1 to enter in dynamic queue, Press 2 to leave the queue');
-            $this->response->say("You didn't enter  your choice.");
-            $this->response->redirect(route('api.func_call', ['func_id' => $this->func_id, 'dest_id' => $code]));
-        } else
-            $this->response->say("Short code does not exist");
-        return $this->response;
+        return (new ShortCodeHandler($this))->handle($code);
     }
 
 
@@ -656,6 +727,27 @@ class FunctionCall
     }
 
 
+    function handleForward($extension)
+    {
+
+        if (empty($extension->forwarding_number)) return;
+        else if ($extension->forwarding == 1) return; // always disable
+        else if ($extension->forwarding == 0) $this->params['forward'] = $extension->forwarding_number; // always enable
+
+        else if ($extension->forwarding == 2) { // busy
+            info("Call forwarding when busy");
+            if (Call::where('sip_user_id', $extension->destination_id)->where('status', '<=', CallStatusEnum::Established)->exists()) {
+                $this->params['forward'] = $extension->forwarding_number;
+                info("Extension is busy now");
+            }
+        } else if ($extension->forwarding == 4) {
+            info("Call forwarding when unavailable");
+            if (!SipChannel::where('sip_user_id', $extension->destination_id)->exists()) {
+                $this->params['forward'] = $extension->forwarding_number;
+                info("Extension does not exists in sip channel");
+            }
+        }
+    }
 
 
     function extension($id)
@@ -665,7 +757,10 @@ class FunctionCall
         if (!$extension) return $this->response;
         if ($extension->status != 1) return $this->response;
         $this->func_id = $extension->function_id;
-        $this->params['forward'] = $extension->forwarding_number;
+        // if( $extension->forwarding != 1  && !empty($extension->forwarding_number) )
+        //     $this->params['forward'] = $extension->forwarding_number;
+        $this->handleForward($extension);
+
         //Log::debug($extension);
         $response =  self::execute($extension->function_id, $extension->destination_id, $this->response, $this->params);
         return $response;
@@ -673,6 +768,7 @@ class FunctionCall
 
     function sip_call($id)
     {
+        // info("on sip call");
         $sip_user = SipUser::find($id);
         if (!$sip_user) return $this->response;
         if (request()->input('dial_status') == "0") {
@@ -684,13 +780,13 @@ class FunctionCall
             );
 
             $this->response->say("Extension is not available right now");
-            // send  to forward numbere
+            // send  to forward number
 
             if (request()->input('forward') != '')
                 $this->response = self::getOutboundRoutes(request()->input('forward'), $sip_user->organization_id, (isset($this->params['event_from'])) ? $this->params['event_from'] : null, $this->response);
             //$this->response->dial(request()->input('forward'));
         } elseif (request()->input('dial_status') == "1") {
-            //Log::debug("success dial record log here");
+            // Log::debug("success dial record log here");
             //Log::debug(request()->input());
             $data = request()->input();
             CallHistory::create(
@@ -698,6 +794,7 @@ class FunctionCall
             );
             $this->response->hangup();
         } else {
+            // info("Call options to dial sip user");
             $opt = [
                 'channel_id' => $id,
                 'answerOnBridge' => 'true',
@@ -762,6 +859,18 @@ class FunctionCall
             $response =  self::execute($time_condition->function_id, $time_condition->destination_id, $this->response);
         }
         return $response;
+    }
+
+    function sendNotification($organization_id,$role = NULL ,$msg)
+    {
+        $admins = User::where('organization_id', $organization_id)->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new PushNotification([
+                'type' => 0,
+                'code' => 1,
+                'msg' => $msg
+            ]));
+        }
     }
 
     function voice_record($id)
@@ -893,132 +1002,83 @@ class FunctionCall
         return $aiAsisHandler->handle($id);
     }
 
-    // function ai_assistant($id){
-    //     $assistant = AiBot::find($id);
-    //     $data = request()->all();
-    //     $inaudiable = false;
-    //     $modify = false;
-    //     info($data);
+    function stream($id)
+    {
+        info('Calling Stream function');
+        $data = request()->all();
+        info("Stream request data :", $data);
+
+        $stream = Stream::find($id);
+        info("Stream data :", [$stream]);
+
+        if (isset($data['event'])) {
+            if ($data['event'] === 'stopped') {
+                StreamHistory::create([
+                    'organization_id' => $stream->organization_id,
+                    'stream_id'       => $id,
+                    'caller_id'       => $data['event_from'],
+                    'call_id'         => $data['call_id'],
+                    'duration'        => $data['duration'],
+                    'record_file'     => $data['rec_path'] ?? null,
+                ]);
+            }
+            return;
+        }
+
+        $prompt             = $stream->prompt ?? null;
+        $greetings          = $stream->greetings ?? null;
+        $forwarding_number  = $stream->forwarding_number ?? null;
+        $extra_parameters   = $stream->extra_parameters ? $this->parseKeyValueString($stream->extra_parameters) : [];
+
+        info("Prompt:", [$prompt]);
+        info("Greetings:", [$greetings]);
+        info("Forwarding number:", [$forwarding_number]);
+        info("Extra parameters:", $extra_parameters);
+
+        $connect  = $this->response->connect();
+        $aiStream = $connect->stream([
+            'name'             => $stream->name,
+            'record'           => $stream->record ? true : false,
+            'max_call_duration' => $stream->max_call_duration,
+            'url'              => $stream->ws_url,
+            'statusCallback'   => route('api.func_call', [
+                'func_id' => $this->func_id,
+                'dest_id' => $id,
+            ]),
+        ]);
+
+        $this->response->redirect(route('api.func_call', [
+            'func_id' => $stream->function_id,
+            'dest_id' => $stream->destination_id,
+        ]));
+
+        if ($prompt)            $aiStream->parameter(["name" => "prompt", "value" => trim($prompt)]);
+        if ($greetings)         $aiStream->parameter(["name" => "greetings", "value" => trim($greetings)]);
+        if ($forwarding_number) $aiStream->parameter(["name" => "forwarding_number", "value" => trim($forwarding_number)]);
+
+        foreach ($extra_parameters as $key => $value) {
+            $aiStream->parameter(["name" => $key, "value" => trim($value)]);
+        }
+
+        return $this->response;
+    }
 
 
-    //     if(isset($data['event_call_id'])){
+    private function parseKeyValueString(string $input): array
+    {
+        $lines = preg_split('/\r\n|\r|\n/', trim($input));
+        $result = [];
 
-    //         $aiAssisCall = AiAssistantCall::where('call_id', $data['event_call_id'])->first();
+        foreach ($lines as $line) {
+            if (strpos($line, '=') !== false) {
+                [$key, $value] = explode('=', $line, 2);
+                $result[trim($key)] = trim($value);
+            }
+        }
 
-    //         if(!$aiAssisCall){
-    //             $aiAssisCall = AiAssistantCall::create([
-    //                 'organization_id' => $assistant->organization_id,
-    //                 'call_id' => $data['event_call_id'],
-    //                 'ai_assistant_id' => $id,
-    //                 'caller_id' => $data['event_from'],
-    //             ]);
-    //         }
+        return $result;
+    }
 
-    //     }
-
-    //     if(request()->query('gather') == '1'){
-
-    //         if(isset($data['voice'])){
-
-    //             $workerPayload = ['delay'=>1,'data'=>['call_id'=>$data['call_id'],'voice' => $data['voice']],'url'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$id,'process'=>1])];
-    //             self::create_worker($workerPayload);
-
-    //             $this->voice_file_play($this->response,$assistant->waiting_voice);
-    //             $this->response->redirect( route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$id, 'loop' => 1]));
-    //             return $this->response;
-    //         }else{
-    //             if($assistant->inaudible_voice) $this->voice_file_play($this->response,$assistant->inaudible_tone);
-    //         }
-
-    //     }elseif(request()->query('process') == '1'){
-    //      //   info("on transcribe " . $data['voice']);
-    //         $stttext = Tts::speechToText( storage_path( 'app/public/' . $data['voice'] ) ,$assistant->organization_id);
-
-    //         if($stttext){
-    //             info("stt response " . $stttext['text']);
-    //             AiConversation::create([
-    //                 'call_id' => $data['call_id'],
-    //                 'message' => $stttext['text'],
-    //                 'ai_msg' => 0
-    //             ]);
-    //             $instructions = "you are a virtual voice assistant. If a user's query indicates that they want to speak to a human or live agent (using keywords or by expressing frustration), please respond with a special flag like [LIVE_AGENT_REQUESTED] instead of a normal answer. Use the following resource to answer questions in short: $assistant->resource";
-
-    //             $ans = Tts::llm($stttext['text'], $instructions, $assistant->organization_id, $assistant->llm_provider_id);
-
-    //             info('Answer from LLM' . $ans);
-
-    //         }
-    //         else { $inaudiable = true; goto out; }
-
-    //         if($ans){
-    //             AiConversation::create([
-    //                 'call_id' => $data['call_id'],
-    //                 'message' => $ans,
-    //                 'ai_msg' => 1
-    //             ]);
-
-    //             if(strpos($ans, '[LIVE_AGENT_REQUESTED]') !== false){
-    //                 info('Transferring call to internal directory');
-    //                 $modify = true;
-
-    //                 $this->notifyAndCreateTicket($assistant, $data);
-
-    //                // $this->response->say("I am connecting your call to an available agent. Please hold");
-    //                 $this->response->dial($assistant->internal_directory);
-    //                 goto out;
-    //             }
-
-    //             $this->response->say($ans);
-
-    //          }else{
-    //             // $inaudiable = true;
-    //             info('redirect to last destination');
-
-    //             $this->notifyAndCreateTicket($assistant, $data);
-    //             $this->response->redirect( route('api.func_call',['func_id'=>$assistant->function_id,'dest_id'=>$assistant->destination_id, 'loop' => 1]));
-    //             $modify = true;
-    //             goto out;
-    //          }
-
-    //          $modify = true;
-
-
-
-    //     }elseif(request()->query('loop') == '1'){
-    //        $this->response->pause(5);
-    //         // $this->response->say("We need some more time to answer. Please wait and cooperate.");
-    //         // $this->voice_file_play($this->response,$assistant->waiting_voice);
-    //         $this->response->redirect( route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$id, 'loop' => 1]));
-    //          info($this->response->xml());
-    //         return $this->response;
-
-    //     }
-
-    //     else $this->voice_file_play($this->response, $assistant->welcome_voice);
-
-
-    //     out:
-    //     if($inaudiable) $this->voice_file_play($this->response,$assistant->inaudible_tone);
-
-    //     $options = [
-    //         'action'=>route('api.func_call',['func_id'=>$this->func_id,'dest_id'=>$assistant->id, 'gather'=>'1' ]),
-    //         'speechTimeout'=>5,
-    //         'transcript'=>false,
-    //         'input' => 'speech'
-    //     ];
-
-
-    //     $gather = $this->response->gather($options);
-
-    //     if($assistant->listening_tone) $this->voice_file_play($gather,$assistant->listening_voice);
-    //     info($this->response->xml());
-    //     if($modify){
-    //         self::modify_call($data['call_id'],['responseXml'=>$this->response->xml()]);
-    //         return;
-    //     }
-    //     // $this->response = self::execute($assistant->function_id,$assistant->destination_id,$this->response,$this->params);
-    //     return $this->response;
-    // }
 
 
     function dial_outbound($outbound_route)

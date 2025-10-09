@@ -305,6 +305,7 @@ class IvrsController extends Controller {
             }
 
             $ivr = Ivr::findOrFail( $id );
+            IvrAction::where( 'ivr_id', $ivr->id )->delete();
             $ivr->delete();
 
             if ( $request->ajax() ) {
@@ -369,7 +370,10 @@ class IvrsController extends Controller {
             $ids  = explode( ',', $data['ids'] );
 
             if ( isset( $data['mass_delete'] ) && $data['mass_delete'] == 1 ) {
+                $ivr_ids = Ivr::whereIn( 'id', $ids )->pluck( 'id' )->toArray();
+                IvrAction::whereIn( 'ivr_id', $ivr_ids )->delete(); 
                 Ivr::whereIn( 'id', $ids )->delete();
+
             } else {
 
                 foreach ( $data as $field => $val ) {

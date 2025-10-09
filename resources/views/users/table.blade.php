@@ -13,30 +13,38 @@
                     <tbody>
                     @foreach($users as $user)
                         <tr>
-                            <td><input type="checkbox" name="ids[]" class="idRow" value="{{ $user->id }}"></td>
+                            <td>
+                                @if(!$user->hasRole('Super Admin') && $user->role != 'superAdmin') 
+                                    <input type="checkbox" name="ids[]" class="idRow" value="{{ $user->id }}">
+                                @endif
+                            </td>
                             <td>{{ $user->name }}</td>
                             <td>{{ $user->email }}</td>
 
+                            @if(!$user->hasRole('Super Admin') && $user->role != 'superAdmin')
+                                <td>
+                                    {{ ($user->status) ? 'Active' : 'Deactive' }}
+
+                                <form method="POST" action="{!! route('users.user.updateField', [$user->id]) !!}" class="editableForm" accept-charset="UTF-8">
+                                    <input type="hidden" name="status" type="hidden" value="0">
+                                    @csrf
+                                    @method('PUT')
+                                    <div class="toggle">
+                                    <label>
+                                        <input type="checkbox" name="status" value="1"
+                                        @if ($user->status) checked="checked" @endif
+                                        class="editableField"><span class="button-indecator"></span>
+                                    </label>
+                                    </div>
+                                    </form>
+
+                                </td>
+                            @endif
+
                             <td>
-                                {{ ($user->status) ? 'Active' : 'Deactive' }}
-
-                             <form method="POST" action="{!! route('users.user.updateField', [$user->id]) !!}" class="editableForm" accept-charset="UTF-8">
-                                <input type="hidden" name="status" type="hidden" value="0">
-                                @csrf
-                                @method('PUT')
-                                 <div class="toggle">
-                                  <label>
-                                    <input type="checkbox" name="status" value="1"
-                                    @if ($user->status) checked="checked" @endif
-                                    class="editableField"><span class="button-indecator"></span>
-                                  </label>
-                                </div>
-                                </form>
-
-                            </td>
-
-                            <td>
-                                  
+                                @if($user->hasRole('Super Admin') || $user->role == 'superAdmin')
+                                <span class="badge badge-warning">{{ __('super admin') }}</span>
+                                @else
                                 <div class="dropdown">
                                  <form method="POST" action="{!! route('users.user.destroy', [$user->id] ) !!}" accept-charset="UTF-8" class="deleteFrm">
                                    @csrf
@@ -55,6 +63,8 @@
                                   </ul>
                                 </form>
                                 </div>
+
+                                @endif
                            
 
                             </td>

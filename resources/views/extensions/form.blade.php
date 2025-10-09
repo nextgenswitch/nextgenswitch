@@ -63,7 +63,7 @@
 
 
 <div class="row">
-    <div class="col-lg-6">
+    <div class="col-lg-4">
     <div class="form-group @error('status') has-error @enderror">
         {!! Form::label('status', __('Active?'),['class' => 'control-label']) !!}
         
@@ -80,7 +80,7 @@
     </div>
 
 
-    <div class="col-lg-6">
+    <div class="col-lg-4">
         <div class="form-group @error('record') has-error @enderror">
             {!! Form::label('record', __('Record ?'),['class' => 'control-label']) !!}
 
@@ -92,6 +92,20 @@
                 </div>
 
                 @error('record') <p class="help-block  text-danger"> {{ $message }} </p> @enderror
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="form-group @error('do_not_disturb') has-error @enderror">
+            {!! Form::label('do_not_disturb', __('Do Not Disturb'),['class' => 'control-label']) !!}
+
+                <div class="checkbox">
+                    <label for='do_not_disturb'>
+                        {!! Form::checkbox('do_not_disturb', '1',  (old('do_not_disturb', (isset($extension->do_not_disturb) && $extension->do_not_disturb == 1) ? true : null)) , ['id' => 'do_not_disturb', 'class' => ''  . ($errors->has('do_not_disturb') ? ' is-invalid' : null), ]) !!}
+                        {{ __('Enable') }}
+                    </label>
+                </div>
+
+                @error('do_not_disturb') <p class="help-block  text-danger"> {{ $message }} </p> @enderror
         </div>
     </div>
 </div>
@@ -107,6 +121,16 @@
     </div>
 </div>
 
+<div class="row">
+    <div class="col-lg-12">
+        <div class="form-group @error('forwarding') has-error @enderror">
+            {!! Form::label('forwarding',__('Forwarding'),['class' => 'control-label']) !!}
+
+        {!! Form::text('forwarding',old('forwarding', optional($extension)->forwarding), ['class' => 'form-control' . ($errors->has('forwarding') ? ' is-invalid' : null), 'minlength' => '1', 'maxlength' => '255', 'required' => false, 'placeholder' => __('Enter forwarding value here...'), ]) !!}
+                @error('forwarding') <p class="help-block  text-danger"> {{ $message }} </p> @enderror
+        </div>
+    </div>
+</div>
 
 <div class="row">
     <div class="col-lg-12">

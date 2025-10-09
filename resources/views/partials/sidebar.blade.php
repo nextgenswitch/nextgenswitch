@@ -136,10 +136,12 @@
                             class="icon fa fa-angle-double-right"></i> {{ __('Call Queue') }}</a>
                 </li>
 
-                <li><a class="treeview-item" href="{{ route('calling.index') }}"><i
+                <!-- <li><a class="treeview-item" href="{{ route('calling.index') }}"><i
                             class="icon fa fa-angle-double-right"></i> {{ __('Send Call') }}</a>
-                </li>
+                </li> -->
 
+                <li><a class="treeview-item" target="_blank" href="{{ route('dialer.web') }}"><i
+                            class="icon fa fa-angle-double-right"></i> {{ __('Dialer') }}</a>
                 
 
             </ul>
@@ -284,8 +286,11 @@
 
 
                     
-                    <li><a class="treeview-item" href="{{ route('ai_bots.ai_bot.index') }}"><i
-                                class="icon fa fa-angle-double-right"></i> {{ __('Ai Assistants') }}</a></li> 
+                   <!--  <li><a class="treeview-item" href="{{ route('ai_bots.ai_bot.index') }}"><i
+                                class="icon fa fa-angle-double-right"></i> {{ __('AI Assistants') }}</a></li>  -->
+
+                    <li><a class="treeview-item" href="{{ route('streams.stream.index') }}"><i
+                                class="icon fa fa-angle-double-right"></i> {{ __('Stream') }}</a></li> 
             
 
                     <li><a class="treeview-item" href="{{ route('call_parkings.call_parking.index') }}"><i

@@ -128,6 +128,16 @@ class Contact extends Model {
             ( 'FIND_IN_SET(?, contact_groups)', [$groupId] );
         }
 
+       /*  foreach ($groups as $groupId) {
+            $contacts->orWhere(function ($query) use ($groupId) {
+                $query->where('contact_groups', $groupId)
+                    ->orWhere('contact_groups', 'like', $groupId . ',%')
+                    ->orWhere('contact_groups', 'like', '%,' . $groupId)
+                    ->orWhere('contact_groups', 'like', '%,' . $groupId . ',%');
+            });
+        }
+ */
+
         return  $contacts
             ->groupBy( 'tel_no' )
             ->pluck( 'tel_no' ,'id');

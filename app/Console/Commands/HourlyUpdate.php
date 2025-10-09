@@ -29,7 +29,11 @@ class HourlyUpdate extends Command
     {
         //
         //info("From cron job");
-        Call::where('status','<',CallStatusEnum::Established )->whereRaw('TIMESTAMPDIFF(MINUTE, connect_time, now())  > 1')->update(['status'=>CallStatusEnum::Failed->value]);
-
+        //Call::where('status','<',CallStatusEnum::Established )->whereRaw('TIMESTAMPDIFF(MINUTE, connect_time, now())  > 1')->update(['status'=>CallStatusEnum::Failed->value]);
+         Call::where('status', '<', CallStatusEnum::Established)
+            ->whereNotNull('connect_time')
+            ->where('connect_time', '<', now()->subMinute())
+            ->update(['status' => CallStatusEnum::Failed->value]);
+ 
     }
 }

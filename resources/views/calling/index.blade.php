@@ -147,7 +147,7 @@
                         }
 
                         if (response['call_id'] != undefined) {
-                            $("#call_making_form").trigger('reset');
+                            //$("#call_making_form").trigger('reset');
                             $crud.showToast('Call sent successfully');
                         }
                     },

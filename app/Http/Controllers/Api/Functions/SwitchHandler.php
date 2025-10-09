@@ -59,8 +59,8 @@ class SwitchHandler
 
     public static function is_ip_blocked($data)
     {
-        info('Checking if IP is blocked');
-        info($data);
+        // info('Checking if IP is blocked');
+        // info($data);
 
         $ip = $data['srcip'];
 
@@ -102,7 +102,7 @@ class SwitchHandler
             0
         );
 
-        info("IP $ip has $count failed attempts in the last {$settings['find_time']} seconds allowed {$settings['failed_attempts_allow']} attempts before blocking");
+        // info("IP $ip has $count failed attempts in the last {$settings['find_time']} seconds allowed {$settings['failed_attempts_allow']} attempts before blocking");
 
         $blocked = false;
         if ($count > $settings['failed_attempts_allow']) {
@@ -293,7 +293,7 @@ class SwitchHandler
 
         $call = Call::find($data['call_id']);
 
-        if (! $call) {
+        if (! $call || $call->status >= CallStatusEnum::Disconnected) {
             goto out;
         }
 

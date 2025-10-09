@@ -101,12 +101,12 @@
         <div class="col-lg-12">
             <div class="form-group @error('password') has-error @enderror">
                 {!! Form::label('password', __('Password'), ['class' => 'control-label']) !!}
-                @if(!isset($sip)) <span class="text-required">*</span> @endif
+                @if(!isset($sip)) <span id="passwordLabel" class="text-required d-none">*</span> @endif
 
 
                 {!! Form::password('password', [
                     'class' => 'form-control' . ($errors->has('password') ? ' is-invalid' : null),
-                    'required' => isset($sip) ? false : true,
+                    'required' => false,
                     'placeholder' => isset($sip) ? __('Please input password to update existing password.') : __('Enter password here...'),
                 ]) !!}
                 @error('password')
@@ -124,6 +124,7 @@
                 <div class="col-lg-12">
                     <div class="form-group @error('host') has-error @enderror">
                         {!! Form::label('host', __('Host'), ['class' => 'control-label']) !!}
+                        <span class="text-required">*</span>
 
                         {!! Form::text('host', old('host', optional($sip)->host), [
                             'class' => 'form-control' . ($errors->has('host') ? ' is-invalid' : null),

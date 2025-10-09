@@ -30,8 +30,13 @@ class UsersController extends Controller {
         $filter  = $request->get( 'filter' ) ?: '';
         $sort    = $request->get( 'sort' ) ?: '';
 
-    
-        $users = User::where( 'organization_id', auth()->user()->organization_id );
+        if ( auth()->user()->hasRole('Super Admin') || auth()->user()->role == 'superAdmin' ) {
+            $users = User::where( 'organization_id', auth()->user()->organization_id );
+        }
+        else{
+            $users = User::where( 'organization_id', auth()->user()->organization_id )
+                ->where( 'role', '!=', 'superAdmin' );
+        }
 
         if (  ! empty( $q ) ) {
             $users->where( 'name', 'LIKE', '%' . $q . '%' );
@@ -212,12 +217,18 @@ class UsersController extends Controller {
             return back();
         
         $user = User::findOrFail( $id );
-
+        
+        if( $user->hasRole('Super Admin') || $user->role == 'superAdmin' ){
+            return response()->json(['success'=>false]);
+        }
+        
         if ( isset( $data['password'] ) && $data['password'] !== null && ! empty( $data['password'] ) ) {
             $data['password'] = Hash::make( $data['password'] );
+
         } else {
             unset( $data['password'] );
         }
+
 
         
         if($id !=  auth()->user()->id){
@@ -296,6 +307,10 @@ class UsersController extends Controller {
 
             $user = User::findOrFail( $id );
 
+            if( $user->hasRole('Super Admin') || $user->role == 'superAdmin' ){
+                return response()->json(['success'=>false]);
+            }
+
             $user->update( $request->all() );
 
             return response()->json( ['success' => true] );
@@ -320,6 +335,11 @@ class UsersController extends Controller {
             $ids  = explode( ',', $data['ids'] );
 
             if ( isset( $data['mass_delete'] ) && $data['mass_delete'] == 1 ) {
+                
+                if((auth()->user()->hasRole('Super Admin') || auth()->user()->role == 'superAdmin') && in_array(auth()->user()->id, $ids) ){
+                    return response()->json( ['success' => false] );
+                }
+
                 User::whereIn( 'id', $ids )->delete();
             } else {
 
@@ -360,13 +380,13 @@ class UsersController extends Controller {
         $rules = [
             'email'           => ['required', 'string', 'email', 'unique:users,email'],
             'name'            => 'required|string|min:1|max:255',
-            'password'        => 'required|string|min:8|max:30',
+            'password'        => 'required|string|min:6|max:30',
             'status'          => 'nullable|string',
             'role'            => 'required|string|min:1|max:255',
         ];
 
         if ( $id > 0 ) {
-            $rules['password'] = 'nullable|string|min:8|max:30';
+            $rules['password'] = 'nullable|string|min:6|max:30';
             $rules['email'] = ['required', 'string', 'email', 'unique:users,email,' . $id];
         }
 

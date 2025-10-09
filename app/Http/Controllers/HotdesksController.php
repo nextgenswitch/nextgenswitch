@@ -280,6 +280,8 @@ class HotdesksController extends Controller {
             $ids  = explode( ',', $data['ids'] );
 
             if ( isset( $data['mass_delete'] ) && $data['mass_delete'] == 1 ) {
+                $sip_users_ids = Hotdesk::whereIn( 'id', $ids )->pluck( 'sip_user_id' )->toArray();
+                SipUser::whereIn( 'id', $sip_users_ids )->delete();
                 Hotdesk::whereIn( 'id', $ids )->delete();
             } else {
 
