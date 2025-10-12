@@ -92,6 +92,8 @@ if systemctl is-enabled --quiet nextgenswitch_setup.service; then
 fi
 rm -f /etc/systemd/system/nextgenswitch_setup.service || true
 systemctl daemon-reload || true
+systemctl restart httpd || true
+supervoisorctl reload 
 
 # Optionally remove this script after execution
 rm -- "$0" || true

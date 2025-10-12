@@ -1,44 +1,25 @@
-### About NextGenSwitch
+# NextGenSwitch Documentation
 
-### User Agent
-#### Extension
-#### Hot Desk
+Welcome to the NextGenSwitch knowledge base. Use the navigation below to jump directly to the most requested topics.
 
-### Call Routing
-#### Trunk
-#### Inbound Route
-#### Outbound Route
+## Getting Started
+- [Installation Guide](#/installation)
+- [Product Overview](https://nextgenswitch.com)
+- [Support Portal](mailto:support@nextgenswitch.com)
 
-### Call Center
-#### Ring Group
-#### Call Queue
+## Core Modules
+- User Agent: extensions, hot desking
+- Call Routing: trunks, inbound/outbound routes
+- Call Center: ring groups, queues
+- Incoming Handling: IVR, announcements, time-based routing
+- Campaigns & API: outbound campaigns, surveys, programmable endpoints
 
-### Incoming
-#### IVR
-#### Announcement
-#### Time Group
-#### Time Condition
+## Tools
+- Text-to-Speech utilities
+- Custom dialplan functions
 
-### Extra
-#### Campaign
-#### Servey
-#### API
+## Monitoring & Reporting
+- Live dashboards: active calls, active channels
+- Historical reports: call history, extension summary, trunk summary
 
-### Tools
-#### Text To Speech
-#### Custom Function
-
-### Monitoring
-#### Active Calls
-#### Call History
-#### Active Channel
-
-
-### Reporting
-#### Extension Summery
-#### Trunk Summery
-
-
-
-
-
+> Looking for installation instructions? Start with the **Installation Guide** to configure the underlying telephony services and web application.
