@@ -63,7 +63,7 @@ use App\Http\Controllers\AiBotsController;
 use App\Http\Controllers\StreamController;
 use App\Http\Controllers\CallParkingsController;
 use App\Http\Controllers\ExtensionGroupsController;
-use App\Http\Controllers\Agent\Auth\LoginController;
+use App\Http\Controllers\Agent\LoginController;
 use Illuminate\Support\Facades\Http;
 use App\Models\SmsProfile;
 use App\Models\Organization;
@@ -98,16 +98,11 @@ Route::group(['prefix' => 'test'], function () {
 });
 
 Route::group(['prefix' => 'agent', 'as' => 'agent.'], function () {
-    Route::get('/', function () {
-        return view('agents.index');
-    });
-
-
-    // Route::get('/', [LoginController::class, 'showLoginForm']);
-    // Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-
-    // Route::post('/login', [LoginController::class, 'login'])->name('login');
-    // Route::get('/dashboard', [AgentDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/', [LoginController::class, 'showLoginForm']);
+    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [LoginController::class, 'login'])->name('login');
+    Route::get('/dashboard', [AgentDashboardController::class, 'index'])->name('dashboard');
+    Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
 
 

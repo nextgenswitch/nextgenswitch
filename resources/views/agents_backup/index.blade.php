@@ -1,4 +1,1131 @@
-<script>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SIP Web Dialer</title>
+
+    <!-- Design deps (unchanged) -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet" />
+
+    <!-- Functionality deps -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #5E6A9C;
+            --secondary-color: #868E96;
+            --background-color: #F4F6F9;
+            --panel-bg-color: #ffffff;
+            --text-color: #343A40;
+            --border-color: #e9ecef;
+            --green-status: #16C79A;
+            --red-status: #E57373;
+            --yellow-status: #FFB74D;
+            --blue-status: #64B5F6;
+        }
+
+        button:focus {
+            outline: none;
+            box-shadow: none
+        }
+
+        body {
+            font-family: "Lato", sans-serif;
+            background: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 15px
+        }
+
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, .6);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1050;
+            opacity: 1;
+            transition: opacity .3s
+        }
+
+        #login-overlay.hidden {
+            opacity: 0;
+            pointer-events: none
+        }
+
+        .login-container {
+            background: var(--panel-bg-color);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, .2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center
+        }
+
+.login-progress {
+            background: var(--panel-bg-color);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, .2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .login-progress .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        .login-container h2 {
+            margin-bottom: 25px;
+            color: var(--text-color);
+            font-weight: 600
+        }
+
+        .login-container .form-control {
+            height: 50px;
+            border-radius: 8px;
+            border: 2px solid var(--border-color)
+        }
+
+        .login-container .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: none
+        }
+
+        .login-container .btn-login {
+            background: var(--primary-color);
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 1.1rem;
+            font-weight: 500
+        }
+
+        .dialer-container {
+            max-width: 1000px;
+            width: 100%;
+            background: var(--panel-bg-color);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .08);
+            overflow: hidden;
+            position: relative; /* for drawer overlay */
+        }
+
+        .dialer-header {
+            background: var(--primary-color);
+            color: #fff;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center
+        }
+
+        .agent-info .agent-name {
+            font-weight: 700;
+            font-size: 1.1rem
+        }
+
+        .agent-status {
+            display: flex;
+            align-items: center;
+            font-size: .9rem
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            transition: background-color .3s
+        }
+
+        .status-indicator.available {
+            background: var(--green-status)
+        }
+
+        .status-indicator.busy {
+            background: var(--yellow-status)
+        }
+
+        .status-indicator.offline {
+            background: var(--red-status)
+        }
+
+        .btn-header-action {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 1.2rem;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            line-height: 1;
+            transition: .2s
+        }
+
+        .btn-header-action:hover {
+            background: rgba(255, 255, 255, .2)
+        }
+
+        .btn-dnd.active {
+            background: var(--red-status);
+            color: #fff
+        }
+
+        .btn-break.active {
+            background: var(--yellow-status);
+            color: #fff
+        }
+
+        .logout-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, .5);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: .9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            transition: .2s
+        }
+
+        .logout-btn i {
+            margin-right: 8px
+        }
+
+        .logout-btn:hover {
+            background: #fff;
+            color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, .1)
+        }
+
+        .incoming-call-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, .6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000
+        }
+
+        .incoming-call-modal {
+            background: var(--panel-bg-color);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, .2);
+            animation: pulse 1.5s infinite
+        }
+
+        .incoming-call-modal h3 {
+            margin-bottom: 10px;
+            color: var(--secondary-color)
+        }
+
+        .incoming-caller-id {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 30px
+        }
+
+        .incoming-call-actions .btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            font-size: 1.8rem;
+            margin: 0 15px;
+            color: #fff;
+            border: none
+        }
+
+        .btn-accept {
+            background: var(--green-status)
+        }
+
+        .btn-decline {
+            background: var(--red-status)
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(23, 162, 184, .7)
+            }
+
+            70% {
+                box-shadow: 0 0 0 20px rgba(23, 162, 184, 0)
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(23, 162, 184, 0)
+            }
+        }
+
+        .dialer-body {
+            display: flex
+        }
+
+        .dialer-left-panel {
+            flex: 1;
+            padding: 25px;
+            border-right: 1px solid var(--border-color)
+        }
+
+        .call-status-area {
+            text-align: center;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            margin-bottom: 25px;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: .3s
+        }
+
+        .call-status-area.ringing {
+            border-color: var(--blue-status);
+            box-shadow: 0 0 10px rgba(23, 162, 184, .3)
+        }
+
+        .call-status-area.connected {
+            border-color: var(--green-status);
+            box-shadow: 0 0 10px rgba(40, 167, 69, .3)
+        }
+
+        .call-status-area.on-hold {
+            border-color: var(--yellow-status);
+            box-shadow: 0 0 10px rgba(255, 193, 7, .3)
+        }
+
+        .caller-id {
+            font-size: 1.5rem;
+            font-weight: 700
+        }
+
+        .call-timer {
+            font-size: 1.2rem;
+            color: var(--secondary-color)
+        }
+
+        .call-state {
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase
+        }
+
+        .call-state.ringing {
+            color: var(--blue-status)
+        }
+
+        .call-state.connected {
+            color: var(--green-status)
+        }
+
+        .call-state.on-hold {
+            color: var(--yellow-status)
+        }
+
+        .dtmf-sequence-display {
+            min-height: 28px;
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            letter-spacing: 4px;
+            font-weight: 700;
+            margin: 5px 0;
+            word-break: break-all
+        }
+
+        .in-call-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px
+        }
+
+        .in-call-actions .btn-call-action {
+            background: #f6f8fa;
+            border: none;
+            color: #555;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.1rem;
+            transition: .2s
+        }
+
+        .in-call-actions .btn-call-action:hover {
+            background: #eef1f6;
+            transform: translateY(-2px)
+        }
+
+        .in-call-actions .btn-call-action.active {
+            background: var(--primary-color);
+            color: #fff
+        }
+
+        .number-input-container {
+            position: relative;
+            margin-bottom: 20px
+        }
+
+        #phone-number-input {
+            width: 100%;
+            height: 60px;
+            padding: 10px 45px 10px 20px;
+            font-size: 2rem;
+            text-align: center;
+            letter-spacing: 2px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #fcfdff
+        }
+
+        #phone-number-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 5px rgba(0, 123, 255, .3)
+        }
+
+        #phone-number-input:disabled {
+            background: #f0f2f5;
+            cursor: not-allowed
+        }
+
+        .backspace-btn {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: none;
+            background: transparent;
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            cursor: pointer
+        }
+
+        .backspace-btn:hover {
+            color: var(--red-status)
+        }
+
+        .dialpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px
+        }
+
+        .dialpad-btn {
+            height: 70px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--panel-bg-color);
+            font-size: 1.8rem;
+            font-weight: 700;
+            transition: .2s
+        }
+
+        .dialpad-btn:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, .05)
+        }
+
+        .dialpad-btn:active {
+            transform: translateY(0);
+            box-shadow: none
+        }
+
+        .dialpad-btn .sub-text {
+            font-size: .8rem;
+            color: var(--secondary-color);
+            font-weight: 400
+        }
+
+        .call-actions {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+            height: 80px
+        }
+
+        .btn-main-action {
+            width: 70px;
+            height: 70px;
+            border: none;
+            border-radius: 50%;
+            font-size: 1.8rem;
+            transition: .2s;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        .btn-call {
+            background: var(--green-status);
+            color: #fff
+        }
+
+        .btn-call:hover {
+            background: #218838
+        }
+
+        .btn-hangup {
+            background: var(--red-status);
+            color: #fff
+        }
+
+        .btn-hangup:hover {
+            background: #c82333
+        }
+
+        .dialer-right-panel {
+            flex: 0 0 350px;
+            background: #fbfdff
+        }
+
+        .nav-tabs {
+            border-bottom: 1px solid var(--border-color)
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--secondary-color);
+            font-weight: 700
+        }
+
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            background: transparent
+        }
+
+        .tab-content {
+            padding: 20px;
+            height: calc(100vh - 120px);
+            max-height: 550px;
+            overflow-y: auto
+        }
+
+        .search-bar {
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .log-item,
+        .contact-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 5px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color .2s
+        }
+
+        .log-item:hover,
+        .contact-item:hover {
+            background: #eef1f6;
+            cursor: pointer
+        }
+
+        .log-item .call-icon,
+        .contact-item .contact-icon {
+            font-size: 1.2rem;
+            margin-right: 15px;
+            width: 30px;
+            text-align: center
+        }
+
+        .call-icon.incoming {
+            color: var(--green-status)
+        }
+
+        .call-icon.outgoing {
+            color: var(--primary-color)
+        }
+
+        .call-icon.missed {
+            color: var(--red-status)
+        }
+
+        .item-details {
+            flex: 1;
+            line-height: 1.3
+        }
+
+        .item-name {
+            font-weight: 700
+        }
+
+        .item-meta {
+            font-size: .85rem;
+            color: var(--secondary-color)
+        }
+
+        .call-button {
+            background: transparent;
+            border: none;
+            color: var(--green-status);
+            font-size: 1.5rem;
+            opacity: 0;
+            transform: scale(.8);
+            transition: .2s
+        }
+
+        .contact-item:hover .call-button {
+            opacity: 1;
+            transform: scale(1)
+        }
+
+        @media (max-width:992px) {
+            .dialer-body {
+                flex-direction: column
+            }
+
+            .dialer-left-panel {
+                border-right: none;
+                border-bottom: 1px solid var(--border-color)
+            }
+
+            .dialer-right-panel {
+                flex-basis: auto
+            }
+
+            .tab-content {
+                max-height: 300px
+            }
+        }
+
+        @media (max-width:768px) {
+            body {
+                padding: 0;
+                align-items: flex-start
+            }
+
+            .dialer-container {
+                border-radius: 0;
+                min-height: 100vh
+            }
+        }
+
+        /* hide technical sections */
+        #remote-audio audio {
+            display: block;
+            margin-top: 6px;
+            width: 100%
+        }
+
+        /* ====== NEW: Customer Drawer styling ====== */
+        .drawer-scrim {
+            position: absolute;
+            inset: 0;
+            background: rgba(52, 58, 64, 0.12);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s ease;
+            z-index: 20;
+        }
+
+        .drawer-scrim.open {
+            opacity: 1;
+            pointer-events: auto
+        }
+
+        .customer-drawer {
+            position: absolute;
+            top: 72px;
+            right: 0;
+            bottom: 0;
+            width: 360px;
+            max-width: 85vw;
+            background: #fbfdff;
+            border-left: 1px solid var(--border-color);
+            box-shadow: -10px 0 30px rgba(0, 0, 0, .08);
+            transform: translateX(100%);
+            transition: transform .28s ease;
+            z-index: 21;
+            display: flex;
+            flex-direction: column
+        }
+
+        .customer-drawer.open {
+            transform: translateX(0)
+        }
+
+        .drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--panel-bg-color)
+        }
+
+        .drawer-title {
+            font-weight: 700;
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 1.05rem
+        }
+
+        .drawer-close {
+            border: none;
+            background: transparent;
+            color: var(--secondary-color);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%
+        }
+
+        .drawer-close:hover {
+            background: #eef1f6;
+            color: #222
+        }
+
+        .drawer-body {
+            padding: 16px 16px 20px;
+            overflow: auto
+        }
+
+        .profile-card {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: #fff;
+            padding: 12px 12px;
+            margin-bottom: 14px
+        }
+
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e9edf7;
+            color: #445;
+            font-weight: 700;
+            margin-right: 12px
+        }
+
+        .profile-name {
+            font-weight: 700;
+            margin: 0
+        }
+
+        .profile-sub {
+            margin: 2px 0 0;
+            color: var(--secondary-color);
+            font-size: .9rem
+        }
+
+        .badge-tag {
+            background: #eef1f6;
+            color: #465;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 2px 8px;
+            font-size: .75rem;
+            margin-left: 6px
+        }
+
+        .info-list {
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: #fff;
+            margin-bottom: 14px
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color)
+        }
+
+        .info-row:last-child {
+            border-bottom: none
+        }
+
+        .info-label {
+            color: var(--secondary-color);
+            font-size: .9rem
+        }
+
+        .info-value {
+            font-weight: 700
+        }
+
+        .timeline {
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: #fff
+        }
+
+        .timeline h6 {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
+            margin: 0;
+            color: #445
+        }
+
+        .tl-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color)
+        }
+
+        .tl-item:last-child {
+            border-bottom: none
+        }
+
+        .tl-icn {
+            width: 26px;
+            text-align: center;
+            margin-right: 8px;
+            color: var(--primary-color)
+        }
+
+        .tl-meta {
+            font-size: .85rem;
+            color: var(--secondary-color)
+        }
+
+        .call-icon.incoming { color: var(--green-status) }
+        .call-icon.outgoing { color: var(--primary-color) }
+        .call-icon.missed   { color: var(--red-status) }
+
+        mark { background: #ffe9a8; padding: 0 .15em; border-radius: 3px; }
+
+        /* Contact avatar (initials) */
+        .contact-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          background: #e9edf7;
+          color: #445;
+          margin-right: 12px;
+          flex: 0 0 36px;
+        }
+
+        /* Tighten contact row a bit on mobile */
+        @media (max-width: 480px){
+          .item-meta { font-size: 0.8rem; }
+        }
+
+        .in-call-actions .btn-call-action[disabled] {
+          opacity: .45;
+          cursor: not-allowed;
+          pointer-events: none;
+        }
+
+
+        /* Use the same color classes the history list uses */
+        .tl-icn .call-icon.incoming { color: var(--green-status); }
+        .tl-icn .call-icon.outgoing { color: var(--primary-color); }
+        .tl-icn .call-icon.missed   { color: var(--red-status); }
+
+        /* You already show it for .contact-item; do the same for .log-item */
+      .log-item .call-button {
+        background: transparent;
+        border: none;
+        color: var(--green-status);
+        font-size: 1.5rem;
+        opacity: 0;
+        transform: scale(.8);
+        transition: .2s;
+      }
+      .log-item:hover .call-button {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+
+    </style>
+</head>
+
+<body>
+
+    <!-- Login Overlay -->
+    <div id="login-overlay">
+        <div class="login-container" id="login-container">
+            <h2>Login</h2>
+            <form id="login-form">
+                <div class="alert alert-danger d-none" role="alert" id="login-alert">Invalid Username or Password.
+                </div>
+                <div class="form-group"><input type="text" class="form-control" id="agent-id" placeholder="Username"
+                        required value="1000"></div>
+                <div class="form-group"><input type="password" class="form-control" id="agent-password"
+                        placeholder="Password" required value="123456"></div>
+                <button type="submit" class="btn btn-primary btn-block btn-login">Login</button>
+            </form>
+        </div>
+        <div class="login-progress d-none" id="webrtc-progress">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="sr-only">Connecting...</span>
+            </div>
+            <h4 class="text-primary" id="webrtc-progress-message">Preparing media connection...</h4>
+            <p class="text-muted" id="webrtc-progress-subtext">We are finalizing your audio channel.</p>
+        </div>
+    </div>
+
+    <!-- Main Dialer -->
+    <div class="dialer-container">
+        <div class="dialer-header">
+            <div class="agent-info">
+                <div class="agent-name">John Doe</div>
+                <div class="agent-status">
+                    <span id="status-indicator" class="status-indicator available"></span>
+                    <span id="status-text">Available</span>
+                </div>
+            </div>
+            <div class="header-actions d-flex align-items-center">
+                <button id="break-btn" class="btn-header-action btn-break mr-2" title="Take a Break"><i
+                        class="fas fa-coffee"></i></button>
+                <button id="dnd-btn" class="btn-header-action btn-dnd mr-3" title="Do Not Disturb"><i
+                        class="fas fa-bell-slash"></i></button>
+                <button id="logout-btn" class="logout-btn"><i
+                        class="fas fa-sign-out-alt"></i><span>Logout</span></button>
+            </div>
+        </div>
+
+        <div class="dialer-body">
+            <div class="dialer-left-panel">
+                <div class="call-status-area" id="call-status-area">
+                    <div id="call-info" class="d-none">
+                        <div class="caller-id" id="caller-id-display"></div>
+                        <div class="dtmf-sequence-display" id="dtmf-sequence-display"></div>
+                        <div class="call-timer" id="call-timer-display">00:00</div>
+                        <div class="call-state" id="call-state-display"></div>
+                        <div class="in-call-actions mt-3">
+                            <button class="btn btn-call-action" id="mute-btn" title="Mute"><i
+                                    class="fas fa-microphone-slash"></i></button>
+                            <button class="btn btn-call-action" id="hold-btn" title="Hold" disabled><i
+                                    class="fas fa-pause"></i></button>
+                            <button class="btn btn-call-action" id="transfer-btn" title="Transfer" disabled><i
+                                    class="fas fa-exchange-alt"></i></button>
+                            <button class="btn btn-call-action" id="conf-btn" title="Conference" disabled><i
+                                    class="fas fa-users"></i></button>
+                        </div>
+                    </div>
+                    <div id="welcome-message">
+                        <h4 class="text-secondary">Ready to make a call</h4>
+                    </div>
+                </div>
+
+                <div class="number-input-container">
+                    <input type="text" id="phone-number-input" class="form-control" placeholder="Enter number..." />
+                    <button class="backspace-btn" id="backspace-btn"><i class="fas fa-backspace"></i></button>
+                </div>
+
+                <div class="dialpad" id="dialpad">
+                    <button class="btn dialpad-btn" data-value="1">1</button>
+                    <button class="btn dialpad-btn" data-value="2">2 <span class="sub-text">ABC</span></button>
+                    <button class="btn dialpad-btn" data-value="3">3 <span class="sub-text">DEF</span></button>
+                    <button class="btn dialpad-btn" data-value="4">4 <span class="sub-text">GHI</span></button>
+                    <button class="btn dialpad-btn" data-value="5">5 <span class="sub-text">JKL</span></button>
+                    <button class="btn dialpad-btn" data-value="6">6 <span class="sub-text">MNO</span></button>
+                    <button class="btn dialpad-btn" data-value="7">7 <span class="sub-text">PQRS</span></button>
+                    <button class="btn dialpad-btn" data-value="8">8 <span class="sub-text">TUV</span></button>
+                    <button class="btn dialpad-btn" data-value="9">9 <span class="sub-text">WXYZ</span></button>
+                    <button class="btn dialpad-btn" data-value="*">*</button>
+                    <button class="btn dialpad-btn" data-value="0">0</button>
+                    <button class="btn dialpad-btn" data-value="#">#</button>
+                </div>
+
+                <div class="call-actions">
+                    <button class="btn btn-main-action btn-call" id="call-btn" title="Call"><i
+                            class="fas fa-phone"></i></button>
+                    <button class="btn btn-main-action btn-hangup d-none" id="hangup-btn" title="Hang Up"><i
+                            class="fas fa-phone-slash"></i></button>
+                </div>
+
+                <!-- Hidden but needed for remote audio playback -->
+                <div id="remote-audio" class="mt-2"></div>
+            </div>
+
+            <div class="dialer-right-panel">
+                <ul class="nav nav-tabs nav-fill" id="myTab" role="tablist">
+                    <li class="nav-item"><a class="nav-link active" id="history-tab" data-toggle="tab"
+                            href="#history" role="tab">History
+                            <span id="history-refresh" class="ml-2" title="Refresh History" style="cursor: pointer;">
+                                <i class="fas fa-sync-alt"></i> 
+                            </span>
+                            </a>
+                          </li>
+                    <li class="nav-item"><a class="nav-link" id="contacts-tab" data-toggle="tab" href="#contacts"
+                            role="tab">Contacts
+                            <span id="contacts-refresh" class="ml-2" title="Refresh History" style="cursor: pointer;">
+                                <i class="fas fa-sync-alt"></i> 
+                            </span>
+                          </a></li>
+                </ul>
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="history" role="tabpanel">
+                      <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="search-bar">
+                              <div class="input-group">
+                                <input id="history-search" type="text" class="form-control" placeholder="Search history…" aria-label="Search history">
+                                <div class="input-group-append">
+                                  <button id="history-clear" class="btn btn-outline-secondary" type="button" title="Clear search">&times;</button>
+                                </div>
+                              </div>
+                            </div>
+
+                        
+                      </div>
+
+                      <div id="history-empty" class="text-center text-muted d-none" style="padding: 24px;">
+                        <i class="fas fa-history mb-2" style="font-size: 1.6rem;"></i>
+                        <div>No recent calls yet.</div>
+                      </div>
+
+                      <div id="history-loading" class="text-center text-secondary d-none" style="padding: 24px;">
+                        <i class="fas fa-circle-notch fa-spin"></i> Loading call history…
+                      </div>
+
+                      <div id="history-error" class="alert alert-warning d-none" role="alert"></div>
+                      <div id="history-nomatch" class="text-center text-muted d-none" style="padding: 24px;">
+                            <i class="fas fa-search mb-2" style="font-size: 1.6rem;"></i>
+                            <div>No calls match your search.</div>
+                          </div>
+
+
+                      <div class="log-list" id="history-list"></div>
+                    </div>
+
+                    <div class="tab-pane fade" id="contacts" role="tabpanel" aria-labelledby="contacts-tab">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                          <div class="search-bar w-100">
+                            <div class="input-group">
+                              <input id="contacts-search" type="text" class="form-control" placeholder="Search contacts…" aria-label="Search contacts">
+                              <div class="input-group-append">
+                                <button id="contacts-clear" class="btn btn-outline-secondary" type="button" title="Clear search">&times;</button>
+                              </div>
+                            </div>
+                          </div>
+                          <!-- <button id="contacts-refresh" class="btn btn-link ml-2" title="Refresh Contacts">
+                            <i class="fas fa-sync-alt"></i>
+                          </button> -->
+                        </div>
+
+                        <div id="contacts-empty" class="text-center text-muted d-none" style="padding: 24px;">
+                          <i class="fas fa-address-book mb-2" style="font-size: 1.6rem;"></i>
+                          <div>No contacts yet.</div>
+                        </div>
+
+                        <div id="contacts-loading" class="text-center text-secondary d-none" style="padding: 24px;">
+                          <i class="fas fa-circle-notch fa-spin"></i> Loading contacts…
+                        </div>
+
+                        <div id="contacts-error" class="alert alert-warning d-none" role="alert"></div>
+                        <div id="contacts-nomatch" class="text-center text-muted d-none" style="padding: 24px;">
+                          <i class="fas fa-search mb-2" style="font-size: 1.6rem;"></i>
+                          <div>No contacts match your search.</div>
+                        </div>
+
+                        <div id="contacts-list" class="contact-list"></div>
+                      </div>
+
+                </div>
+            </div>
+
+            <!-- ===== Drawer overlay & panel ===== -->
+            <div id="drawer-scrim" class="drawer-scrim"></div>
+            <aside id="customer-drawer" class="customer-drawer" aria-hidden="true">
+                <div class="drawer-header">
+                    <h5 class="drawer-title"><i class="fas fa-id-badge mr-2"></i>Customer Info</h5>
+                    <button id="drawer-close" class="drawer-close" title="Close"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="drawer-body">
+                    <div class="profile-card">
+                        <div id="cd-avatar" class="profile-avatar">U</div>
+                        <div>
+                            <p id="cd-name" class="profile-name">Unknown</p>
+                            <p id="cd-sub" class="profile-sub">—</p>
+                            <div id="cd-tags" class="mt-1"></div>
+                        </div>
+                    </div>
+
+                    <div class="info-list">
+                        <div class="info-row"><span class="info-label">Phone</span><span id="cd-phone"
+                                class="info-value">—</span></div>
+                        <div class="info-row"><span class="info-label">Email</span><span id="cd-email"
+                                class="info-value">—</span></div>
+                        <div class="info-row"><span class="info-label">Company</span><span id="cd-company"
+                                class="info-value">—</span></div>
+                        
+                        <div class="info-row"><span class="info-label">Open Tickets</span><span id="cd-tickets"
+                                class="info-value">0</span></div>
+                    </div>
+
+                    <div class="timeline">
+                        <h6>Recent Interactions</h6>
+                        <div id="cd-timeline"></div>
+                    </div>
+                </div>
+            </aside>
+            <!-- ===== /Drawer ===== -->
+
+        </div>
+    </div>
+
+    <!-- Incoming Call Modal -->
+    <div class="incoming-call-overlay" id="incoming-call-overlay">
+        <div class="incoming-call-modal">
+            <h3>Incoming Call</h3>
+            <div class="incoming-caller-id" id="incoming-caller-id">(000) 000-0000</div>
+            <div class="incoming-call-actions">
+                <button class="btn btn-decline" id="decline-btn" title="Decline"><i
+                        class="fas fa-phone-slash"></i></button>
+                <button class="btn btn-accept" id="accept-btn" title="Accept"><i class="fas fa-phone"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ring & media assets -->
+    <audio id="incoming-ring" preload="auto">
+        <source src="https://janussg.nextgenswitch.com/incoming_call.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Bootstrap JS (unchanged) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+    <script>
 (() => {
   'use strict';
 
@@ -42,13 +1169,8 @@
   /* =========================================================
    * CONFIG
    * ======================================================= */
-  var url = '{{ url('/websocket') }}/';
-  url = url.replace("http",'ws');
-  url = url.replace("https",'wss');
-  //console.log("websocket url is ",url);
-  const WS_BASE = url;
-  //const WS_BASE          = 'wss://' + window.location.hostname + '/websocket/';
-  const DEFAULT_REGISTRAR= 'sip:{{ auth()->user()->organization->domain }}:{{ explode(':', config('settings.switch.udp_listen'))[1] }}';
+  const WS_BASE          = 'wss://' + window.location.hostname + '/websocket/';
+  const DEFAULT_REGISTRAR= 'sip:sg.nextgenswitch.com:8345';
   const DEFAULT_EXPIRES  = 60;
   const OFFER_PATH       = (typeof window !== 'undefined' && window.OFFER_PATH) ? window.OFFER_PATH : '/offer';
 
@@ -533,9 +1655,7 @@
     const $webrtcMsg       = $('#webrtc-progress-message');
     const webrtcMsgDefault = $webrtcMsg.length ? ($webrtcMsg.text().trim() || 'Preparing media connection...') : 'Preparing media connection...';
 
-    const setWebrtcProgressMessage = (text) => {
-       if ($webrtcMsg.length) $webrtcMsg.text(text || webrtcMsgDefault); 
-      };
+    const setWebrtcProgressMessage = (text) => { if ($webrtcMsg.length) $webrtcMsg.text(text || webrtcMsgDefault); };
     const showLoginForm    = () => { $loginOverlay.removeClass('hidden'); $loginContainer.removeClass('d-none'); $webrtcProgress.addClass('d-none'); setWebrtcProgressMessage(webrtcMsgDefault); };
     const showWebrtcConnecting = (message = null) => { $loginContainer.addClass('d-none'); $webrtcProgress.removeClass('d-none'); setWebrtcProgressMessage(message || webrtcMsgDefault); $loginOverlay.removeClass('hidden'); };
     const hideLoginOverlay = () => { $loginOverlay.addClass('hidden'); $loginContainer.removeClass('d-none'); $webrtcProgress.addClass('d-none'); setWebrtcProgressMessage(webrtcMsgDefault); };
@@ -791,14 +1911,14 @@
       const who = $(this).data('who') || '';
       const num = (String(who).match(/\(([^)]+)\)/) || [])[1] || '';
       if (num){ 
-        $('#phone-number-input').val(num); 
+        // $('#phone-number-input').val(num); 
         drawer.openForNumber(String(num)); 
       }
     });
     $(document).on('click', '#history-list .call-button', function(){
       const num = $(this).data('number'); if (!num) return;
       $('#phone-number-input').val(num);
-      $("#call-btn").click();
+      // $("#call-btn").click();
     });
 
     /* ---------- Contacts UI ---------- */
@@ -877,16 +1997,7 @@
     $(document).on('click', '#contacts-list .contact-item', function(e){
       if ($(e.target).closest('.call-button').length) return;
       const number = $(this).data('number');
-      if (number){
-        $('#phone-number-input').val(number); 
-        drawer.openForNumber(String(number));
-      } 
-    });
-
-    $(document).on('click', '#contacts-list .call-button', function(){
-      const num = $(this).data('number'); if (!num) return;
-      $('#phone-number-input').val(num);
-      $("#call-btn").click();
+      if (number) drawer.openForNumber(String(number));
     });
 
     $('a[data-toggle="tab"][href="#contacts"]').on('shown.bs.tab', () => loadContacts(cx.search?.val() || ''));
@@ -897,3 +2008,6 @@
   });
 })();
 </script>
+
+</body>
+</html>

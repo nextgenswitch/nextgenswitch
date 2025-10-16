@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<response>
+<connect><stream name="stream" url="ws://103.189.236.236:8765/gemini"/></connect> 
+<say>Please enter the extension number  followed by the hash key</say>
+<pause length="120"/> 
+</response>

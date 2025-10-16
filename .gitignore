@@ -5,7 +5,9 @@
 /public/storage
 /storage
 /vendor
+__pycache__
 .env
+.venv
 .env.backup
 .env.production
 .phpunit.result.cache

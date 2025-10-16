@@ -363,6 +363,6 @@ if __name__ == "__main__":
     app = web.Application()
     app.router.add_get("/", index_handler)
     app.router.add_post("/offer", offer_handler)
-    web.run_app(app, port=8080)
+    web.run_app(app, host="127.0.0.1", port=8080)
 
 #source .env/bin/activate && nohup python webrtc_bridge.py > webrtc_bridge.log 2>&1 &

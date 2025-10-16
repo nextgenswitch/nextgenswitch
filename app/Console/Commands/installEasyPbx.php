@@ -12,6 +12,8 @@ class installEasyPbx extends Command
     /*  EXAMPLE USAGE
         php artisan easypbx:install --db-driver=mysql --db-url="mysql://user:pass@localhost:3306/easypbx"
         php artisan easypbx:install --db-driver=sqlite --sqlite-path="/full/path/to/database.sqlite"
+        php artisan easypbx:install --update                  # uses default path /usr/infosoftbd/nextgenswitch
+        php artisan easypbx:install --update=/custom/path     # updates using provided path
     */
 
 
@@ -23,7 +25,8 @@ class installEasyPbx extends Command
     protected $signature = 'easypbx:install
     {--db-driver= : Database driver (mysql|sqlite)}
     {--db-url= : Database URL for MySQL (e.g., mysql://user:pass@host:3306/dbname)}
-    {--sqlite-path= : SQLite database file path}';
+    {--sqlite-path= : SQLite database file path}
+    {--update= : Update NextGenSwitch at path. When provided, runs update instead of install. Uses /usr/infosoftbd/nextgenswitch if no value passed}';
 
 
     /**
@@ -65,6 +68,16 @@ class installEasyPbx extends Command
 
         if (!$isRoot) {
             $this->error('This command must be run as root or with sudo privileges.');
+            return;
+        }
+
+        // If --update is provided, perform update instead of install
+        $updateOpt = $this->option('update');
+        $updateProvided = $this->input->hasParameterOption('--update') || $updateOpt !== null;
+        if ($updateProvided) {
+            $updatePath = $updateOpt ?: '/usr/infosoftbd/nextgenswitch';
+            $this->info("Update requested. Target path: {$updatePath}");
+            $this->udpateSwitch($updatePath);
             return;
         }
 
@@ -515,6 +528,92 @@ class installEasyPbx extends Command
         }
 
         $this->info("Ensured system user '{$user}' and access to {$dir}");
+    }
+
+    private function udpateSwitch(string $destDir): void
+    {
+        $this->info('Updating NextGenSwitch package...');
+
+        $zipPath = base_path('setup/nextgenswitch.zip');
+
+        if (!file_exists($zipPath)) {
+            $this->error("Package not found: {$zipPath}");
+            return;
+        }
+
+        if (!is_dir($destDir)) {
+            if (!@mkdir($destDir, 0755, true) && !is_dir($destDir)) {
+                $this->error("Failed to create directory: {$destDir}");
+                return;
+            }
+        }
+
+        $unpacked = false;
+
+        // Try system unzip first (overwrites with -o)
+        $unzipBin = trim((string) @shell_exec('command -v unzip 2>/dev/null'));
+        if ($unzipBin !== '') {
+            $cmd = escapeshellcmd($unzipBin) . ' -o ' . escapeshellarg($zipPath) . ' -d ' . escapeshellarg($destDir);
+            $process = Process::fromShellCommandline($cmd);
+            $process->run();
+            if ($process->isSuccessful()) {
+                $unpacked = true;
+                $this->info("Unzipped with system unzip to {$destDir}");
+            } else {
+                $this->warn('System unzip failed: ' . $process->getErrorOutput());
+            }
+        }
+
+        // Fallback to ZipArchive if available
+        if (!$unpacked && class_exists('\ZipArchive')) {
+            $zip = new \ZipArchive();
+            if ($zip->open($zipPath) === true) {
+                $zip->extractTo($destDir);
+                $zip->close();
+                $unpacked = true;
+                $this->info("Unzipped with ZipArchive to {$destDir}");
+            }
+        }
+
+        if (!$unpacked) {
+            $this->error('Failed to unpack NextGenSwitch.');
+            return;
+        }
+
+        // Ensure required directories exist post-update
+        try {
+            foreach (['logs', 'media'] as $sub) {
+                $dirToEnsure = rtrim($destDir, '/') . '/' . $sub;
+                if (!is_dir($dirToEnsure)) {
+                    @mkdir($dirToEnsure, 0755, true);
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->warn('Post-update directory setup encountered an error: ' . $e->getMessage());
+        }
+
+        // Run database migrations after updating files
+        $this->info('Running database migrations...');
+        $exitCode = $this->call('migrate', [
+            '--force' => true,
+        ]);
+        if ($exitCode !== 0) {
+            $this->error('Failed to run database migrations during update.');
+            return;
+        }
+        $this->info('Database migrations ran successfully.');
+
+        // Re-ensure system user and permissions
+        $this->ensureNextGenSwitchUserAndPermissions();
+
+        // Refresh supervisor to pick up any changes
+        $process = Process::fromShellCommandline("supervisorctl reread && supervisorctl update");
+        $process->run();
+        if (!$process->isSuccessful()) {
+            $this->warn('Supervisor reload reported an issue: ' . $process->getErrorOutput());
+        }
+
+        $this->info('NextGenSwitch updated successfully.');
     }
 
     private function ensureLuaConfig(string $apiUrl): void

@@ -25,6 +25,7 @@
     <div id="login-overlay">
         <div class="login-container" id="login-container">
             <h2>Login</h2>
+            
             <form id="login-form">
                 <div class="alert alert-danger d-none" role="alert" id="login-alert">Invalid Username or Password.
                 </div>
@@ -260,7 +261,7 @@
 
     <!-- Ring & media assets -->
     <audio id="incoming-ring" preload="auto">
-        <source src="https://janussg.nextgenswitch.com/incoming_call.mp3" type="audio/mpeg">
+        <source src="{{ asset('sounds/incoming_call.mp3') }}" type="audio/mpeg">
     </audio>
 
     <!-- Bootstrap JS (unchanged) -->

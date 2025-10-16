@@ -1,0 +1,2655 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SIP Web Dialer</title>
+
+    <!-- Design deps (unchanged) -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet" />
+
+    <!-- Functionality deps -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #5E6A9C;
+            --secondary-color: #868E96;
+            --background-color: #F4F6F9;
+            --panel-bg-color: #ffffff;
+            --text-color: #343A40;
+            --border-color: #e9ecef;
+            --green-status: #16C79A;
+            --red-status: #E57373;
+            --yellow-status: #FFB74D;
+            --blue-status: #64B5F6;
+        }
+
+        button:focus {
+            outline: none;
+            box-shadow: none
+        }
+
+        body {
+            font-family: "Lato", sans-serif;
+            background: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 15px
+        }
+
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, .6);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1050;
+            opacity: 1;
+            transition: opacity .3s
+        }
+
+        #login-overlay.hidden {
+            opacity: 0;
+            pointer-events: none
+        }
+
+        .login-container {
+            background: var(--panel-bg-color);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, .2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center
+        }
+
+.login-progress {
+            background: var(--panel-bg-color);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, .2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .login-progress .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        .login-container h2 {
+            margin-bottom: 25px;
+            color: var(--text-color);
+            font-weight: 600
+        }
+
+        .login-container .form-control {
+            height: 50px;
+            border-radius: 8px;
+            border: 2px solid var(--border-color)
+        }
+
+        .login-container .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: none
+        }
+
+        .login-container .btn-login {
+            background: var(--primary-color);
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 1.1rem;
+            font-weight: 500
+        }
+
+        .dialer-container {
+            max-width: 1000px;
+            width: 100%;
+            background: var(--panel-bg-color);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .08);
+            overflow: hidden;
+            position: relative; /* for drawer overlay */
+        }
+
+        .dialer-header {
+            background: var(--primary-color);
+            color: #fff;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center
+        }
+
+        .agent-info .agent-name {
+            font-weight: 700;
+            font-size: 1.1rem
+        }
+
+        .agent-status {
+            display: flex;
+            align-items: center;
+            font-size: .9rem
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            transition: background-color .3s
+        }
+
+        .status-indicator.available {
+            background: var(--green-status)
+        }
+
+        .status-indicator.busy {
+            background: var(--yellow-status)
+        }
+
+        .status-indicator.offline {
+            background: var(--red-status)
+        }
+
+        .btn-header-action {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 1.2rem;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            line-height: 1;
+            transition: .2s
+        }
+
+        .btn-header-action:hover {
+            background: rgba(255, 255, 255, .2)
+        }
+
+        .btn-dnd.active {
+            background: var(--red-status);
+            color: #fff
+        }
+
+        .btn-break.active {
+            background: var(--yellow-status);
+            color: #fff
+        }
+
+        .logout-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, .5);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: .9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            transition: .2s
+        }
+
+        .logout-btn i {
+            margin-right: 8px
+        }
+
+        .logout-btn:hover {
+            background: #fff;
+            color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, .1)
+        }
+
+        .incoming-call-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, .6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000
+        }
+
+        .incoming-call-modal {
+            background: var(--panel-bg-color);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, .2);
+            animation: pulse 1.5s infinite
+        }
+
+        .incoming-call-modal h3 {
+            margin-bottom: 10px;
+            color: var(--secondary-color)
+        }
+
+        .incoming-caller-id {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 30px
+        }
+
+        .incoming-call-actions .btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            font-size: 1.8rem;
+            margin: 0 15px;
+            color: #fff;
+            border: none
+        }
+
+        .btn-accept {
+            background: var(--green-status)
+        }
+
+        .btn-decline {
+            background: var(--red-status)
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(23, 162, 184, .7)
+            }
+
+            70% {
+                box-shadow: 0 0 0 20px rgba(23, 162, 184, 0)
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(23, 162, 184, 0)
+            }
+        }
+
+        .dialer-body {
+            display: flex
+        }
+
+        .dialer-left-panel {
+            flex: 1;
+            padding: 25px;
+            border-right: 1px solid var(--border-color)
+        }
+
+        .call-status-area {
+            text-align: center;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            margin-bottom: 25px;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: .3s
+        }
+
+        .call-status-area.ringing {
+            border-color: var(--blue-status);
+            box-shadow: 0 0 10px rgba(23, 162, 184, .3)
+        }
+
+        .call-status-area.connected {
+            border-color: var(--green-status);
+            box-shadow: 0 0 10px rgba(40, 167, 69, .3)
+        }
+
+        .call-status-area.on-hold {
+            border-color: var(--yellow-status);
+            box-shadow: 0 0 10px rgba(255, 193, 7, .3)
+        }
+
+        .caller-id {
+            font-size: 1.5rem;
+            font-weight: 700
+        }
+
+        .call-timer {
+            font-size: 1.2rem;
+            color: var(--secondary-color)
+        }
+
+        .call-state {
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase
+        }
+
+        .call-state.ringing {
+            color: var(--blue-status)
+        }
+
+        .call-state.connected {
+            color: var(--green-status)
+        }
+
+        .call-state.on-hold {
+            color: var(--yellow-status)
+        }
+
+        .dtmf-sequence-display {
+            min-height: 28px;
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            letter-spacing: 4px;
+            font-weight: 700;
+            margin: 5px 0;
+            word-break: break-all
+        }
+
+        .in-call-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px
+        }
+
+        .in-call-actions .btn-call-action {
+            background: #f6f8fa;
+            border: none;
+            color: #555;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.1rem;
+            transition: .2s
+        }
+
+        .in-call-actions .btn-call-action:hover {
+            background: #eef1f6;
+            transform: translateY(-2px)
+        }
+
+        .in-call-actions .btn-call-action.active {
+            background: var(--primary-color);
+            color: #fff
+        }
+
+        .number-input-container {
+            position: relative;
+            margin-bottom: 20px
+        }
+
+        #phone-number-input {
+            width: 100%;
+            height: 60px;
+            padding: 10px 45px 10px 20px;
+            font-size: 2rem;
+            text-align: center;
+            letter-spacing: 2px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #fcfdff
+        }
+
+        #phone-number-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 5px rgba(0, 123, 255, .3)
+        }
+
+        #phone-number-input:disabled {
+            background: #f0f2f5;
+            cursor: not-allowed
+        }
+
+        .backspace-btn {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: none;
+            background: transparent;
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            cursor: pointer
+        }
+
+        .backspace-btn:hover {
+            color: var(--red-status)
+        }
+
+        .dialpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px
+        }
+
+        .dialpad-btn {
+            height: 70px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--panel-bg-color);
+            font-size: 1.8rem;
+            font-weight: 700;
+            transition: .2s
+        }
+
+        .dialpad-btn:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, .05)
+        }
+
+        .dialpad-btn:active {
+            transform: translateY(0);
+            box-shadow: none
+        }
+
+        .dialpad-btn .sub-text {
+            font-size: .8rem;
+            color: var(--secondary-color);
+            font-weight: 400
+        }
+
+        .call-actions {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+            height: 80px
+        }
+
+        .btn-main-action {
+            width: 70px;
+            height: 70px;
+            border: none;
+            border-radius: 50%;
+            font-size: 1.8rem;
+            transition: .2s;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        .btn-call {
+            background: var(--green-status);
+            color: #fff
+        }
+
+        .btn-call:hover {
+            background: #218838
+        }
+
+        .btn-hangup {
+            background: var(--red-status);
+            color: #fff
+        }
+
+        .btn-hangup:hover {
+            background: #c82333
+        }
+
+        .dialer-right-panel {
+            flex: 0 0 350px;
+            background: #fbfdff
+        }
+
+        .nav-tabs {
+            border-bottom: 1px solid var(--border-color)
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--secondary-color);
+            font-weight: 700
+        }
+
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            background: transparent
+        }
+
+        .tab-content {
+            padding: 20px;
+            height: calc(100vh - 120px);
+            max-height: 550px;
+            overflow-y: auto
+        }
+
+        .search-bar {
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .log-item,
+        .contact-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 5px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color .2s
+        }
+
+        .log-item:hover,
+        .contact-item:hover {
+            background: #eef1f6;
+            cursor: pointer
+        }
+
+        .log-item .call-icon,
+        .contact-item .contact-icon {
+            font-size: 1.2rem;
+            margin-right: 15px;
+            width: 30px;
+            text-align: center
+        }
+
+        .call-icon.incoming {
+            color: var(--green-status)
+        }
+
+        .call-icon.outgoing {
+            color: var(--primary-color)
+        }
+
+        .call-icon.missed {
+            color: var(--red-status)
+        }
+
+        .item-details {
+            flex: 1;
+            line-height: 1.3
+        }
+
+        .item-name {
+            font-weight: 700
+        }
+
+        .item-meta {
+            font-size: .85rem;
+            color: var(--secondary-color)
+        }
+
+        .call-button {
+            background: transparent;
+            border: none;
+            color: var(--green-status);
+            font-size: 1.5rem;
+            opacity: 0;
+            transform: scale(.8);
+            transition: .2s
+        }
+
+        .contact-item:hover .call-button {
+            opacity: 1;
+            transform: scale(1)
+        }
+
+        @media (max-width:992px) {
+            .dialer-body {
+                flex-direction: column
+            }
+
+            .dialer-left-panel {
+                border-right: none;
+                border-bottom: 1px solid var(--border-color)
+            }
+
+            .dialer-right-panel {
+                flex-basis: auto
+            }
+
+            .tab-content {
+                max-height: 300px
+            }
+        }
+
+        @media (max-width:768px) {
+            body {
+                padding: 0;
+                align-items: flex-start
+            }
+
+            .dialer-container {
+                border-radius: 0;
+                min-height: 100vh
+            }
+        }
+
+        /* hide technical sections */
+        #remote-audio audio {
+            display: block;
+            margin-top: 6px;
+            width: 100%
+        }
+
+        /* ====== NEW: Customer Drawer styling ====== */
+        .drawer-scrim {
+            position: absolute;
+            inset: 0;
+            background: rgba(52, 58, 64, 0.12);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s ease;
+            z-index: 20;
+        }
+
+        .drawer-scrim.open {
+            opacity: 1;
+            pointer-events: auto
+        }
+
+        .customer-drawer {
+            position: absolute;
+            top: 72px;
+            right: 0;
+            bottom: 0;
+            width: 360px;
+            max-width: 85vw;
+            background: #fbfdff;
+            border-left: 1px solid var(--border-color);
+            box-shadow: -10px 0 30px rgba(0, 0, 0, .08);
+            transform: translateX(100%);
+            transition: transform .28s ease;
+            z-index: 21;
+            display: flex;
+            flex-direction: column
+        }
+
+        .customer-drawer.open {
+            transform: translateX(0)
+        }
+
+        .drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--panel-bg-color)
+        }
+
+        .drawer-title {
+            font-weight: 700;
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 1.05rem
+        }
+
+        .drawer-close {
+            border: none;
+            background: transparent;
+            color: var(--secondary-color);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%
+        }
+
+        .drawer-close:hover {
+            background: #eef1f6;
+            color: #222
+        }
+
+        .drawer-body {
+            padding: 16px 16px 20px;
+            overflow: auto
+        }
+
+        .profile-card {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: #fff;
+            padding: 12px 12px;
+            margin-bottom: 14px
+        }
+
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e9edf7;
+            color: #445;
+            font-weight: 700;
+            margin-right: 12px
+        }
+
+        .profile-name {
+            font-weight: 700;
+            margin: 0
+        }
+
+        .profile-sub {
+            margin: 2px 0 0;
+            color: var(--secondary-color);
+            font-size: .9rem
+        }
+
+        .badge-tag {
+            background: #eef1f6;
+            color: #465;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 2px 8px;
+            font-size: .75rem;
+            margin-left: 6px
+        }
+
+        .info-list {
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: #fff;
+            margin-bottom: 14px
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color)
+        }
+
+        .info-row:last-child {
+            border-bottom: none
+        }
+
+        .info-label {
+            color: var(--secondary-color);
+            font-size: .9rem
+        }
+
+        .info-value {
+            font-weight: 700
+        }
+
+        .timeline {
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: #fff
+        }
+
+        .timeline h6 {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
+            margin: 0;
+            color: #445
+        }
+
+        .tl-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color)
+        }
+
+        .tl-item:last-child {
+            border-bottom: none
+        }
+
+        .tl-icn {
+            width: 26px;
+            text-align: center;
+            margin-right: 8px;
+            color: var(--primary-color)
+        }
+
+        .tl-meta {
+            font-size: .85rem;
+            color: var(--secondary-color)
+        }
+
+        .call-icon.incoming { color: var(--green-status) }
+        .call-icon.outgoing { color: var(--primary-color) }
+        .call-icon.missed   { color: var(--red-status) }
+
+        mark { background: #ffe9a8; padding: 0 .15em; border-radius: 3px; }
+
+        /* Contact avatar (initials) */
+        .contact-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          background: #e9edf7;
+          color: #445;
+          margin-right: 12px;
+          flex: 0 0 36px;
+        }
+
+        /* Tighten contact row a bit on mobile */
+        @media (max-width: 480px){
+          .item-meta { font-size: 0.8rem; }
+        }
+
+        .in-call-actions .btn-call-action[disabled] {
+          opacity: .45;
+          cursor: not-allowed;
+          pointer-events: none;
+        }
+
+
+        /* Use the same color classes the history list uses */
+        .tl-icn .call-icon.incoming { color: var(--green-status); }
+        .tl-icn .call-icon.outgoing { color: var(--primary-color); }
+        .tl-icn .call-icon.missed   { color: var(--red-status); }
+
+        /* You already show it for .contact-item; do the same for .log-item */
+      .log-item .call-button {
+        background: transparent;
+        border: none;
+        color: var(--green-status);
+        font-size: 1.5rem;
+        opacity: 0;
+        transform: scale(.8);
+        transition: .2s;
+      }
+      .log-item:hover .call-button {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+
+    </style>
+</head>
+
+<body>
+
+    <!-- Login Overlay -->
+    <div id="login-overlay">
+        <div class="login-container" id="login-container">
+            <h2>Login</h2>
+            <form id="login-form">
+                <div class="alert alert-danger d-none" role="alert" id="login-alert">Invalid Username or Password.
+                </div>
+                <div class="form-group"><input type="text" class="form-control" id="agent-id" placeholder="Username"
+                        required value="1000"></div>
+                <div class="form-group"><input type="password" class="form-control" id="agent-password"
+                        placeholder="Password" required value="123456"></div>
+                <button type="submit" class="btn btn-primary btn-block btn-login">Login</button>
+            </form>
+        </div>
+        <div class="login-progress d-none" id="webrtc-progress">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="sr-only">Connecting...</span>
+            </div>
+            <h4 class="text-primary" id="webrtc-progress-message">Preparing media connection...</h4>
+            <p class="text-muted" id="webrtc-progress-subtext">We are finalizing your audio channel.</p>
+        </div>
+    </div>
+
+    <!-- Main Dialer -->
+    <div class="dialer-container">
+        <div class="dialer-header">
+            <div class="agent-info">
+                <div class="agent-name">John Doe</div>
+                <div class="agent-status">
+                    <span id="status-indicator" class="status-indicator available"></span>
+                    <span id="status-text">Available</span>
+                </div>
+            </div>
+            <div class="header-actions d-flex align-items-center">
+                <button id="break-btn" class="btn-header-action btn-break mr-2" title="Take a Break"><i
+                        class="fas fa-coffee"></i></button>
+                <button id="dnd-btn" class="btn-header-action btn-dnd mr-3" title="Do Not Disturb"><i
+                        class="fas fa-bell-slash"></i></button>
+                <button id="logout-btn" class="logout-btn"><i
+                        class="fas fa-sign-out-alt"></i><span>Logout</span></button>
+            </div>
+        </div>
+
+        <div class="dialer-body">
+            <div class="dialer-left-panel">
+                <div class="call-status-area" id="call-status-area">
+                    <div id="call-info" class="d-none">
+                        <div class="caller-id" id="caller-id-display"></div>
+                        <div class="dtmf-sequence-display" id="dtmf-sequence-display"></div>
+                        <div class="call-timer" id="call-timer-display">00:00</div>
+                        <div class="call-state" id="call-state-display"></div>
+                        <div class="in-call-actions mt-3">
+                            <button class="btn btn-call-action" id="mute-btn" title="Mute"><i
+                                    class="fas fa-microphone-slash"></i></button>
+                            <button class="btn btn-call-action" id="hold-btn" title="Hold" disabled><i
+                                    class="fas fa-pause"></i></button>
+                            <button class="btn btn-call-action" id="transfer-btn" title="Transfer" disabled><i
+                                    class="fas fa-exchange-alt"></i></button>
+                            <button class="btn btn-call-action" id="conf-btn" title="Conference" disabled><i
+                                    class="fas fa-users"></i></button>
+                        </div>
+                    </div>
+                    <div id="welcome-message">
+                        <h4 class="text-secondary">Ready to make a call</h4>
+                    </div>
+                </div>
+
+                <div class="number-input-container">
+                    <input type="text" id="phone-number-input" class="form-control" placeholder="Enter number..." />
+                    <button class="backspace-btn" id="backspace-btn"><i class="fas fa-backspace"></i></button>
+                </div>
+
+                <div class="dialpad" id="dialpad">
+                    <button class="btn dialpad-btn" data-value="1">1</button>
+                    <button class="btn dialpad-btn" data-value="2">2 <span class="sub-text">ABC</span></button>
+                    <button class="btn dialpad-btn" data-value="3">3 <span class="sub-text">DEF</span></button>
+                    <button class="btn dialpad-btn" data-value="4">4 <span class="sub-text">GHI</span></button>
+                    <button class="btn dialpad-btn" data-value="5">5 <span class="sub-text">JKL</span></button>
+                    <button class="btn dialpad-btn" data-value="6">6 <span class="sub-text">MNO</span></button>
+                    <button class="btn dialpad-btn" data-value="7">7 <span class="sub-text">PQRS</span></button>
+                    <button class="btn dialpad-btn" data-value="8">8 <span class="sub-text">TUV</span></button>
+                    <button class="btn dialpad-btn" data-value="9">9 <span class="sub-text">WXYZ</span></button>
+                    <button class="btn dialpad-btn" data-value="*">*</button>
+                    <button class="btn dialpad-btn" data-value="0">0</button>
+                    <button class="btn dialpad-btn" data-value="#">#</button>
+                </div>
+
+                <div class="call-actions">
+                    <button class="btn btn-main-action btn-call" id="call-btn" title="Call"><i
+                            class="fas fa-phone"></i></button>
+                    <button class="btn btn-main-action btn-hangup d-none" id="hangup-btn" title="Hang Up"><i
+                            class="fas fa-phone-slash"></i></button>
+                </div>
+
+                <!-- Hidden but needed for remote audio playback -->
+                <div id="remote-audio" class="mt-2"></div>
+            </div>
+
+            <div class="dialer-right-panel">
+                <ul class="nav nav-tabs nav-fill" id="myTab" role="tablist">
+                    <li class="nav-item"><a class="nav-link active" id="history-tab" data-toggle="tab"
+                            href="#history" role="tab">History
+                            <span id="history-refresh" class="ml-2" title="Refresh History" style="cursor: pointer;">
+                                <i class="fas fa-sync-alt"></i> 
+                            </span>
+                            </a>
+                          </li>
+                    <li class="nav-item"><a class="nav-link" id="contacts-tab" data-toggle="tab" href="#contacts"
+                            role="tab">Contacts
+                            <span id="contacts-refresh" class="ml-2" title="Refresh History" style="cursor: pointer;">
+                                <i class="fas fa-sync-alt"></i> 
+                            </span>
+                          </a></li>
+                </ul>
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="history" role="tabpanel">
+                      <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="search-bar">
+                              <div class="input-group">
+                                <input id="history-search" type="text" class="form-control" placeholder="Search history…" aria-label="Search history">
+                                <div class="input-group-append">
+                                  <button id="history-clear" class="btn btn-outline-secondary" type="button" title="Clear search">&times;</button>
+                                </div>
+                              </div>
+                            </div>
+
+                        
+                      </div>
+
+                      <div id="history-empty" class="text-center text-muted d-none" style="padding: 24px;">
+                        <i class="fas fa-history mb-2" style="font-size: 1.6rem;"></i>
+                        <div>No recent calls yet.</div>
+                      </div>
+
+                      <div id="history-loading" class="text-center text-secondary d-none" style="padding: 24px;">
+                        <i class="fas fa-circle-notch fa-spin"></i> Loading call history…
+                      </div>
+
+                      <div id="history-error" class="alert alert-warning d-none" role="alert"></div>
+                      <div id="history-nomatch" class="text-center text-muted d-none" style="padding: 24px;">
+                            <i class="fas fa-search mb-2" style="font-size: 1.6rem;"></i>
+                            <div>No calls match your search.</div>
+                          </div>
+
+
+                      <div class="log-list" id="history-list"></div>
+                    </div>
+
+                    <div class="tab-pane fade" id="contacts" role="tabpanel" aria-labelledby="contacts-tab">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                          <div class="search-bar w-100">
+                            <div class="input-group">
+                              <input id="contacts-search" type="text" class="form-control" placeholder="Search contacts…" aria-label="Search contacts">
+                              <div class="input-group-append">
+                                <button id="contacts-clear" class="btn btn-outline-secondary" type="button" title="Clear search">&times;</button>
+                              </div>
+                            </div>
+                          </div>
+                          <!-- <button id="contacts-refresh" class="btn btn-link ml-2" title="Refresh Contacts">
+                            <i class="fas fa-sync-alt"></i>
+                          </button> -->
+                        </div>
+
+                        <div id="contacts-empty" class="text-center text-muted d-none" style="padding: 24px;">
+                          <i class="fas fa-address-book mb-2" style="font-size: 1.6rem;"></i>
+                          <div>No contacts yet.</div>
+                        </div>
+
+                        <div id="contacts-loading" class="text-center text-secondary d-none" style="padding: 24px;">
+                          <i class="fas fa-circle-notch fa-spin"></i> Loading contacts…
+                        </div>
+
+                        <div id="contacts-error" class="alert alert-warning d-none" role="alert"></div>
+                        <div id="contacts-nomatch" class="text-center text-muted d-none" style="padding: 24px;">
+                          <i class="fas fa-search mb-2" style="font-size: 1.6rem;"></i>
+                          <div>No contacts match your search.</div>
+                        </div>
+
+                        <div id="contacts-list" class="contact-list"></div>
+                      </div>
+
+                </div>
+            </div>
+
+            <!-- ===== Drawer overlay & panel ===== -->
+            <div id="drawer-scrim" class="drawer-scrim"></div>
+            <aside id="customer-drawer" class="customer-drawer" aria-hidden="true">
+                <div class="drawer-header">
+                    <h5 class="drawer-title"><i class="fas fa-id-badge mr-2"></i>Customer Info</h5>
+                    <button id="drawer-close" class="drawer-close" title="Close"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="drawer-body">
+                    <div class="profile-card">
+                        <div id="cd-avatar" class="profile-avatar">U</div>
+                        <div>
+                            <p id="cd-name" class="profile-name">Unknown</p>
+                            <p id="cd-sub" class="profile-sub">—</p>
+                            <div id="cd-tags" class="mt-1"></div>
+                        </div>
+                    </div>
+
+                    <div class="info-list">
+                        <div class="info-row"><span class="info-label">Phone</span><span id="cd-phone"
+                                class="info-value">—</span></div>
+                        <div class="info-row"><span class="info-label">Email</span><span id="cd-email"
+                                class="info-value">—</span></div>
+                        <div class="info-row"><span class="info-label">Company</span><span id="cd-company"
+                                class="info-value">—</span></div>
+                        
+                        <div class="info-row"><span class="info-label">Open Tickets</span><span id="cd-tickets"
+                                class="info-value">0</span></div>
+                    </div>
+
+                    <div class="timeline">
+                        <h6>Recent Interactions</h6>
+                        <div id="cd-timeline"></div>
+                    </div>
+                </div>
+            </aside>
+            <!-- ===== /Drawer ===== -->
+
+        </div>
+    </div>
+
+    <!-- Incoming Call Modal -->
+    <div class="incoming-call-overlay" id="incoming-call-overlay">
+        <div class="incoming-call-modal">
+            <h3>Incoming Call</h3>
+            <div class="incoming-caller-id" id="incoming-caller-id">(000) 000-0000</div>
+            <div class="incoming-call-actions">
+                <button class="btn btn-decline" id="decline-btn" title="Decline"><i
+                        class="fas fa-phone-slash"></i></button>
+                <button class="btn btn-accept" id="accept-btn" title="Accept"><i class="fas fa-phone"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ring & media assets -->
+    <audio id="incoming-ring" preload="auto">
+        <source src="https://janussg.nextgenswitch.com/incoming_call.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Bootstrap JS (unchanged) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+    <script>
+      
+(() => {
+  'use strict';
+
+  // ===== DEBUG LOGGER =====
+  const DEBUG = true;
+  const _ts = () => new Date().toISOString();
+  const log = {
+    info: (...a) => DEBUG && console.log(`[${_ts()}]`, ...a),
+    warn: (...a) => DEBUG && console.warn(`[${_ts()}]`, ...a),
+    err:  (...a) => DEBUG && console.error(`[${_ts()}]`, ...a),
+    grp:  (label, obj) => {
+      if (!DEBUG) return;
+      console.groupCollapsed(`[${_ts()}] ${label}`);
+      try { console.log(obj); } finally { console.groupEnd(); }
+    }
+  };
+  window.addEventListener('error', (e) => {
+    log.err('window.error', e.message, 'at', e.filename+':'+e.lineno+':'+e.colno, e.error);
+  });
+  window.addEventListener('unhandledrejection', (e) => { log.err('unhandledrejection', e.reason); });
+
+  // =========================
+  // CONFIG
+  // =========================
+  const WS_BASE = "wss://" + window.location.hostname + "/websocket/";
+  const DEFAULT_REGISTRAR = "sip:sg.nextgenswitch.com:8345";
+  const DEFAULT_EXPIRES = 60;
+  const OFFER_PATH = (typeof window !== 'undefined' && window.OFFER_PATH) ? window.OFFER_PATH : '/offer';
+
+  // =========================
+  // WebRTC Session (media bridge)
+  // =========================
+  class WebrtcSession extends EventTarget {
+    constructor({ WsUrl = null } = {}) {
+      super();
+      this.WsUrl = WsUrl || Math.random().toString(36).substring(2, 15);
+      this.pc = null;
+      this.stream = null;
+      this.lastSignal = null;
+      this.lastStatusText = null;
+    }
+
+    setStatus(text) {
+      const message = typeof text === 'string' ? text : '';
+      this.lastStatusText = message;
+      this.emit('status', { message, status: message });
+    }
+
+    emit(name, detail = {}) {
+      const payload = { WsUrl: this.WsUrl, ...detail };
+      this.dispatchEvent(new CustomEvent(name, { detail: payload }));
+      if (name) {
+        const globalName = `webrtc${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+        document.dispatchEvent(new CustomEvent(globalName, { detail: payload }));
+      }
+    }
+
+    async connect() {
+      this.setStatus('Requesting mic...');
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        this.setStatus('Mic captured, creating peer connection...');
+
+        this.pc = new (window.RTCPeerConnection || RTCPeerConnection)();
+        const pc = this.pc;
+
+        this.stream.getTracks().forEach(track => pc.addTrack(track, this.stream));
+
+        pc.ontrack = e => {
+          const audio = document.createElement('audio');
+          audio.autoplay = true;
+          audio.controls = false;
+          audio.srcObject = e.streams[0];
+          const container = document.getElementById('remote-audio') || document.body;
+          container.appendChild(audio);
+        };
+
+        pc.oniceconnectionstatechange = () => {
+          if (!this.pc) return;
+          const state = pc.iceConnectionState;
+          if ((state === 'connected' || state === 'completed') && this.lastSignal !== 'connected') {
+            this.lastSignal = 'connected';
+            this.setStatus(this.lastSignal);
+            this.emit('connected', { state });
+          }
+          if ((state === 'disconnected' || state === 'failed' || state === 'closed') && this.lastSignal !== 'disconnected') {
+            this.lastSignal = 'disconnected';
+            this.setStatus('WebRTC Disconnected');
+            this.emit('disconnected', { state });
+          }
+        };
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        const res = await fetch(OFFER_PATH, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sdp: pc.localDescription.sdp,
+            type: pc.localDescription.type,
+            WsUrl: this.WsUrl,
+          })
+        });
+
+        if (!res.ok) throw new Error('Failed to fetch answer from server');
+        const ans = await res.json();
+        if (!ans.sdp || !ans.type) throw new Error('Invalid answer from server');
+
+        await pc.setRemoteDescription(new RTCSessionDescription(ans));
+        this.setStatus('Starting ICE');
+      } catch (err) {
+        this.setStatus('Error: ' + err.message);
+        this.lastSignal = 'disconnected';
+        this.emit('disconnected', { state: 'error', message: err.message });
+        this.cleanup();
+        throw err;
+      }
+    }
+
+    disconnect(reason = 'WebRTC Disconnected') {
+      this.lastSignal = 'disconnected';
+      this.cleanup();
+      this.setStatus(reason);
+      this.emit('disconnected', { state: 'manual', reason });
+    }
+
+    async waitForConnected({ timeoutMs = 60000 } = {}) {
+      if (this.lastSignal === 'connected') return;
+      if (!this.pc) throw new Error('WebRTC session is not active');
+      if (this.lastSignal === 'disconnected') throw new Error('WebRTC session already disconnected');
+
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        let timeoutId = null;
+
+        const cleanupListeners = () => {
+          if (timeoutId) clearTimeout(timeoutId);
+          this.removeEventListener('connected', onConnected);
+          this.removeEventListener('disconnected', onDisconnected);
+        };
+
+        const onConnected = () => {
+          if (settled) return;
+          settled = true;
+          cleanupListeners();
+          resolve();
+        };
+
+        const onDisconnected = (event) => {
+          if (settled) return;
+          settled = true;
+          cleanupListeners();
+          const detail = event.detail || {};
+          const suffix = detail.message ? ': ' + detail.message : '';
+          reject(new Error('WebRTC disconnected before establishing media connection' + suffix));
+        };
+
+        this.addEventListener('connected', onConnected);
+        this.addEventListener('disconnected', onDisconnected);
+
+        if (timeoutMs > 0) {
+          timeoutId = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            cleanupListeners();
+            reject(new Error('Timed out waiting for WebRTC connection'));
+          }, timeoutMs);
+        }
+      });
+    }
+
+    cleanup() {
+      if (this.pc) {
+        try {
+          this.pc.oniceconnectionstatechange = null;
+          this.pc.ontrack = null;
+          this.pc.close();
+        } catch {}
+        this.pc = null;
+      }
+      if (this.stream) {
+        this.stream.getTracks().forEach(track => { try { track.stop(); } catch {} });
+        this.stream = null;
+      }
+    }
+  }
+
+  // =========================
+  // SIP over WS + WebRTC Dialer
+  // =========================
+  class WebrtcDialer extends EventTarget {
+    constructor(wsUrl) {
+      super();
+      this.baseUrl = wsUrl;
+      this.clientId = this._generateId();
+      this.wsUrl = this.baseUrl + "?;client_id=" + this.clientId + ";channel=1";
+      const existingCallId = (typeof window !== 'undefined' && window.GLOBAL_CALL_ID) ? String(window.GLOBAL_CALL_ID) : null;
+      this.callChannelId = existingCallId && existingCallId.length ? existingCallId : this._generateId();
+      this.wsStatus = $('#ws-status');
+      this.ws = null;
+      this.registered = false;
+      this.webrtcSession = null;
+      this.activeCall = null;
+      this.pendingIncoming = null;
+      this.registerOptions = { reg_url: "sip:yourdomain:5060", user: "username", pass: "password", expire: 60 };
+      this._wantWebrtc = false;
+      this._webrtcConnectPromise = null;
+      this._webrtcReconnectTimer = null;
+      this._updateGlobalMediaMetadata();
+    }
+
+    emit(name, detail = {}) {
+      const payload = { wsUrl: this.wsUrl, ...detail, clientId: this.clientId };
+      this.dispatchEvent(new CustomEvent(name, { detail: payload }));
+      if (name && typeof document !== 'undefined') {
+        const globalName = `sipUa${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+        document.dispatchEvent(new CustomEvent(globalName, { detail: payload }));
+      }
+    }
+
+    _generateId() { return Math.random().toString(36).substring(2, 15); }
+
+    _buildMediaWsUrl() {
+      if (!this.baseUrl || !this._getCallChannelId()) return null;
+      return this.baseUrl + "?;client_id=" + this._getCallChannelId() + ";channel=2";
+    }
+
+    _updateGlobalMediaMetadata() {
+      if (typeof window === 'undefined') return;
+      window.GLOBAL_CALL_ID = this._getCallChannelId();
+      const mediaUrl = this._buildMediaWsUrl();
+      if (mediaUrl) window.GLOBAL_MEDIA_WS_URL = mediaUrl;
+    }
+
+    _setCallChannelId(callId) {
+      const normalized = (callId && String(callId).trim()) || null;
+      if (normalized) this.callChannelId = normalized;
+      else if (!this.callChannelId) this.callChannelId = this._generateId();
+      this._updateGlobalMediaMetadata();
+      return this.callChannelId;
+    }
+
+    _getCallChannelId() {
+      if (!this.callChannelId) return this._setCallChannelId(null);
+      return this.callChannelId;
+    }
+
+    _shouldMaintainWebrtc() { return this._wantWebrtc && this.ws && this.ws.readyState === WebSocket.OPEN; }
+    _clearWebrtcReconnectTimer() { if (this._webrtcReconnectTimer) { clearTimeout(this._webrtcReconnectTimer); this._webrtcReconnectTimer = null; } }
+
+    _scheduleWebrtcReconnect(delayMs = 2000) {
+      if (!this._shouldMaintainWebrtc()) return;
+      if (this._webrtcReconnectTimer) return;
+      this._webrtcReconnectTimer = setTimeout(() => {
+        this._webrtcReconnectTimer = null;
+        if (!this._shouldMaintainWebrtc()) return;
+        this.ensureWebrtcSession().catch(() => {
+          this._scheduleWebrtcReconnect(Math.min(delayMs * 2, 30000));
+        });
+      }, delayMs);
+    }
+
+    async ensureWebrtcSession({ force = false } = {}) {
+      this._wantWebrtc = true;
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) throw new Error('WebSocket signaling not connected');
+      if (!force && this.webrtcSession && this.webrtcSession.lastSignal === 'connected') return this.webrtcSession;
+      if (this._webrtcConnectPromise) return this._webrtcConnectPromise;
+
+      let session = this.webrtcSession;
+      if (!session || force || session.lastSignal === 'disconnected') {
+        session = this._createWebrtcSession({ WsUrl: this._buildMediaWsUrl() });
+      }
+      this._webrtcConnectPromise = (async () => {
+        try {
+          await session.connect();
+          await session.waitForConnected({ timeoutMs: 60000 });
+          return session;
+        } finally {
+          this._webrtcConnectPromise = null;
+        }
+      })();
+      return this._webrtcConnectPromise;
+    }
+
+    async webrtcConnect({ WsUrl = null, force = false } = {}) {
+      if (WsUrl && typeof WsUrl === 'string') {
+        const match = WsUrl.match(/client_id=([^;]+)/);
+        if (match && match[1]) {
+          if (match[1] !== this._getCallChannelId()) {
+            this._setCallChannelId(match[1]);
+            force = true;
+          }
+        }
+      }
+      const session = await this.ensureWebrtcSession({ force });
+      return session;
+    }
+
+    _createWebrtcSession({ WsUrl = null } = {}) {
+      this.disconnectWebrtc('Reinitializing WebRTC connection', { keepDesired: true });
+      this._webrtcConnectPromise = null;
+      const targetUrl = WsUrl || this._buildMediaWsUrl();
+      const session = new WebrtcSession({ WsUrl: targetUrl });
+
+      const forwardStatus = (event) => { this.emit('webrtcStatus', { ...(event?.detail ?? {}), session }); };
+      const handleConnected = (event) => {
+        if (this.webrtcSession !== session) return;
+        this._clearWebrtcReconnectTimer();
+        this._updateGlobalMediaMetadata();
+        const baseDetail = { ...(event?.detail ?? {}) };
+        if (!baseDetail.message) baseDetail.message = 'WebRTC connected';
+        const enrichedDetail = { ...baseDetail, session, active: true };
+        this.emit('webrtcConnected', enrichedDetail);
+      };
+      const handleDisconnected = (event) => {
+        session.removeEventListener('status', forwardStatus);
+        session.removeEventListener('connected', handleConnected);
+        session.removeEventListener('disconnected', handleDisconnected);
+        const baseDetail = { ...(event?.detail ?? {}) };
+        if (!baseDetail.message) baseDetail.message = baseDetail.reason || baseDetail.state || 'WebRTC disconnected';
+        const wasActiveSession = this.webrtcSession === session;
+        if (wasActiveSession) this.webrtcSession = null;
+        const enrichedDetail = { ...baseDetail, session, active: wasActiveSession };
+        this.emit('webrtcDisconnected', enrichedDetail);
+        if (wasActiveSession && this._shouldMaintainWebrtc()) this._scheduleWebrtcReconnect();
+      };
+
+      session.addEventListener('status', forwardStatus);
+      session.addEventListener('connected', handleConnected);
+      session.addEventListener('disconnected', handleDisconnected);
+      this.webrtcSession = session;
+      return session;
+    }
+
+    disconnectWebrtc(reason = 'WebRTC Disconnected', { keepDesired = false } = {}) {
+      if (!keepDesired) this._wantWebrtc = false;
+      this._clearWebrtcReconnectTimer();
+      if (this.webrtcSession) {
+        try { this.webrtcSession.disconnect(reason); } catch {}
+        this.webrtcSession = null;
+      }
+      if (!keepDesired) this._webrtcConnectPromise = null;
+    }
+
+    _updateWsStatus(text) {
+      if (!text) return;
+      if (this.wsStatus && typeof this.wsStatus.text === 'function') {
+        this.wsStatus.text(text);
+      } else {
+        $('#ws-status').text(text);
+      }
+    }
+
+    _clearRegisterTimer() {
+      if (this._registerTimer) {
+        clearTimeout(this._registerTimer);
+        this._registerTimer = null;
+      }
+      this._registerNextAt = null;
+    }
+
+    _scheduleRegisterRenew(expireSeconds) {
+      this._clearRegisterTimer();
+      const seconds = Number(expireSeconds || this.registerOptions?.expire);
+      if (!Number.isFinite(seconds) || seconds <= 0) return;
+      const renewSeconds = Math.max(15, Math.floor(seconds * 0.85));
+      this._registerTimer = setTimeout(() => {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) this.register();
+      }, renewSeconds * 1000);
+      this._registerNextAt = Date.now() + renewSeconds * 1000;
+    }
+
+    setRegisterOptions(options = {}) {
+      if (!options || typeof options !== 'object') return this.registerOptions;
+      const normalizeSipUri = (uri) => {
+        if (uri === undefined || uri === null) return uri;
+        let value = String(uri).trim();
+        if (!value) return value;
+        if (!/^sip:/i.test(value)) value = `sip:${value}`;
+        const rest = value.slice(4);
+        const atIndex = rest.lastIndexOf('@');
+        const userPart = atIndex >= 0 ? rest.slice(0, atIndex + 1) : '';
+        let hostPort = atIndex >= 0 ? rest.slice(atIndex + 1) : rest;
+        let params = '';
+        const semiIndex = hostPort.indexOf(';');
+        if (semiIndex !== -1) {
+          params = hostPort.slice(semiIndex);
+          hostPort = hostPort.slice(0, semiIndex);
+        }
+        let hasPort = false;
+        if (hostPort.startsWith('[')) {
+          const closingIndex = hostPort.indexOf(']');
+          if (closingIndex !== -1) hasPort = closingIndex < hostPort.length - 1 && hostPort.charAt(closingIndex + 1) === ':';
+        } else if (hostPort.includes(':')) {
+          hasPort = true;
+        }
+        if (!hasPort && hostPort) hostPort = `${hostPort}:5060`;
+        return `sip:${userPart}${hostPort}${params}`;
+      };
+      const next = { ...this.registerOptions };
+      if (options.reg_url !== undefined && options.reg_url !== null) {
+        const normalizedUrl = normalizeSipUri(options.reg_url);
+        if (normalizedUrl) next.reg_url = normalizedUrl;
+        else if (options.reg_url === '') next.reg_url = '';
+        else next.reg_url = options.reg_url;
+      }
+      if (options.user) next.user = options.user;
+      if (typeof options.pass === 'string') next.pass = options.pass;
+      if (options.expire !== undefined) {
+        const expire = Number(options.expire);
+        if (Number.isFinite(expire) && expire > 0) next.expire = expire;
+      }
+      this.registerOptions = next;
+      return this.registerOptions;
+    }
+
+    connect() {
+      this._clearRegisterTimer();
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this._updateWsStatus('WebSocket: Already connected');
+        return;
+      }
+      this.ws = new WebSocket(this.wsUrl);
+      this._updateWsStatus('WebSocket: Connecting...');
+      this.ws.onopen = () => {
+        this._updateWsStatus('WebSocket: Connected');
+        this.emit('wsConnected', { readyState: this.ws.readyState, message: 'WebSocket connected' });
+        this.register();
+      };
+      this.ws.onclose = (event) => {
+        this._updateWsStatus('WebSocket: Disconnected');
+        this._clearRegisterTimer();
+        this.registered = false;
+        this.ws = null;
+        this.disconnectWebrtc('WebRTC disconnected with signaling closed');
+        this.emit('wsClosed', {
+          code: event?.code ?? null,
+          reason: event?.reason ?? null,
+          message: 'WebSocket disconnected',
+          clientClosed: false
+        });
+      };
+      this.ws.onerror = (event) => {
+        this._updateWsStatus('WebSocket: Error');
+        this.emit('wsError', { message: 'WebSocket error', error: event });
+      };
+      this.ws.onmessage = (msg) => { this.handleWsMessage(msg); };
+    }
+
+    disconnect(reason = 'Client disconnected') {
+      this._clearRegisterTimer();
+      if (this.ws) { try { this.ws.close(); } catch {} }
+      this.ws = null;
+      this.registered = false;
+      this._updateWsStatus('WebSocket: Disconnected');
+      this.emit('wsClosed', { message: reason, clientClosed: true });
+      this.disconnectWebrtc('WebRTC disconnected by client');
+    }
+
+    isConnected(){ return this.ws && this.ws.readyState === WebSocket.OPEN; }
+    isRegistered(){ return this.registered; }
+
+    register(options = {}) {
+      const merged = this.setRegisterOptions(options);
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        this._clearRegisterTimer();
+        if (this.ws && this.ws.readyState === WebSocket.CONNECTING) return;
+        this.connect();
+        return;
+      }
+      if (!merged || !merged.reg_url || !merged.user || typeof merged.pass !== 'string') {
+        console.error('Missing register options', merged);
+        return;
+      }
+      const payload = {
+        action: 'REGISTER',
+        reg_url: merged.reg_url,
+        user: merged.user,
+        pass: merged.pass,
+        channel_id: this.clientId,
+        media_client_id: this._getCallChannelId(),
+      };
+      this._wantWebrtc = false;
+      this._clearWebrtcReconnectTimer();
+      this.registered = false;
+      if (Number.isFinite(merged.expire) && merged.expire > 0) payload.expire = Math.floor(merged.expire);
+      this._clearRegisterTimer();
+      try { this.ws.send(JSON.stringify(payload)); } catch (err) {
+        console.error('WebSocket register send failed:', err);
+        return;
+      }
+      this.emit('registerSent', { message: 'REGISTER sent', options: { ...merged }, raw: payload });
+    }
+
+    async call(dest) {
+      if (!dest) { console.error('Missing call destination'); return; }
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) { console.error('WebSocket not open, cannot call'); return; }
+      const callId = this._getCallChannelId();
+      let session;
+      try {
+        session = await this.ensureWebrtcSession();
+        await session.waitForConnected({ timeoutMs: 60000 });
+      } catch (err) {
+        console.error('Unable to establish WebRTC before dialing:', err);
+        throw err;
+      }
+      const mediaWsUrl = this._buildMediaWsUrl();
+      const callMsg = { channel_id: callId, action: 'CALL', dest: dest };
+      this.ws.send(JSON.stringify(callMsg));
+      this.activeCall = { channelId: callId, direction: 'outgoing', destination: dest, session, mediaWsUrl };
+      this.emit('callDialSent', { channelId: callId, destination: dest, mediaWsUrl, raw: callMsg });
+    }
+
+    async acceptIncoming(callInfo = null) {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) throw new Error('WebSocket not connected');
+      const incoming = callInfo || this.pendingIncoming;
+      if (!incoming) throw new Error('No incoming call metadata available');
+
+      let channelId = incoming.callId;
+      if (!channelId) channelId = this._getCallChannelId();
+
+      const existingCallId = this._getCallChannelId();
+      const needsNewSession = !!channelId && channelId !== existingCallId;
+      if (needsNewSession) this._setCallChannelId(channelId);
+      else channelId = existingCallId;
+
+      let session;
+      try {
+        session = await this.ensureWebrtcSession({ force: needsNewSession });
+        await session.waitForConnected({ timeoutMs: 60000 });
+      } catch (err) {
+        console.error('Unable to establish WebRTC before accepting call:', err);
+        throw err;
+      }
+
+      const acceptMsg = { channel_id: channelId, action: 'ACCEPT' };
+      this.ws.send(JSON.stringify(acceptMsg));
+
+      const mediaWsUrl = this._buildMediaWsUrl();
+      this.activeCall = { channelId, direction: 'incoming', session, mediaWsUrl, from: incoming.from ?? incoming.caller ?? null };
+      this.emit('callAcceptSent', { channelId, raw: acceptMsg, incoming, mediaWsUrl });
+
+      this.pendingIncoming = null;
+      return { channelId, session, mediaWsUrl };
+    }
+
+    hangup() {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) { console.error("WebSocket not open, cannot hangup"); return; }
+      const channelId = this.activeCall?.channelId ?? this.clientId;
+      const hangupMsg = { channel_id: channelId, action: "HANGUP" };
+      this.ws.send(JSON.stringify(hangupMsg));
+      this.activeCall = null;
+      this.emit('callHangupSent', { channelId, raw: hangupMsg });
+    }
+
+    sendDtmf(digits, { channelId = null, toneDuration = null, toneGap = null } = {}) {
+      if (digits === undefined || digits === null) return false;
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return false;
+      const candidate = Array.isArray(digits) ? digits.join('') : String(digits);
+      const sanitized = candidate.replace(/\s+/g, '');
+      if (!sanitized) return false;
+      const allowed = new Set(['0','1','2','3','4','5','6','7','8','9','*','#','A','B','C','D']);
+      const normalizedDigits = sanitized.toUpperCase().split('').filter(ch => allowed.has(ch)).join('');
+      if (!normalizedDigits) return false;
+      const activeChannel = channelId || this.activeCall?.channelId || this.pendingIncoming?.callId || this.clientId;
+      if (!activeChannel) return false;
+
+      const dtmfMessage = { action: 'DTMF', channel_id: activeChannel, digits: normalizedDigits };
+      if (toneDuration !== null && toneDuration !== undefined) {
+        const d = Number(toneDuration); if (Number.isFinite(d) && d > 0) dtmfMessage.duration = Math.floor(d);
+      }
+      if (toneGap !== null && toneGap !== undefined) {
+        const g = Number(toneGap); if (Number.isFinite(g) && g >= 0) dtmfMessage.gap = Math.floor(g);
+      }
+      try { this.ws.send(JSON.stringify(dtmfMessage)); }
+      catch (err) {
+        this.emit('dtmfFailed', { channelId: activeChannel, digits: normalizedDigits, error: err, raw: dtmfMessage });
+        return false;
+      }
+      this.emit('dtmfSent', { channelId: activeChannel, digits: normalizedDigits, raw: dtmfMessage });
+      return true;
+    }
+
+    handleWsMessage(msg) {
+      try {
+        const data = JSON.parse(msg.data);
+
+        if (data.event === "REGISTER") {
+          let nextRegistered = this.registered;
+          if (data.status === "SUCCESS") nextRegistered = true;
+          else if (data.status === "FAILED") nextRegistered = false;
+          this.registered = nextRegistered;
+
+          const serverCallId = data.call_id ?? data.callId ?? null;
+          if (serverCallId) this._setCallChannelId(serverCallId); else this._updateGlobalMediaMetadata();
+
+          const expireSecondsRaw = Number(data.expire ?? this.registerOptions?.expire ?? NaN);
+          const hasExpire = Number.isFinite(expireSecondsRaw) && expireSecondsRaw > 0;
+          if (hasExpire) this.registerOptions.expire = expireSecondsRaw;
+
+          let message;
+          if (data.status === "SUCCESS") {
+            const expireSegment = hasExpire ? ` (expires in ${Math.round(expireSecondsRaw)}s)` : '';
+            message = `REGISTER SUCCESS: code=${data.code || ''} reason=${data.reason || ''}${expireSegment}`;
+          } else if (data.status === "FAILED") {
+            if (data.error !== undefined) message = `REGISTER FAILED: error=${data.error}`;
+            else message = `REGISTER FAILED: code=${data.code || ''} reason=${data.reason || ''}`;
+          } else {
+            message = "REGISTER: Unknown status";
+          }
+
+          const registerDetail = {
+            event: data.event,
+            status: data.status,
+            code: data.code ?? null,
+            reason: data.reason ?? null,
+            error: data.error ?? null,
+            registered: this.registered,
+            expire: hasExpire ? Math.round(expireSecondsRaw) : null,
+            callId: this._getCallChannelId(),
+            mediaWsUrl: this._buildMediaWsUrl(),
+            message,
+            raw: data
+          };
+          this.emit('register', registerDetail);
+
+          if (data.status === "SUCCESS") {
+            if (hasExpire) this._scheduleRegisterRenew(expireSecondsRaw); else this._clearRegisterTimer();
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+              this._wantWebrtc = true;
+              this.ensureWebrtcSession().catch((err) => { this._scheduleWebrtcReconnect(); });
+            }
+            this.emit('registerSuccess', registerDetail);
+          } else if (data.status === "FAILED") {
+            this._clearRegisterTimer();
+            this._wantWebrtc = false;
+            this.disconnectWebrtc('WebRTC disconnected due to register failure');
+            this.emit('registerFailed', registerDetail);
+          } else {
+            this._clearRegisterTimer();
+            this._wantWebrtc = false;
+            this.emit('registerUnknown', registerDetail);
+          }
+
+        } else if (data.event === "CALL") {
+          let message;
+          if (data.status === "PROGRESS") message = `Call ringing... code ${data.code || ''} reason ${data.reason || ''}`;
+          else if (data.status === "ESTABLISHED") message = "Call answered";
+          else if (data.status === "FAILED") message = `Call failed: ${data.reason || 'Unknown reason'}`;
+          else if (data.status === "HANGUP") message = "Call hung up";
+          else message = `Call status: ${data.status || 'UNKNOWN'}`;
+
+          const callDetail = {
+            event: data.event,
+            status: data.status,
+            code: data.code ?? null,
+            reason: data.reason ?? null,
+            destination: data.destination ?? null,
+            callId: data.call_id ?? data.callId ?? null,
+            channelId: data.channel_id ?? data.channelId ?? null,
+            from: data.from ?? data.from ?? null,
+            registered: this.registered,
+            message,
+            raw: data
+          };
+          if (callDetail.callId) this._setCallChannelId(callDetail.callId);
+          callDetail.mediaWsUrl = this._buildMediaWsUrl();
+          if (data.ws_url !== undefined || data.wsUrl !== undefined) callDetail.wsUrl = data.ws_url ?? data.wsUrl;
+
+          this.emit('call', callDetail);
+          if (data.status === "PROGRESS") {
+            this.emit('callProgress', callDetail);
+          } else if (data.status === "ESTABLISHED") {
+            this.emit('callEstablished', callDetail);
+            if (callDetail.channelId) {
+              this.activeCall = {
+                ...(this.activeCall || {}),
+                channelId: callDetail.channelId,
+                session: this.webrtcSession,
+                direction: this.activeCall?.direction || 'outgoing',
+                mediaWsUrl: this._buildMediaWsUrl(),
+                raw: callDetail
+              };
+            }
+          } else if (data.status === "INCOMING") {
+            this.emit('callIncoming', callDetail);
+            this.pendingIncoming = callDetail;
+          } else if (data.status === "FAILED") {
+            this.emit('callFailed', callDetail);
+            this.activeCall = null;
+            this.pendingIncoming = null;
+          } else if (data.status === "HANGUP") {
+            this.emit('callHangup', callDetail);
+            this.activeCall = null;
+            this.pendingIncoming = null;
+          } else {
+            this.emit('callUnknown', callDetail);
+          }
+        }
+      } catch (e) {
+        console.log("WebSocket message (raw):", msg.data);
+      }
+    }
+  }
+
+  // =========================
+  // Drawer helpers (Customer Info)
+  // =========================
+  const drawer = {
+    el: null, scrim: null, refs: {},
+    ensure(){
+      if(this.el) return;
+      this.el = document.getElementById('customer-drawer');
+      this.scrim = document.getElementById('drawer-scrim');
+      this.refs = {
+        avatar: document.getElementById('cd-avatar'),
+        name: document.getElementById('cd-name'),
+        sub: document.getElementById('cd-sub'),
+        tags: document.getElementById('cd-tags'),
+        phone: document.getElementById('cd-phone'),
+        email: document.getElementById('cd-email'),
+        company: document.getElementById('cd-company'),
+        tickets: document.getElementById('cd-tickets'),
+        timeline: document.getElementById('cd-timeline'),
+        closeBtn: document.getElementById('drawer-close')
+      };
+      this.scrim?.addEventListener('click', ()=>this.close());
+      this.refs.closeBtn?.addEventListener('click', ()=>this.close());
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') this.close(); });
+    },
+    populate(data){
+      this.ensure();
+      this.refs.avatar.textContent = (data.avatar||'U').slice(0,2);
+      this.refs.name.textContent = data.name||'Unknown';
+      this.refs.sub.textContent = (data.company||'') ? `${data.company} • ${data.email||'—'}` : (data.email||'—');
+      this.refs.tags.innerHTML = (data.tags||[]).map(t=>`<span class="badge-tag">${t}</span>`).join('');
+      this.refs.phone.textContent = data.phone||'—';
+      this.refs.email.textContent = data.email||'—';
+      this.refs.company.textContent = data.company||'—';
+      this.refs.tickets.textContent = (data.tickets??0);
+
+      // NEW: use the same icons/colors as the History list
+      const callIconFor = (ev) => {
+        const dir = String(ev.direction||'').toLowerCase();          // 'incoming' | 'outgoing'
+        const qual = String(ev.qualifier||'').toLowerCase();         // 'missed' etc.
+        if (qual === 'missed')  return { fa: 'fa-phone-slash', cls: 'missed' };
+        if (dir === 'incoming') return { fa: 'fa-reply',       cls: 'incoming' };
+        if (dir === 'outgoing') return { fa: 'fa-share',       cls: 'outgoing' };
+        // fallback to neutral comment if not a call entry
+        return { fa: 'fa-comment-dots', cls: '' };
+      };
+
+      this.refs.timeline.innerHTML = (data.timeline||[]).map(ev=>{
+        const { fa, cls } = callIconFor(ev);
+        const when  = ev.when || '';
+        const note  = ev.note || ev.title || '';
+        return `
+          <div class="tl-item">
+            <div class="tl-icn">
+              <i class="fas ${fa} call-icon ${cls}"></i>
+            </div>
+            <div>
+              <div>${note}</div>
+              <div class="tl-meta">${when}</div>
+            </div>
+          </div>`;
+      }).join('');
+    },
+
+    async openForNumber(num){
+      const info = await fetch("/dialer/customer/lookup/" + encodeURIComponent(num));
+      const customerInfo = await info.json();
+      this.populate(customerInfo);
+      this.open();
+    },
+    open(){ this.ensure(); this.el.classList.add('open'); this.scrim.classList.add('open'); this.el.setAttribute('aria-hidden','false'); },
+    close(){ this.ensure(); this.el.classList.remove('open'); this.scrim.classList.remove('open'); this.el.setAttribute('aria-hidden','true'); }
+  };
+
+  // =========================
+  // App UI Wiring
+  // =========================
+  $(function () {
+    // Elements
+    const loginOverlay = $("#login-overlay");
+    const loginForm = $("#login-form");
+    const loginAlert = $("#login-alert");
+    const logoutBtn = $("#logout-btn");
+    const dndBtn = $("#dnd-btn");
+    const breakBtn = $("#break-btn");
+
+    const phoneNumberInput = $("#phone-number-input");
+    const dialpad = $("#dialpad");
+    const backspaceBtn = $("#backspace-btn");
+    const callBtn = $("#call-btn");
+    const hangupBtn = $("#hangup-btn");
+    const callStatusArea = $("#call-status-area");
+    const callInfo = $("#call-info");
+    const welcomeMessage = $("#welcome-message");
+    const welcomeHeadline = welcomeMessage.find("h4");
+    const defaultWelcomeText = welcomeHeadline.text().trim() || "Ready to make a call";
+    const welcomeBaseClasses = (welcomeHeadline.attr("class") || "").split(/\s+/).filter(Boolean);
+    const defaultWelcomeColorClass = welcomeBaseClasses.find(cls => cls.startsWith("text-")) || "text-secondary";
+    const staticWelcomeClasses = welcomeBaseClasses.filter(cls => !cls.startsWith("text-"));
+    const applyWelcomeClass = (colorClass) => {
+      const classes = [...staticWelcomeClasses];
+      if (colorClass && colorClass.length) classes.push(colorClass);
+      welcomeHeadline.attr("class", classes.join(" ") || null);
+    };
+    const setWelcomeMessage = (text, colorClass = defaultWelcomeColorClass) => {
+      applyWelcomeClass(colorClass);
+      welcomeHeadline.text(text || defaultWelcomeText);
+    };
+    const showWelcomeMessage = (text, colorClass) => {
+      welcomeMessage.removeClass("d-none");
+      setWelcomeMessage(text, colorClass);
+    };
+    const resetWelcomeMessage = () => setWelcomeMessage(defaultWelcomeText, defaultWelcomeColorClass);
+    const callerIdDisplay = $("#caller-id-display");
+    const callTimerDisplay = $("#call-timer-display");
+    const callStateDisplay = $("#call-state-display");
+    const holdBtn = $("#hold-btn");
+    const muteBtn = $("#mute-btn");
+    const dtmfSeq = $("#dtmf-sequence-display");
+
+    const loginContainerEl = $("#login-container");
+    const webrtcProgress = $("#webrtc-progress");
+    const webrtcProgressMessage = $("#webrtc-progress-message");
+    const webrtcProgressDefault = webrtcProgressMessage.length ? (webrtcProgressMessage.text().trim() || 'Preparing media connection...') : 'Preparing media connection...';
+
+    const setWebrtcProgressMessage = (text) => {
+      if (!webrtcProgressMessage.length) return;
+      webrtcProgressMessage.text(text || webrtcProgressDefault);
+    };
+
+    const showLoginForm = () => {
+      loginOverlay.removeClass('hidden');
+      if (loginContainerEl.length) loginContainerEl.removeClass('d-none');
+      if (webrtcProgress.length) webrtcProgress.addClass('d-none');
+      setWebrtcProgressMessage(webrtcProgressDefault);
+    };
+
+    const showWebrtcConnecting = (message = null) => {
+      if (loginContainerEl.length) loginContainerEl.addClass('d-none');
+      if (webrtcProgress.length) webrtcProgress.removeClass('d-none');
+      setWebrtcProgressMessage(message || webrtcProgressDefault);
+      loginOverlay.removeClass('hidden');
+    };
+
+    const hideLoginOverlay = () => {
+      loginOverlay.addClass('hidden');
+      if (loginContainerEl.length) loginContainerEl.removeClass('d-none');
+      if (webrtcProgress.length) webrtcProgress.addClass('d-none');
+      setWebrtcProgressMessage(webrtcProgressDefault);
+    };
+
+    const incomingOverlay = $("#incoming-call-overlay");
+    const incomingCallerId = $("#incoming-caller-id");
+    const acceptBtn = $("#accept-btn");
+    const declineBtn = $("#decline-btn");
+    const ringAudio = document.getElementById("incoming-ring");
+
+    // State
+    let sipClient = null;
+    let isCallActive = false;
+    let isOnHold = false;
+    let isMuted = false;
+    let callTimer = null;
+    let elapsed = 0;
+
+    const ensureClient = () => {
+      if (!sipClient) {
+        sipClient = new WebrtcDialer(WS_BASE);
+        attachDialerListeners(sipClient);
+      }
+      return sipClient;
+    };
+
+    const setHeaderStatus = (stateText, indicatorClass) => {
+      $("#status-text").text(stateText);
+      $("#status-indicator").attr("class", "status-indicator " + indicatorClass);
+    };
+
+    const fmt = (s) => String(Math.floor(s / 60)).padStart(2, '0') + ":" + String(s % 60).padStart(2, '0');
+    const startTimer = () => {
+      clearInterval(callTimer);
+      elapsed = 0;
+      callTimerDisplay.text(fmt(elapsed));
+      callTimer = setInterval(() => { if (!isOnHold) { elapsed++; callTimerDisplay.text(fmt(elapsed)); } }, 1000);
+    };
+    const stopTimer = () => { clearInterval(callTimer); callTimer = null; };
+
+    // --- Call state UI updates ---
+    function updateCallState(state, number) {
+      welcomeMessage.addClass("d-none");
+      callInfo.removeClass("d-none");
+      callerIdDisplay.text(number || callerIdDisplay.text());
+      callStateDisplay.text(state);
+
+      callStatusArea.removeClass("ringing connected on-hold");
+      callStateDisplay.removeClass("ringing connected on-hold");
+
+      if (state === 'Trying' || state === 'Ringing') {
+        callStatusArea.addClass("ringing");
+        callStateDisplay.addClass("ringing");
+      }
+      if (state === 'Connected') {
+        callStatusArea.addClass("connected");
+        callStateDisplay.addClass("connected");
+        startTimer();
+        // open drawer on connect
+        drawer.openForNumber(callerIdDisplay.text());
+      }
+      if (state === 'On Hold') {
+        callStatusArea.addClass("on-hold");
+        callStateDisplay.addClass("on-hold");
+      }
+
+      isCallActive = (state !== 'Idle');
+      phoneNumberInput.prop('disabled', isCallActive);
+      if (isCallActive) { callBtn.addClass("d-none"); hangupBtn.removeClass("d-none"); }
+    }
+
+    function resetToIdle() {
+      stopTimer();
+      callInfo.addClass("d-none");
+      welcomeMessage.removeClass("d-none");
+      callStatusArea.removeClass("ringing connected on-hold");
+      callStateDisplay.text("");
+      callerIdDisplay.text("");
+      phoneNumberInput.val("").prop("disabled", false);
+      isCallActive = false;
+      isOnHold = false;
+      isMuted = false;
+      holdBtn.removeClass("active");
+      muteBtn.removeClass("active");
+      dtmfSeq.text("");
+      hangupBtn.addClass("d-none");
+      callBtn.removeClass("d-none");
+      drawer.close();
+    }
+
+    // Dialpad
+    dialpad.on('click', '.dialpad-btn', function () {
+      const v = String($(this).data('value') ?? '');
+      if (!v) return;
+      if (isCallActive) {
+        if (sipClient) {
+          const ok = sipClient.sendDtmf(v);
+          if (ok) dtmfSeq.text(dtmfSeq.text() + v);
+        }
+      } else {
+        phoneNumberInput.val(phoneNumberInput.val() + v);
+      }
+    });
+    backspaceBtn.on('click', () => { if (!isCallActive) phoneNumberInput.val(phoneNumberInput.val().slice(0, -1)); });
+
+    // Header toggles
+    dndBtn.on('click', function () {
+      const active = $(this).toggleClass('active').hasClass('active');
+      setHeaderStatus(active ? 'Do Not Disturb' : 'Available', active ? 'offline' : 'available');
+    });
+    breakBtn.on('click', function () {
+      const active = $(this).toggleClass('active').hasClass('active');
+      setHeaderStatus(active ? 'On Break' : 'Available', active ? 'busy' : 'available');
+    });
+
+    // Incoming modal
+    function showIncoming(fromNumber) {
+      try { ringAudio.currentTime = 0; ringAudio.play().catch(() => {}); } catch {}
+      incomingCallerId.text(fromNumber || 'Unknown');
+      acceptBtn.prop('disabled', false).removeClass('disabled').html('<i class="fas fa-phone"></i>');
+      incomingOverlay.css('display', 'flex');
+    }
+    function hideIncoming() {
+      incomingOverlay.css('display', 'none');
+      try { ringAudio.pause(); ringAudio.currentTime = 0; } catch {}
+    }
+
+    // Login
+    loginForm.on('submit', function (e) {
+      e.preventDefault();
+      const user = $("#agent-id").val().trim();
+      const pass = $("#agent-password").val();
+      if (!user || !pass) {
+        loginAlert.text("Missing Agent ID or Password.").removeClass("d-none");
+        return;
+      }
+      const client = ensureClient();
+      client.setRegisterOptions({ reg_url: DEFAULT_REGISTRAR, user, pass, expire: DEFAULT_EXPIRES });
+      if (client.isConnected()) client.register(); else client.connect();
+    });
+
+    // Logout
+    logoutBtn.on('click', () => {
+      if (sipClient) sipClient.disconnect('User disconnected');
+      setHeaderStatus('Available', 'available');
+      showLoginForm();
+    });
+
+    // Call buttons
+    callBtn.on('click', async () => {
+      const dest = $("#phone-number-input").val().trim();
+      if (!dest) { phoneNumberInput.focus(); return; }
+      const client = ensureClient();
+      if (!client.isConnected()) { client.connect(); return; }
+
+      dtmfSeq.text("");
+      elapsed = 0;
+      callTimerDisplay.text(fmt(elapsed));
+      callerIdDisplay.text(dest);
+      updateCallState('Trying', dest);
+
+      try {
+        await client.call(dest);
+      } catch (err) {
+        log.err(err?.message || 'Call could not be started');
+        resetToIdle();
+      }
+    });
+
+    hangupBtn.on('click', () => {
+      if (sipClient) sipClient.hangup();
+      resetToIdle();
+    });
+
+    holdBtn.on('click', () => {
+      if (!sipClient || !sipClient.activeCall) return;
+      isOnHold = !isOnHold;
+      holdBtn.toggleClass('active', isOnHold);
+      const channelId = sipClient.activeCall.channelId;
+      if (sipClient.ws && sipClient.ws.readyState === WebSocket.OPEN) {
+        sipClient.ws.send(JSON.stringify({ action: isOnHold ? 'HOLD' : 'UNHOLD', channel_id: channelId }));
+      }
+      updateCallState(isOnHold ? 'On Hold' : 'Connected', callerIdDisplay.text());
+    });
+
+    muteBtn.on('click', () => {
+      isMuted = !isMuted;
+      muteBtn.toggleClass('active', isMuted);
+      const track = sipClient?.webrtcSession?.stream?.getAudioTracks?.()[0];
+      if (track) track.enabled = !isMuted;
+    });
+
+    // Accept / Decline incoming
+    acceptBtn.on('click', async () => {
+      if (!sipClient) return;
+      acceptBtn.prop('disabled', true).addClass('disabled').html('<i class="fas fa-circle-notch fa-spin"></i>');
+      try {
+        await sipClient.acceptIncoming();
+        hideIncoming();
+        const from = sipClient.activeCall?.from || incomingCallerId.text();
+        callerIdDisplay.text(from || 'Unknown');
+        updateCallState('Connected', from);
+      } catch (err) {
+        log.err(err?.message || 'Unable to accept call');
+        acceptBtn.prop('disabled', false).removeClass('disabled').html('<i class="fas fa-phone"></i>');
+      }
+    });
+    declineBtn.on('click', () => {
+      if (sipClient && sipClient.pendingIncoming?.callId && sipClient.ws && sipClient.ws.readyState === WebSocket.OPEN) {
+        sipClient.ws.send(JSON.stringify({ action: 'HANGUP', channel_id: sipClient.pendingIncoming.callId }));
+      }
+      hideIncoming();
+      drawer.close();
+    });
+
+    // Attach dialer event listeners
+    function attachDialerListeners(client) {
+      if (client._listenersAttached) return;
+
+      client.addEventListener('wsConnected', ({ detail }) => {
+        setHeaderStatus('Online', 'available');
+        loginAlert.addClass('d-none');
+      });
+      client.addEventListener('wsClosed', ({ detail }) => {
+        setHeaderStatus('Offline', 'offline');
+        showLoginForm();
+        resetToIdle();
+      });
+      client.addEventListener('wsError', ({ detail }) => {
+        setHeaderStatus('Offline', 'offline');
+        showLoginForm();
+        loginAlert.text('WebSocket error').removeClass('d-none');
+      });
+
+      client.addEventListener('webrtcStatus', ({ detail }) => {
+        const note = (detail?.message || detail?.status || '').trim();
+        if (!note) return;
+        if (loginContainerEl.length && !loginContainerEl.hasClass('d-none')) return;
+        showWebrtcConnecting(note);
+      });
+
+      client.addEventListener('webrtcConnected', ({ detail }) => {
+        hideLoginOverlay();
+        resetWelcomeMessage();
+      });
+
+      client.addEventListener('webrtcDisconnected', ({ detail }) => {
+        const note = (detail?.message || 'WebRTC disconnected').trim();
+        showWebrtcConnecting(note);
+      });
+
+      client.addEventListener('register', ({ detail }) => {
+        if (detail?.registered) {
+          $(".agent-name").text(client.registerOptions.user || 'Agent');
+          loginAlert.addClass('d-none');
+          const isWebrtcConnected = !!(client.webrtcSession && client.webrtcSession.lastSignal === 'connected');
+          if (!isWebrtcConnected) {
+            const note = detail?.message || 'Register successful. Preparing media...';
+            showWebrtcConnecting(note);
+          } else {
+            hideLoginOverlay();
+          }
+          // Load history after register, preserving query
+          const callerId = $("#agent-id").val().trim();
+          const q = $("#history-search").val() || '';
+          if (callerId) loadCallHistory(callerId, q);
+        }
+        if (detail?.status === 'FAILED') {
+          showLoginForm();
+          loginAlert.text(detail?.error || detail?.reason || 'Register failed').removeClass('d-none');
+        }
+      });
+
+      client.addEventListener('callDialSent', ({ detail }) => {
+        const num = detail?.destination || callerIdDisplay.text();
+        updateCallState('Trying', num);
+      });
+
+      client.addEventListener('callProgress', ({ detail }) => {
+        updateCallState('Ringing', detail.destination || callerIdDisplay.text());
+      });
+
+      client.addEventListener('callEstablished', ({ detail }) => {
+        const num = callerIdDisplay.text() || detail.destination || detail.from;
+        updateCallState('Connected', num);
+      });
+
+      client.addEventListener('callFailed', ({ detail }) => {
+        resetToIdle();
+        const callerId = $("#agent-id").val().trim();
+        const q = $("#history-search").val() || '';
+        if (callerId) setTimeout(() => loadCallHistory(callerId, q), 600);
+      });
+
+      client.addEventListener('callHangup', ({ detail }) => {
+        resetToIdle();
+        hideIncoming();
+        const callerId = $("#agent-id").val().trim();
+        const q = $("#history-search").val() || '';
+        if (callerId) setTimeout(() => loadCallHistory(callerId, q), 600);
+      });
+
+      client.addEventListener('callIncoming', ({ detail }) => {
+        showIncoming(detail.from || 'Unknown');
+      });
+
+      client._listenersAttached = true;
+    }
+
+    // =========================
+    // Call History (Server-side search)
+    // =========================
+    const historyUI = {
+      list:    $("#history-list"),
+      empty:   $("#history-empty"),
+      loading: $("#history-loading"),
+      error:   $("#history-error"),
+      refresh: $("#history-refresh"),
+      nomatch: $("#history-nomatch"),
+      search:  $("#history-search"),
+      clear:   $("#history-clear"),
+    };
+
+    let historyRequestCtl = null;
+
+    function escHtml(s) {
+      return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+    function highlight(text, query) {
+      if (!query) return escHtml(text);
+      const q = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (!q) return escHtml(text);
+      const re = new RegExp(q, 'ig');
+      return escHtml(text).replace(re, m => `<mark>${escHtml(m)}</mark>`);
+    }
+
+    function historyIconClasses(item) {
+      if (String(item.qualifier || '').toLowerCase() === 'missed') {
+        return { icon: 'fa-phone-slash', cls: 'missed' };
+      }
+      if (String(item.direction || '').toLowerCase() === 'incoming') {
+        return { icon: 'fa-reply', cls: 'incoming' };
+      }
+      return { icon: 'fa-share', cls: 'outgoing' };
+    }
+
+    function renderHistoryItem(item, query = '') {
+      const { icon, cls } = historyIconClasses(item);
+      const title = item.who || '(unknown)';
+      const when  = item.when || '';
+      const right = (item.duration && item.duration.trim() !== '') ? item.duration : (item.qualifier || '');
+      const statusCss = item.statusCss || '';
+      const statusText = item.status || '';
+      const num = ((String(title).match(/\(([^)]+)\)/) || [])[1]) || '';
+
+      return `
+        <div class="log-item" data-call-id="${escHtml(item.id || '')}" data-who="${escHtml(title)}">
+          <div class="call-icon ${cls}"><i class="fas ${icon}"></i></div>
+          <div class="item-details">
+            <div class="item-name">${highlight(title, query)}</div>
+            <div class="item-meta">
+              <span>${highlight(when, query)}</span>
+              ${right ? ` • <span>${highlight(right, query)}</span>` : ''}
+              ${statusText ? ` • <span class="${escHtml(statusCss)}">${highlight(statusText, query)}</span>` : ''}
+            </div>
+          </div>
+          <button class="call-button" data-number="${escHtml(num)}" title="Call back">
+            <i class="fas fa-phone-alt"></i>
+          </button>
+        </div>
+      `;
+    }
+
+    function renderHistory(list, query = '') {
+      historyUI.loading.addClass('d-none');
+      historyUI.error.addClass('d-none').text('');
+      historyUI.empty.addClass('d-none');
+      historyUI.nomatch.addClass('d-none');
+      historyUI.list.empty();
+
+      if (!Array.isArray(list) || list.length === 0) {
+        if (query && query.trim()) historyUI.nomatch.removeClass('d-none');
+        else historyUI.empty.removeClass('d-none');
+        return;
+      }
+
+      const html = list.map(item => renderHistoryItem(item, query)).join('');
+      historyUI.list.html(html);
+    }
+
+    async function loadCallHistory(callerId, query = '') {
+      if (!callerId) return;
+      if (historyRequestCtl) {
+        try { historyRequestCtl.abort(); } catch {}
+      }
+      historyRequestCtl = new AbortController();
+
+      historyUI.loading.removeClass('d-none');
+      historyUI.empty.addClass('d-none');
+      historyUI.error.addClass('d-none').text('');
+      historyUI.nomatch.addClass('d-none');
+      historyUI.list.empty();
+
+      const url = `/dialer/call/history/${encodeURIComponent(callerId)}${query ? `?q=${encodeURIComponent(query)}` : ''}`;
+
+      try {
+        const res = await fetch(url, {
+          headers: { 'Accept': 'application/json' },
+          signal: historyRequestCtl.signal
+        });
+        if (!res.ok) {
+          if (res.status === 204) { renderHistory([], query); return; }
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        const list = Array.isArray(data?.history) ? data.history : [];
+        renderHistory(list, query);
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+        historyUI.loading.addClass('d-none');
+        historyUI.error.removeClass('d-none').text(`Failed to load call history: ${err.message || err}`);
+      } finally {
+        historyRequestCtl = null;
+      }
+    }
+
+    function debounce(fn, ms = 250) {
+      let t = null;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+      };
+    }
+
+    const onSearchInput = debounce(() => {
+      const q = historyUI.search?.val() || '';
+      const callerId = $("#agent-id").val().trim();
+      if (callerId) loadCallHistory(callerId, q);
+    }, 220);
+
+    // Wire search & clear
+    if (historyUI.search?.length) {
+      historyUI.search.on('input', onSearchInput);
+      historyUI.search.on('keydown', (e) => {
+        if (e.key === 'Escape') {
+          historyUI.search.val('');
+          const callerId = $("#agent-id").val().trim();
+          if (callerId) loadCallHistory(callerId, '');
+          historyUI.search.blur();
+        }
+      });
+    }
+    if (historyUI.clear?.length) {
+      historyUI.clear.on('click', () => {
+        historyUI.search.val('');
+        const callerId = $("#agent-id").val().trim();
+        if (callerId) loadCallHistory(callerId, '');
+        historyUI.search.focus();
+      });
+    }
+
+    // Manual refresh keeps current query
+    historyUI.refresh.on('click', () => {
+      const callerId = $("#agent-id").val().trim();
+      const q = historyUI.search?.val() || '';
+      if (callerId) loadCallHistory(callerId, q);
+    });
+
+    // History row → prime dial box
+    $(document).on('click', '#history-list .log-item', function (e) {
+      if ($(e.target).closest('.call-button').length) return;
+      const who = $(this).data('who') || '';
+      const numMatch = String(who).match(/\(([^)]+)\)/);
+      const num = (numMatch && numMatch[1]) ? numMatch[1] : '';
+      if (num) {
+        $("#phone-number-input").val(num);
+        // NEW: open the customer info drawer (like Contacts)
+        drawer.openForNumber(String(num));
+      }
+    });
+
+
+    // Explicit callback
+    $(document).on('click', '#history-list .call-button', function () {
+      const num = $(this).data('number');
+      if (!num) return;
+      $("#phone-number-input").val(num);
+      // $("#call-btn").click();
+    });
+
+    // Contacts quick call
+    $(document).on('click', '.call-button', function () {
+      const num = $(this).data('number');
+      if (!num) return;
+      phoneNumberInput.val(num);
+      // callBtn.click();
+    });
+
+    // Drawer explicit close
+    $('#drawer-close').on('click', () => drawer.close());
+
+        // =========================
+    // Contacts (Server-side search)
+    // =========================
+    const contactsUI = {
+      list:    $("#contacts-list"),
+      empty:   $("#contacts-empty"),
+      loading: $("#contacts-loading"),
+      error:   $("#contacts-error"),
+      refresh: $("#contacts-refresh"),
+      nomatch: $("#contacts-nomatch"),
+      search:  $("#contacts-search"),
+      clear:   $("#contacts-clear"),
+    };
+    let contactsRequestCtl = null;
+
+    function safeStr(v){ return (v === null || v === undefined) ? '' : String(v); }
+    function contactDisplayPhone(p){
+      const s = safeStr(p);
+      return s || '—';
+    }
+    function contactInitials(nameOrAvatar){
+      const s = safeStr(nameOrAvatar).trim();
+      if (!s) return 'U';
+      // If API already gives initials (e.g., "AH"), prefer that
+      if (/^[A-Z]{1,3}$/.test(s)) return s.slice(0,2);
+      // Else build from name
+      const parts = s.split(/\s+/).filter(Boolean);
+      const first = parts[0]?.[0] || '';
+      const last  = parts.length > 1 ? parts[parts.length-1][0] : '';
+      return (first + last).toUpperCase().slice(0,2) || s.slice(0,2).toUpperCase();
+    }
+
+    function renderContactItem(item, query=''){
+      const id     = item.id ?? '';
+      const name   = safeStr(item.name) || 'Unknown';
+      const phone  = contactDisplayPhone(item.phone);
+      const email  = safeStr(item.email) || '—';
+      const initials = contactInitials(item.avatar || name);
+
+      // dial number priority: phone; fallback to email? (no, just phone)
+      const dialNumber = safeStr(item.phone || '').trim();
+
+      return `
+        <div class="contact-item" data-id="${escHtml(id)}" data-number="${escHtml(dialNumber)}" data-name="${escHtml(name)}">
+          <div class="contact-icon">
+            <div class="contact-avatar">${escHtml(initials)}</div>
+          </div>
+          <div class="item-details">
+            <div class="item-name">${highlight(name, query)}</div>
+            <div class="item-meta">
+              <span>${highlight(phone, query)}</span>
+              ${email && email !== '—' ? ` • <span>${highlight(email, query)}</span>` : ``}
+            </div>
+          </div>
+          ${dialNumber ? `
+            <button class="call-button" data-number="${escHtml(dialNumber)}" title="Call">
+              <i class="fas fa-phone-square-alt"></i>
+            </button>` : ``}
+        </div>
+      `;
+    }
+
+    function renderContacts(list, query=''){
+      contactsUI.loading.addClass('d-none');
+      contactsUI.error.addClass('d-none').text('');
+      contactsUI.empty.addClass('d-none');
+      contactsUI.nomatch.addClass('d-none');
+      contactsUI.list.empty();
+
+      if (!Array.isArray(list) || list.length === 0) {
+        if (query && query.trim()) contactsUI.nomatch.removeClass('d-none');
+        else contactsUI.empty.removeClass('d-none');
+        return;
+      }
+      contactsUI.list.html(list.map(c => renderContactItem(c, query)).join(''));
+    }
+
+    async function loadContacts(query=''){
+      if (contactsRequestCtl) {
+        try { contactsRequestCtl.abort(); } catch {}
+      }
+      contactsRequestCtl = new AbortController();
+
+      contactsUI.loading.removeClass('d-none');
+      contactsUI.empty.addClass('d-none');
+      contactsUI.error.addClass('d-none').text('');
+      contactsUI.nomatch.addClass('d-none');
+      contactsUI.list.empty();
+
+      const url = `/dialer/contacts${query ? `?q=${encodeURIComponent(query)}` : ''}`;
+
+      try {
+        const res = await fetch(url, {
+          headers: { 'Accept': 'application/json' },
+          signal: contactsRequestCtl.signal
+        });
+        if (!res.ok) {
+          if (res.status === 204) { renderContacts([], query); return; }
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        const list = Array.isArray(data?.results) ? data.results : [];
+        renderContacts(list, query);
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+        contactsUI.loading.addClass('d-none');
+        contactsUI.error.removeClass('d-none').text(`Failed to load contacts: ${err.message || err}`);
+      } finally {
+        contactsRequestCtl = null;
+      }
+    }
+
+    // Search wiring (debounced)
+    const onContactsSearchInput = debounce(() => {
+      const q = contactsUI.search?.val() || '';
+      loadContacts(q);
+    }, 220);
+
+    // Hook up events (call once on DOM ready)
+    if (contactsUI.search?.length) {
+      contactsUI.search.on('input', onContactsSearchInput);
+      contactsUI.search.on('keydown', (e) => {
+        if (e.key === 'Escape') {
+          contactsUI.search.val('');
+          loadContacts('');
+          contactsUI.search.blur();
+        }
+      });
+    }
+    if (contactsUI.clear?.length) {
+      contactsUI.clear.on('click', () => {
+        contactsUI.search.val('');
+        loadContacts('');
+        contactsUI.search.focus();
+      });
+    }
+    contactsUI.refresh.on('click', () => {
+      const q = contactsUI.search?.val() || '';
+      loadContacts(q);
+    });
+
+    // Open drawer with richer info when clicking a contact row (not the call button)
+    $(document).on('click', '#contacts-list .contact-item', function (e) {
+      if ($(e.target).closest('.call-button').length) return; // allow the call button to dial
+      const number = $(this).data('number');
+      if (number) {
+        // Populate customer drawer via your existing lookup endpoint
+        drawer.openForNumber(String(number));
+      }
+    });
+
+    // Load contacts when the Contacts tab becomes visible (and first time)
+    $('a[data-toggle="tab"][href="#contacts"]').on('shown.bs.tab', () => {
+      const q = contactsUI.search?.val() || '';
+      loadContacts(q);
+    });
+
+    // If the page can land with Contacts already active (unlikely), guard-load:
+    if ($('#contacts').hasClass('show') || $('#contacts-tab').hasClass('active')) {
+      const q = contactsUI.search?.val() || '';
+      loadContacts(q);
+    }
+
+
+  });
+})();
+
+</script>
+
+
+</body>
+</html>

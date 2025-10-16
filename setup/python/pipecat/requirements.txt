@@ -1,0 +1,17 @@
+# Core web framework
+fastapi>=0.110
+uvicorn[standard]>=0.27
+
+# Logging & configuration
+loguru>=0.7
+python-dotenv>=1.0
+
+# Async file IO & HTTP client
+aiofiles>=24.1
+requests>=2.31
+
+# Pipecat speech pipeline and service SDKs
+pipecat-ai
+azure-cognitiveservices-speech>=1.36
+fal-client>=0.3
+google-generativeai>=0.5

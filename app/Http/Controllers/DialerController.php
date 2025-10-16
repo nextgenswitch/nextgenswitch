@@ -22,142 +22,136 @@ use App\Http\Controllers\Api\Functions\CallHandler;
 use Illuminate\Http\JsonResponse;
 
 
-class DialerController extends Controller {
+class DialerController extends Controller
+{
     use FuncTrait;
 
-    public function login( Request $request ) {
+    public function login(Request $request)
+    {
 
-        if ( $request->ajax() ) {
+        if ($request->ajax()) {
 
             $rules = [
                 'username' => ['required', 'string'],
                 'password' => ['required', 'string'],
             ];
 
-            $validator = Validator::make( $request->all(), $rules );
+            $validator = Validator::make($request->all(), $rules);
 
-            if ( $validator->fails() ) {
+            if ($validator->fails()) {
                 $validationErrors = $validator->errors()->toArray();
 
-                return response()->json( ['status' => 'error', 'errors' => $this->getErrors( $validationErrors )] );
+                return response()->json(['status' => 'error', 'errors' => $this->getErrors($validationErrors)]);
             }
 
             $data = $validator->validated();
 
             $sip = SipUser::where('username', $data['username'])->where('password', $data['password'])
-            ->where('organization_id',auth()->user()->organization_id)->where('peer',0)
-            ->where('status',1)->whereRaw('NOT(user_type <=> 2)');
+                ->where('organization_id', auth()->user()->organization_id)->where('peer', 0)
+                ->where('status', 1)->whereRaw('NOT(user_type <=> 2)');
             $error = 'User or password incorrent';
-            if($sip->exists()){
+            if ($sip->exists()) {
                 $sipuser = $sip->first();
-                
+
                 //$client_id = substr(str_shuffle(str_repeat($x='0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', ceil(10/strlen($x)) )),1,10);
-                $call = FunctionCall::send_call(['to'=>$sipuser->username,'channel_id'=>$sipuser->id,'from'=>'easypbx','response'=>route('webdialer.response'),'statusCallback'=>route('webdialer.responseCallback','webdialer')]);
+                $call = FunctionCall::send_call(['to' => $sipuser->username, 'channel_id' => $sipuser->id, 'from' => 'easypbx', 'response' => route('webdialer.response'), 'statusCallback' => route('webdialer.responseCallback', 'webdialer')]);
                 // return $call;
                 // dd($call);
 
-                if(isset($call['error']) && $call['error'] == true){
+                if (isset($call['error']) && $call['error'] == true) {
                     $error = $call['error_message'];
-                }
+                } else if (isset($call['status-code']) && ($call['status-code'] < CallStatusEnum::Disconnected->value)) {
 
-                else if(isset($call['status-code']) && ($call['status-code'] < CallStatusEnum::Disconnected->value)){
+                    $request->session()->put('dialer.login.' . auth()->user()->organization_id, $sipuser->username);
+                    $request->session()->put('dialer.call_id.' . auth()->user()->organization_id, $call['call_id']);
 
-                    $request->session()->put('dialer.login.' . auth()->user()->organization_id,$sipuser->username);
-                    $request->session()->put('dialer.call_id.' . auth()->user()->organization_id,$call['call_id']);
-                    
-                    return response()->json(['status' => 'success','call_id'=>$call['call_id']]);
-                }
-                else $error = 'User not active . Please login to your dialer.';
-
-                
-            }            
+                    return response()->json(['status' => 'success', 'call_id' => $call['call_id']]);
+                } else $error = 'User not active . Please login to your dialer.';
+            }
             return response()->json(['status' => 'error', 'errors' => ['username' => $error]]);
-            
-
         }
-
     }
 
-    public function logout(){
+    public function logout()
+    {
         $call_id = request()->session()->get('dialer.call_id.' . auth()->user()->organization_id);
         $response = new VoiceResponse();
         $response->hangup();
-        FunctionCall::modify_call($call_id,['responseXml'=>$response->xml()]);
+        FunctionCall::modify_call($call_id, ['responseXml' => $response->xml()]);
         request()->session()->forget('dialer.call_id.' . auth()->user()->organization_id);
         request()->session()->put('dialer.call_id.' . auth()->user()->organization_id);
-
     }
 
-    function isLoggedIn(){
-        if(request()->session()->has('dialer.login.' . auth()->user()->organization_id)){
+    function isLoggedIn()
+    {
+        if (request()->session()->has('dialer.login.' . auth()->user()->organization_id)) {
             $call_id = request()->session()->get('dialer.call_id.' . auth()->user()->organization_id);
             $call = Call::find($call_id);
-            if($call && $call->status == CallStatusEnum::Established)
+            if ($call && $call->status == CallStatusEnum::Established)
                 return true;
         }
-        return false; 
+        return false;
     }
 
-    public function loginForm(){
-        return view('dialer.login',['call_id'=>'dsfsd']);
+    public function loginForm()
+    {
+        return view('dialer.login', ['call_id' => 'dsfsd']);
     }
 
-    public function index(){
-        if(request()->session()->has('dialer.login.' . auth()->user()->organization_id)){
+    public function index()
+    {
+        if (request()->session()->has('dialer.login.' . auth()->user()->organization_id)) {
             $call_id = request()->session()->get('dialer.call_id.' . auth()->user()->organization_id);
             //info("dialer outgoing call id on index " . session('dialer.outgoing.call_id'));
 
             $outgoingCall = [];
-            $oCall = Call::where('parent_call_id',$call_id)->where('status','<',CallStatusEnum::Disconnected->value)->first();
+            $oCall = Call::where('parent_call_id', $call_id)->where('status', '<', CallStatusEnum::Disconnected->value)->first();
             //info("on index");
             //info($oCall);
-            if($oCall){
-                
+            if ($oCall) {
+
                 $outgoingCall = CallHandler::prepare_call_json($oCall);
                 //info($outgoingCall);
-                if( count($outgoingCall) > 0 && $outgoingCall['status-code'] >= CallStatusEnum::Disconnected->value ){
+                if (count($outgoingCall) > 0 && $outgoingCall['status-code'] >= CallStatusEnum::Disconnected->value) {
                     $outgoingCall = [];
                     //session()->forget('dialer.outgoing.call_id');
                 }
             }
-            
-            $call = Call::find($call_id);
-            if($call && $call->status->value < CallStatusEnum::Disconnected->value){
-                $dialer_functions = Func::getFuncList();
-                return view('dialer.index',['dialer_functions' => $dialer_functions, 'outgoingCall' => $outgoingCall , 'call_id'=>$call_id,'login'=>session()->get('dialer.login.' . auth()->user()->organization_id)]);
-            }
-            else    
-                $this->logout();
 
+            $call = Call::find($call_id);
+            if ($call && $call->status->value < CallStatusEnum::Disconnected->value) {
+                $dialer_functions = Func::getFuncList();
+                return view('dialer.index', ['dialer_functions' => $dialer_functions, 'outgoingCall' => $outgoingCall, 'call_id' => $call_id, 'login' => session()->get('dialer.login.' . auth()->user()->organization_id)]);
+            } else
+                $this->logout();
         }
 
-        return view('dialer.login',['call_id'=>'dsfsd']);
-
+        return view('dialer.login', ['call_id' => 'dsfsd']);
     }
 
-    public function destinations($function){
+    public function destinations($function)
+    {
 
-        if ( request()->ajax() ) {
-            return $this->dist_by_function( $function );
-        }           
+        if (request()->ajax()) {
+            return $this->dist_by_function($function);
+        }
 
         die();
-
     }
 
 
     /*  public function dial(){
-        
+
         $tel_no = request()->query('tel_no');
         $call_id = request()->session()->get('dialer.call_id.' . auth()->user()->organization_id);
         $dialercall = Call::find($call_id);
         info($dialercall);
         $call = FunctionCall::send_call(['to'=>$tel_no,'from'=>$dialercall->destination,'response'=>route('webdialer.response'),'statusCallback'=>route('webdialer.responseCallback', ['client_id' => $call_id, 'organization_id' => auth()->user()->organization_id])]);
-        if(isset($call['error'])){ 
+        if(isset($call['error'])){
             FunctionCall::send_to_websocket($call_id,['type'=>1,'data'=>['status'=>'Failed','call_id'=>'','status-code'=> CallStatusEnum::Failed]]);
             return $call;
         }
-        
+
         session(['dialer.outgoing.call_id' => $call['call_id']]);
 
         $voice_response = new VoiceResponse;
@@ -167,71 +161,72 @@ class DialerController extends Controller {
         $call['error'] = false;
         return $call;
     }  */
-   
-    public function dial(){
+
+    public function dial()
+    {
         $tel_no = request()->query('tel_no');
-        $record = request()->query('record',true);
+        $record = request()->query('record', true);
         $call_id = request()->session()->get('dialer.call_id.' . auth()->user()->organization_id);
         $call = Call::find($call_id);
         $voice_response = new VoiceResponse;
-       // session(['dialer.outgoing.tel_no' => $tel_no]);
-        $voice_response->dial($tel_no,['record'=>$record,'callerId'=>$call->destination,'action'=>route('webdialer.statusCallback',['client_id' => $call_id]),'statusCallback'=>route('webdialer.responseCallback', ['client_id' => $call_id, 'tel_no' => $tel_no])]);
+        // session(['dialer.outgoing.tel_no' => $tel_no]);
+        $voice_response->dial($tel_no, ['record' => $record, 'callerId' => $call->destination, 'action' => route('webdialer.statusCallback', ['client_id' => $call_id]), 'statusCallback' => route('webdialer.responseCallback', ['client_id' => $call_id, 'tel_no' => $tel_no])]);
         $voice_response->redirect(route('webdialer.response'));
-        FunctionCall::modify_call($call_id,['responseXml'=>$voice_response->xml()]);
-        return ['success'=>true];
-    } 
+        FunctionCall::modify_call($call_id, ['responseXml' => $voice_response->xml()]);
+        return ['success' => true];
+    }
 
-    public function hangup(){
+    public function hangup()
+    {
         $response = new VoiceResponse();
         //$response->hangup();
         $call_id = request()->session()->get('dialer.call_id.' . auth()->user()->organization_id);
         $response->redirect(route('webdialer.response'));
-        return FunctionCall::modify_call($call_id,['responseXml'=>$response->xml()]);
+        return FunctionCall::modify_call($call_id, ['responseXml' => $response->xml()]);
     }
 
-    
 
-    public function forward(Request $request){
+
+    public function forward(Request $request)
+    {
         $response = new VoiceResponse();
 
-        if($request->has('forward')){
+        if ($request->has('forward')) {
             $response->dial($request->input('forward'));
-        }
-
-        else if( $request->has('function_id') && $request->has('destination_id')){
+        } else if ($request->has('function_id') && $request->has('destination_id')) {
             $func = Func::select('id')->where('func', $request->input('function_id'))->first();
 
-            $response->redirect(route('api.func_call',[
-                'func_id'=> $func->id,
-                'dest_id'=>$request->input('destination_id')
-            ]));    
+            $response->redirect(route('api.func_call', [
+                'func_id' => $func->id,
+                'dest_id' => $request->input('destination_id')
+            ]));
         }
-        
-        $response->hangup();
-        FunctionCall::modify_call(request()->get('call_id'),['responseXml'=>$response->xml()]);
 
-        
-        
+        $response->hangup();
+        FunctionCall::modify_call(request()->get('call_id'), ['responseXml' => $response->xml()]);
+
+
+
         //FunctionCall::send_to_websocket(request()->session()->get('dialer.call_id.' . auth()->user()->organization_id),['type'=>1,'data'=>['status'=>'Disconnected','call_id'=>'','status-code'=>3]]);
     }
 
-    public function getErrors( $validationErrors ) {
+    public function getErrors($validationErrors)
+    {
 
         $errors = [];
 
-        foreach ( $validationErrors as $field => $error ) {
+        foreach ($validationErrors as $field => $error) {
 
-            if ( isset( $error[0] ) ) {
+            if (isset($error[0])) {
                 $errors[$field] = $error[0];
             }
-
         }
 
         return $errors;
-
     }
 
-    public function dialer_connect_response(){
+    public function dialer_connect_response()
+    {
         //info("dialer connect response");
         //info(request()->input());
         $voice_response = new VoiceResponse;
@@ -240,70 +235,72 @@ class DialerController extends Controller {
         return $voice_response->xml();
     }
 
-    public function dial_status_callback($client_id){
+    public function dial_status_callback($client_id)
+    {
         $calldata = request()->input();
         info("dialer action  callback " . $client_id);
         $call = Call::find($calldata['call_id']);
-       
 
-        if($calldata['bridge_call_id'] != ''){
+
+        if ($calldata['bridge_call_id'] != '') {
             $call_history = [
-                'organization_id'=> $call->organization_id,
-                'call_id'=>$calldata['call_id'],
+                'organization_id' => $call->organization_id,
+                'call_id' => $calldata['call_id'],
                 'bridge_call_id' => $calldata['bridge_call_id'],
                 'duration' => $calldata['duration'],
                 'record_file' => isset($calldata['record_file']) ? $calldata['record_file'] : '',
-                'status' => ($calldata['dial_status'] == 1)?CallStatusEnum::Disconnected->value:CallStatusEnum::Failed->value
+                'status' => ($calldata['dial_status'] == 1) ? CallStatusEnum::Disconnected->value : CallStatusEnum::Failed->value
             ];
             CallHistory::create(
-               $call_history
+                $call_history
             );
- 
-            $call = Call::find( $calldata['bridge_call_id'] );
-            $call_resp = CallHandler::prepare_call_json( $call,false );
+
+            $call = Call::find($calldata['bridge_call_id']);
+            $call_resp = CallHandler::prepare_call_json($call, false);
             $call_resp['duration'] = $calldata['duration'];
             $call_resp['status-code'] = $call_history['status'];
-            $call_resp['status'] = ($calldata['dial_status'] == 1)?CallStatusEnum::Disconnected->getText():CallStatusEnum::Failed->getText();
+            $call_resp['status'] = ($calldata['dial_status'] == 1) ? CallStatusEnum::Disconnected->getText() : CallStatusEnum::Failed->getText();
             $call_resp['record_file'] = isset($calldata['record_file']) ? $calldata['record_file'] : '';
-            FunctionCall::send_to_websocket($client_id,['type'=>1,'data'=>$call_resp]);        
-        }else
-            FunctionCall::send_to_websocket($client_id,['type'=>1,'data'=>['status'=>'Failed','call_id'=>'','status-code'=>3]]);
-        
-        
+            FunctionCall::send_to_websocket($client_id, ['type' => 1, 'data' => $call_resp]);
+        } else
+            FunctionCall::send_to_websocket($client_id, ['type' => 1, 'data' => ['status' => 'Failed', 'call_id' => '', 'status-code' => 3]]);
+
+
         return $this->dialer_connect_response();
     }
 
 
-    public function dialer_response_callback($client_id){
+    public function dialer_response_callback($client_id)
+    {
         $calldata = request()->input();
-      
+
         info("dialer response callback");
         Log::info($calldata);
-    
+
 
         $type = 1;
-        if($client_id == 'webdialer') {
-            $client_id = $calldata['call_id']; 
-            $type = 0; 
-            if($calldata['status-code'] >= CallStatusEnum::Disconnected->value){
-               // info("dialer disconnecting");
+        if ($client_id == 'webdialer') {
+            $client_id = $calldata['call_id'];
+            $type = 0;
+            if ($calldata['status-code'] >= CallStatusEnum::Disconnected->value) {
+                // info("dialer disconnecting");
                 //$this->logout();
             }
-
         }
 
- 
 
-        $data = ['type'=>$type,'data'=>$calldata];
-        FunctionCall::send_to_websocket($client_id,$data);
+
+        $data = ['type' => $type, 'data' => $calldata];
+        FunctionCall::send_to_websocket($client_id, $data);
     }
 
 
-    public function web(){
+    public function web()
+    {
         return view('dialer.web.index');
     }
 
-     public function callHistory(Request $request, string $rawNumber): JsonResponse
+    public function callHistory(Request $request, string $rawNumber): JsonResponse
     {
         $orgId  = auth()->user()->organization_id;
         $number = $this->normalizePhone($rawNumber);
@@ -332,9 +329,9 @@ class DialerController extends Controller {
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($qq) use ($search) {
                     $qq->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name',  'like', "%{$search}%")
-                      ->orWhere('tel_no',     'like', "%{$search}%")
-                      ->orWhere('email',      'like', "%{$search}%");
+                        ->orWhere('last_name',  'like', "%{$search}%")
+                        ->orWhere('tel_no',     'like', "%{$search}%")
+                        ->orWhere('email',      'like', "%{$search}%");
                 });
             })
             ->latest('created_at')
@@ -359,10 +356,50 @@ class DialerController extends Controller {
 
         return response()->json(['results' => $results], 200);
     }
-
-    public function customerLookup(string $rawNumber): JsonResponse
+  /*   public function customerLookup(string $rawNumber, $organizationId = null): JsonResponse
     {
-        $orgId  = auth()->user()->organization_id;
+        $data = Contact::customerLookup($rawNumber, $organizationId);
+        return response()->json($data, 200);
+    }
+ */
+    private function normalizePhone(string $number): string
+    {
+        return preg_replace('/[^\d+]/', '', $number) ?? $number;
+    }
+
+       private function callListQuery(int|string $orgId, string $number, ?string $search, int $limit)
+    {
+        $search = $search !== null ? trim($search) : null;
+
+        return Call::where('organization_id', $orgId)
+            ->where(function ($q) use ($number, $search) {
+                $q->where('caller_id', $number)
+                    ->where('uas', 0);
+
+                if ($search !== null && $search !== '') {
+                    // branch with q: destination LIKE %q%
+                    $q->where('destination', 'like', "%{$search}%");
+                }
+            })
+            ->orWhere(function ($q) use ($number, $search) {
+                $q->where('destination', $number)
+                    ->where('uas', 1);
+
+                if ($search !== null && $search !== '') {
+                    // branch with q: caller_id LIKE %q%
+                    $q->where('caller_id', 'like', "%{$search}%");
+                }
+            })
+            ->where('status', '>=', CallStatusEnum::Disconnected->value)
+            ->latest('created_at')
+            ->limit($limit);
+    }
+
+
+  
+    public function customerLookup(string $rawNumber, $organizationId = null): JsonResponse
+    {
+        $orgId  = $organizationId ?? auth()->user()->organization_id;
         $number = $this->normalizePhone($rawNumber);
 
         // Tickets (unchanged logic; minor tidy)
@@ -439,9 +476,15 @@ class DialerController extends Controller {
                 $isIncoming ? 'from' : 'to',
                 $who,
             ];
-            if ($qualifier)          { $noteParts[] = "— {$qualifier}"; }
-            if ($statusText !== '—') { $noteParts[] = "({$statusText})"; }
-            if (!empty($durationStr)){ $noteParts[] = "• {$durationStr}"; }
+            if ($qualifier) {
+                $noteParts[] = "— {$qualifier}";
+            }
+            if ($statusText !== '—') {
+                $noteParts[] = "({$statusText})";
+            }
+            if (!empty($durationStr)) {
+                $noteParts[] = "• {$durationStr}";
+            }
 
             $timeline->push([
                 'type'      => 'call',
@@ -481,47 +524,9 @@ class DialerController extends Controller {
         return response()->json(array_merge($response, ['timeline' => $timeline]), 200);
     }
 
-    /* =========================
-       Helpers (DRY; no behavior change)
-       ========================= */
 
-    /**
-     * Build the base Call query for a number.
-     * - Mirrors your original where/orWhere logic.
-     * - If $search is provided: applies asymmetric LIKE filters (same as your code).
-     * - Always filters to terminal (>= Disconnected), latest first, limited.
-     */
-    private function callListQuery(int|string $orgId, string $number, ?string $search, int $limit)
-    {
-        $search = $search !== null ? trim($search) : null;
+ 
 
-        return Call::where('organization_id', $orgId)
-            ->where(function ($q) use ($number, $search) {
-                $q->where('caller_id', $number)
-                  ->where('uas', 0);
-
-                if ($search !== null && $search !== '') {
-                    // branch with q: destination LIKE %q%
-                    $q->where('destination', 'like', "%{$search}%");
-                }
-            })
-            ->orWhere(function ($q) use ($number, $search) {
-                $q->where('destination', $number)
-                  ->where('uas', 1);
-
-                if ($search !== null && $search !== '') {
-                    // branch with q: caller_id LIKE %q%
-                    $q->where('caller_id', 'like', "%{$search}%");
-                }
-            })
-            ->where('status', '>=', CallStatusEnum::Disconnected->value)
-            ->latest('created_at')
-            ->limit($limit);
-    }
-
-    /**
-     * Map a Call model to your history array shape (same fields / logic).
-     */
     private function mapCallToHistoryItem($c, $orgId): array
     {
         $fromNumber = $this->normalizePhone((string) optional($c)->caller_id);
@@ -556,9 +561,7 @@ class DialerController extends Controller {
         ];
     }
 
-    /**
-     * Return 1–2 letter initials from a name, multibyte-safe.
-     */
+
     private function initialsFromName(?string $name): ?string
     {
         $name = trim((string) $name);
@@ -573,18 +576,10 @@ class DialerController extends Controller {
         return Str::upper(mb_substr($parts[0], 0, 1) . mb_substr($parts[1], 0, 1));
     }
 
-    /**
-     * Very basic phone cleanup (strip spaces, dashes, etc.; keep + and digits).
-     * Replace with a proper E.164 lib when ready.
-     */
-    private function normalizePhone(string $number): string
-    {
-        return preg_replace('/[^\d+]/', '', $number) ?? $number;
-    }
 
-    /**
-     * Small in-request memoized display-name resolver.
-     */
+   
+
+
     private function displayNameForNumber(int|string $orgId, ?string $phone): ?string
     {
         static $memo = [];
@@ -609,9 +604,7 @@ class DialerController extends Controller {
         return $memo[$phone] = $phone;
     }
 
-    /**
-     * Accept enum|int|string|null and return CallStatusEnum|null.
-     */
+
     private function normalizeCallStatus($raw): ?CallStatusEnum
     {
         if ($raw instanceof CallStatusEnum) return $raw;
@@ -620,9 +613,7 @@ class DialerController extends Controller {
         return null;
     }
 
-    /**
-     * Human qualifier for the note based on status + duration.
-     */
+
     private function qualifierFromStatus(?CallStatusEnum $status, $rawDuration): ?string
     {
         $dur = is_numeric($rawDuration) ? (int) $rawDuration : null;
@@ -641,4 +632,5 @@ class DialerController extends Controller {
         };
     }
 
+    
 }

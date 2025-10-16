@@ -4,24 +4,15 @@
 
     <a class="app-sidebar__toggle" href="#" data-toggle="sidebar" aria-label="Hide Sidebar"></a>
 
-
-    <!-- Navbar Right Menu-->
     <ul class="app-nav">
 
 
-        <li class="dropdown">
-                    
-            <a class="app-nav__item show-notification" target="_blank" href="{{ route('dialer.web') }}" title="{{ __("Open Web Dialer") }}">
-
-                <i data-feather="phone-call"></i>
-            </a>
-        </li>
         <!--Notification Menu-->
         <li class="dropdown">
-            
-            <a class="app-nav__item show-notification" href="#" id="dailerCallButtonOnNav" title="{{ __("Link with Dialer") }}">
 
-                <i data-feather="link"></i>
+            <a class="app-nav__item show-notification" href="#" data-toggle="dropdown"
+                aria-label="Show notifications">
+                <i data-feather="phone-outgoing"></i>
             </a>
 
             <div class="app-notification dropdown-menu dropdown-menu-right shadow-dropdown p-3">
@@ -59,75 +50,6 @@
         </li>
 
 
-
-
-        <!--Notification Menu-->
-        <li class="dropdown">
-
-            <a class="app-nav__item show-notification" href="#" data-toggle="dropdown"
-                aria-label="Show notifications">
-
-                <i data-feather="bell"></i>
-
-                @if (auth()->check() && auth()->user()->unreadNotifications()->count() > 0)
-                    <span class="badge badge-warning"> {{ auth()->user()->unreadNotifications()->count() }} </span>
-                @endif
-
-            </a>
-
-
-            <ul class="app-notification dropdown-menu dropdown-menu-right shadow-dropdown">
-
-                @if (auth()->check())
-                    <li class="app-notification__title">{{ __('You have') }}
-                        {{ auth()->user()->unreadNotifications()->count() }} {{ __('new') }} <a href="#">
-                            {{ __('notifications') }}</a>.</li>
-                @endif
-
-                <div class="app-notification__content">
-
-                    @php
-                        $notificationMessageTypes = ['fa-exclamation-circle', 'fa-exclamation-triangle', 'fa-check'];
-                        $notificationColors = ['secodary', 'danger', 'success'];
-                        $pushNotificationIds = [];
-
-                    @endphp
-
-                    @if (auth()->check())
-
-
-                        @foreach (auth()->user()->unreadNotifications as $pushNotification)
-                            @php $notification = $pushNotification->data; @endphp
-                            <li>
-
-                                <a class="app-notification__item" href="javascript:;"><span
-                                        class="app-notification__icon"><span class="fa-stack fa-lg">
-                                            <i
-                                                class="fa fa-circle fa-stack-2x text-{{ $notificationColors[$notification['type']] }}"></i>
-                                            <i
-                                                class="fa {{ $notificationMessageTypes[$notification['type']] }} fa-stack-1x fa-inverse"></i></span></span>
-                                    <div>
-                                        <p class="app-notification__message">{{ $notification['msg'] }}</p>
-                                        <p class="app-notification__meta">
-                                            {{ $pushNotification->created_at->diffForHumans() }}</p>
-                                    </div>
-                                </a>
-                            </li>
-                        @endforeach
-
-                    @endif
-
-
-                </div>
-
-                @if (auth()->check() && auth()->user()->unreadNotifications->count() > 0)
-                    <li id="notification-params" class="app-notification__footer"><a
-                            href="{{ route('notifications.notification.index') }}">{{ __('See all notifications.') }}</a></li>
-                @endif
-            </ul>
-        </li>
-
-
         <!-- User Menu-->
         <li class="dropdown">
 
@@ -135,17 +57,19 @@
                 data-toggle="dropdown" aria-label="Open Profile Menu">
                 <img src="{{ asset('images/profile.png') }}" height="48px" alt="">
                 <div class="author">
-                    @if (auth()->check())
-                        <p class="name">{{ ucwords(auth()->user()->name) }}</p>
-                    @endif
-
-                    <span
-                        class="title">{{ auth()->check() && auth()->user()->role == 'admin' ? __('Administrator') : __('Client') }}</span>
+                    <p class="name"> </p>
+                    <span class="title">Agent</span>
                 </div>
             </a>
 
             <ul class="shadow-dropdown dropdown-menu settings-menu dropdown-menu-right">
-             
+
+                <li>
+                    <a class="dropdown-item" href="{{ route('users.user.index') }}">
+                        <i data-feather="users"></i> {{ __('Users') }}
+                    </a>
+                </li>
+
 
                 <li>
                     <a class="dropdown-item" href="{{ route('user.profile.index') }}">
@@ -158,14 +82,12 @@
                         <i data-feather="lock"></i> {{ __('Change Password') }}
                     </a>
                 </li>
-                @can('su.license.*')
                 <li>
                     <a id="btn-lc-modal" class="dropdown-item" href="#" data-toggle="modal"
                         data-target="#licenseModal">
-                        <i data-feather="key"></i> {{ __('License Info') }}
+                        <i data-feather="key"></i> {{ __('Activate License') }}
                     </a>
                 </li>
-                @endcan
                 <li>
                     <form method="post" id="logout-form" action="{{ route('logout') }}"> @csrf </form>
                     <a class="dropdown-item"
@@ -200,8 +122,6 @@
         </div>
     </div>
 </div>
-
-
 
 
 @push('script')
@@ -293,41 +213,9 @@
                     }
                 });
 
-            });
-          
+            })
 
-        function clearErrorForm(activeForm) {
-            var is_invalids = activeForm.find('.is-invalid');
-
-            is_invalids.each((index, item) => {
-                $(item).removeClass('is-invalid');
-            });
-
-            var invalid_feedbacks = activeForm.find('.invalid-feedback strong')
-            invalid_feedbacks.each((index, item) => {
-                $(item).text('');
-            });
-
-        }
-
-        function resetForm(activeForm) {
-            activeForm.trigger("reset");
-        }
-
-        function showToast(message, success = true) {
-
-            let toast = {
-                title: (success) ? "Success" : "Failed",
-                message: message,
-                status: (success) ? TOAST_STATUS.SUCCESS : TOAST_STATUS.DANGER,
-                timeout: 5000
-            }
-
-            Toast.create(toast);
-        }
-
-
-          /*   $("#to").keyup(function() {
+            $("#to").keyup(function() {
                 this.value = this.value.replace(/[^0-9\.]/g, '');
             });
 
@@ -381,10 +269,38 @@
 
 
             });
- */
+
+            function clearErrorForm(activeForm) {
+                var is_invalids = activeForm.find('.is-invalid');
+
+                is_invalids.each((index, item) => {
+                    $(item).removeClass('is-invalid');
+                });
+
+                var invalid_feedbacks = activeForm.find('.invalid-feedback strong')
+                invalid_feedbacks.each((index, item) => {
+                    $(item).text('');
+                });
+
+            }
+
+            function resetForm(activeForm) {
+                activeForm.trigger("reset");
+            }
+
+            function showToast(message, success = true) {
+
+                let toast = {
+                    title: (success) ? "Success" : "Failed",
+                    message: message,
+                    status: (success) ? TOAST_STATUS.SUCCESS : TOAST_STATUS.DANGER,
+                    timeout: 5000
+                }
+
+                Toast.create(toast);
+            }
+
+
         });
-
-
     </script>
-  
 @endpush

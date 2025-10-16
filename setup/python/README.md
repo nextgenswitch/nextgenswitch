@@ -36,7 +36,7 @@ You can script these commands or add the container to a Docker Compose stack if 
 To run the bridge directly on the host while keeping dependencies isolated, create a virtual environment inside `setup/python`:
 
 ```bash
-cd /usr/share/nginx/html/laravel/easypbx/setup/python
+cd /var/www/html/easypbx/setup/python
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -49,7 +49,7 @@ When finished, exit the environment with `deactivate`. On Windows PowerShell use
 After activating the virtual environment, you can detach the script using `nohup` so it survives the current shell session:
 
 ```bash
-cd /usr/share/nginx/html/laravel/easypbx/setup/python
+cd /var/www/html/easypbx//setup/python
 source .venv/bin/activate
 nohup python webrtc_bridge.py > ../../storage/logs/webrtc_bridge.log 2>&1 &
 ```
@@ -61,15 +61,14 @@ To keep the bridge running on a non-container host, create a Supervisor program 
 
 ```
 [program:webrtc_bridge]
-command=/usr/share/nginx/html/laravel/easypbx/setup/python/.venv/bin/python /usr/share/nginx/html/laravel/easypbx/setup/python/webrtc_bridge.py
-directory=/usr/share/nginx/html/laravel/easypbx/setup/python
-environment=WEBSOCKET_URI="wss://janussg.nextgenswitch.com/websocket/?"
+command=/var/www/html/easypbx/setup/python/.venv/bin/python /var/www/html/easypbx/setup/python/webrtc_bridge.py
+directory=/var/www/html/easypbx/setup/python
 autostart=true
 autorestart=true
 stopsignal=TERM
-stdout_logfile=/usr/share/nginx/html/laravel/easypbx/storage/logs/webrtc_bridge.out.log
-stderr_logfile=/usr/share/nginx/html/laravel/easypbx/storage/logs/webrtc_bridge.err.log
-user=www-data
+stdout_logfile=/var/www/html/easypbx/storage/logs/webrtc_bridge.out.log
+stderr_logfile=/var/www/html/easypbx/storage/logs/webrtc_bridge.err.log
+user=apache
 ```
 
 Adjust the interpreter path, repo location, environment variables, and service user to match your system. Ensure the `.venv` exists (`python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`) before starting the service. Then reload Supervisor with `supervisorctl reread` and `supervisorctl update`. Manage the service via `supervisorctl status|start|stop webrtc_bridge` and tail logs with `supervisorctl tail -f webrtc_bridge`.

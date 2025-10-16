@@ -6,6 +6,14 @@
         $(document).ready(function(){
             let pieChartCallStatsInstance;
 
+
+            var call_limit = '{{ config('licence.call_limit') }}';
+            
+            if( ! parseInt(call_limit) > 0 ){
+                console.log('Licence not found');
+                $("#btn-lc-modal").click()
+            }
+            
             $.get("{{ route('dashboard.extension.stats') }}", function(response){
                 // console.log(response);
                 extensionStats(response.online, response.offline);
