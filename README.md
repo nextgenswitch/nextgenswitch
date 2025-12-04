@@ -62,6 +62,16 @@ Dial out with optional audio:
 </Dial>
 ```
 
+Connect with a AI Voice Assistant stream like pipecat:
+
+```xml
+<Connect>
+  <Stream url="ws://example.com/gemini" >
+  <parameter name="google_api_key" value="your_api_key" />
+  </stream>
+</Connect>
+```
+
 Trigger a call via API:
 
 ```bash
