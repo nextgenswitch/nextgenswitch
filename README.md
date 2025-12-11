@@ -35,6 +35,11 @@
 - Product docs: https://nextgenswitch.com/docs
 - Programmable Voice API: https://nextgenswitch.com/docs/programmable-voice-api/
 
+## Plans and pricing
+
+- pricing plans: https://nextgenswitch.com/plans-and-pricing/
+- Free cloud instance: https://nextgenswitch.com/apply-for-free/
+
 ## Developer Quick Start (Voice Verbs)
 
 Hello World response (Twilio‑style verbs):
