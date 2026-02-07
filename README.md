@@ -88,6 +88,13 @@ curl \
   http://NEXTGENSWITCH_URL/api/v1/call
 ```
 
+## Deploy (1-Click)
+
+[![Deploy to DigitalOcean](https://www.deploytodo.com/do-btn-blue.svg)](https://marketplace.digitalocean.com/apps/nextgenswitch)
+
+Or open the Marketplace listing: https://marketplace.digitalocean.com/apps/nextgenswitch
+
+
 ## Notes
 
 - Replace placeholders like `YOUR_AUTH_CODE` and `NEXTGENSWITCH_URL` with your actual values.
