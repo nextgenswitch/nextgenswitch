@@ -1,8 +1,28 @@
 {
-    "name": "laravel/laravel",
+    "name": "nextgenswitch/nextgenswitch",
     "type": "project",
-    "description": "The Laravel Framework.",
-    "keywords": ["framework", "laravel"],
+    "description": "Open-source SIP softswitch, multi-tenant IP PBX, contact center, IVR and programmable voice API platform.",
+    "keywords": [
+        "nextgenswitch",
+        "softswitch",
+        "sip",
+        "voip",
+        "ip-pbx",
+        "multi-tenant-pbx",
+        "contact-center",
+        "call-center",
+        "programmable-voice",
+        "ivr",
+        "voice-api",
+        "ai-voice-agent",
+        "laravel"
+    ],
+    "homepage": "https://nextgenswitch.com/",
+    "support": {
+        "docs": "https://nextgenswitch.com/docs/",
+        "issues": "https://github.com/nextgenswitch/nextgenswitch/issues",
+        "source": "https://github.com/nextgenswitch/nextgenswitch"
+    },
     "license": "MIT",
     "require": {
         "php": "^8.1",
