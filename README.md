@@ -4,8 +4,6 @@
 
 **NextGenSwitch is a programmable omnichannel communications platform for AI call center software, cloud PBX operations, AI message automation, voice and chat API workflows, contact center teams, and campaign automation.**
 
-This repository is the public information and installation entry point for NextGenSwitch. The previous application source is preserved on the [`archive/source-code-2026-07-18`](../../tree/archive/source-code-2026-07-18) branch for historical reference.
-
 ## Platform Overview
 
 NextGenSwitch helps businesses, BPOs, telecom providers, SaaS teams, and service providers operate voice and messaging workflows from one platform.
