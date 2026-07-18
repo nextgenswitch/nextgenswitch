@@ -1,5 +1,7 @@
 # NextGenSwitch
 
+[![NextGenSwitch logo](https://nextgenswitch.com/assets/img/brand/nextgenswitch-logo.png)](https://nextgenswitch.com/)
+
 **NextGenSwitch is a programmable omnichannel communications platform for AI call center software, cloud PBX operations, AI message automation, voice and chat API workflows, contact center teams, and campaign automation.**
 
 This repository is the public information and installation entry point for NextGenSwitch. The previous application source is preserved on the [`archive/source-code-2026-07-18`](../../tree/archive/source-code-2026-07-18) branch for historical reference.
