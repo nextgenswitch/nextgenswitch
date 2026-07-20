@@ -83,7 +83,7 @@ Need help deploying, configuring, integrating, or customizing NextGenSwitch? Pro
 - CRM, e-commerce, API, and custom workflow integration
 - Troubleshooting, migration, training, and ongoing technical support
 
-[**Hire NextGenSwitch professional support on Fiverr →**](https://fiverr.com/iftek_a)
+[**Hire NextGenSwitch professional support on Fiverr →**](https://fiverr.com/iftek_ai)
 
 [**Book a 30-minute consultation on Calendly →**](https://calendly.com/bdmasum/30min)
 
