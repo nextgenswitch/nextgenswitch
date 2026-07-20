@@ -85,6 +85,8 @@ Need help deploying, configuring, integrating, or customizing NextGenSwitch? Pro
 
 [**Hire NextGenSwitch professional support on Fiverr →**](https://www.fiverr.com/s/gDAVeyY)
 
+[**Book a 30-minute consultation on Calendly →**](https://calendly.com/bdmasum/30min)
+
 > Professional services are scoped separately from the open-source SDKs, infrastructure, SIP/PSTN services, phone numbers, and third-party AI-provider charges.
 
 ## Support
@@ -92,5 +94,6 @@ Need help deploying, configuring, integrating, or customizing NextGenSwitch? Pro
 - Website: [nextgenswitch.com](https://nextgenswitch.com/)
 - Contact: [nextgenswitch.com/contact](https://nextgenswitch.com/contact-us/)
 - Professional support: [Hire us on Fiverr](https://www.fiverr.com/s/gDAVeyY)
+- Book a consultation: [Schedule 30 minutes on Calendly](https://calendly.com/bdmasum/30min)
 - Email: [contact@nextgenswitch.com](mailto:contact@nextgenswitch.com)
 - Company: Infosoftbd Solutions, Bangladesh
