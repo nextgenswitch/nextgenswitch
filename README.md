@@ -18,22 +18,34 @@ NextGenSwitch helps businesses, BPOs, telecom providers, SaaS teams, and service
 | Programmable Voice API | XML voice verbs, API-driven call control, WebSocket streaming, speech, and DTMF input |
 | White-label deployments | Multi-tenant communications services for providers and platform operators |
 
+## Official Developer SDKs
+
+Build against the [NextGenSwitch Programmable Voice API](https://nextgenswitch.com/docs/programmable-voice-api/) with official, MIT-licensed SDKs:
+
+| Language | SDK | Highlights |
+| --- | --- | --- |
+| PHP 8.1+ | [nextgenswitch-php](https://github.com/nextgenswitch/nextgenswitch-php) | Call control, Voice XML, recordings, streaming, and typed webhook models |
+| Python 3.9+ | [nextgenswitch-python](https://github.com/nextgenswitch/nextgenswitch-python) | Sync and async clients, Voice XML, callback parsing, and typed errors |
+| Node.js 18+ | [nextgenswitch-nodejs](https://github.com/nextgenswitch/nextgenswitch-nodejs) | TypeScript-first ESM/CommonJS package, call control, Voice XML, and webhook helpers |
+
+Visit the [Developer Hub](https://nextgenswitch.com/developers/) for SDK comparison and the first-call quickstart. Check each SDK README for its current installation channel.
+
 ## Products
 
-- [Virtual PBX and Call Center](https://nextgenswitch.com/virtual-pbx/)
-- [AI-driven IVR](https://nextgenswitch.com/ai-ivr/)
-- [Call Campaign, Broadcast and Survey](https://nextgenswitch.com/call-campaign-broadcast-and-survey/)
-- [Virtual Voice AI Assistant](https://nextgenswitch.com/virtual-voice-ai-assistant/)
-- [AI Messaging Automation](https://nextgenswitch.com/ai-message-automation/)
-- [White-Label Multi-Tenant Contact Center](https://nextgenswitch.com/white-label-multi-tenant-contact-center/)
+- [Virtual PBX and Call Center](https://nextgenswitch.com/products/virtual-pbx/)
+- [AI-driven IVR](https://nextgenswitch.com/products/ai-ivr/)
+- [Call Campaign, Broadcast and Survey](https://nextgenswitch.com/products/call-campaign/)
+- [Virtual Voice AI Assistant](https://nextgenswitch.com/products/virtual-voice-ai-assistant/)
+- [AI Messaging Automation](https://nextgenswitch.com/products/ai-message-automation/)
+- [White-Label Multi-Tenant Contact Center](https://nextgenswitch.com/products/white-label-multi-tenant-contact-center/)
 
 ## Solutions
 
-- [Automated Voice Calling](https://nextgenswitch.com/automated-voice-calling/)
-- [Contact Center](https://nextgenswitch.com/contact-center/)
-- [AI Voice Agents](https://nextgenswitch.com/ai-voice-agents/)
-- [Programmable Voice API Integration](https://nextgenswitch.com/programmable-voice-api-integration/)
-- [Custom Voice Applications](https://nextgenswitch.com/custom-voice-application/)
+- [Automated Voice Calling](https://nextgenswitch.com/solutions/automated-voice-calling/)
+- [Contact Center](https://nextgenswitch.com/solutions/contact-center/)
+- [AI Voice Agents](https://nextgenswitch.com/solutions/ai-voice-agents/)
+- [Programmable Voice API Integration](https://nextgenswitch.com/solutions/voice-api-integration/)
+- [Custom Voice Applications](https://nextgenswitch.com/solutions/custom-voice-application/)
 
 ## Installation
 
@@ -43,7 +55,7 @@ Choose a supported deployment route, review infrastructure requirements, and val
 - Follow the [official installation documentation](https://nextgenswitch.com/docs/installation/)
 - [Deploy from the DigitalOcean Marketplace](https://marketplace.digitalocean.com/apps/nextgenswitch)
 - [Apply for a free pilot instance](https://nextgenswitch.com/apply-for-free/)
-- [Contact NextGenSwitch](https://nextgenswitch.com/contact/) for assisted, on-premises, cloud, or provider deployments
+- [Contact NextGenSwitch](https://nextgenswitch.com/contact-us/) for assisted, on-premises, cloud, or provider deployments
 
 ## Documentation and Evaluation
 
@@ -61,13 +73,27 @@ Production results depend on the selected infrastructure, SIP carrier, PSTN conn
 
 Do not publish SIP credentials, API keys, phone lists, call recordings, customer data, or other sensitive information in GitHub issues.
 
+## Professional Services
+
+Need help deploying, configuring, integrating, or customizing NextGenSwitch? Professional services are available for:
+
+- Call center and Virtual PBX deployment
+- SIP trunk, routing, IVR, queue, and campaign configuration
+- AI voice agents and messaging automation
+- CRM, e-commerce, API, and custom workflow integration
+- Troubleshooting, migration, training, and ongoing technical support
+
+[**Hire NextGenSwitch professional support on Fiverr →**](https://www.fiverr.com/s/gDAVeyY)
+
+[**Book a 30-minute consultation on Calendly →**](https://calendly.com/bdmasum/30min)
+
+> Professional services are scoped separately from the open-source SDKs, infrastructure, SIP/PSTN services, phone numbers, and third-party AI-provider charges.
+
 ## Support
 
 - Website: [nextgenswitch.com](https://nextgenswitch.com/)
-- Contact: [nextgenswitch.com/contact](https://nextgenswitch.com/contact/)
+- Contact: [nextgenswitch.com/contact](https://nextgenswitch.com/contact-us/)
+- Professional support: [Hire us on Fiverr](https://www.fiverr.com/s/gDAVeyY)
+- Book a consultation: [Schedule 30 minutes on Calendly](https://calendly.com/bdmasum/30min)
 - Email: [contact@nextgenswitch.com](mailto:contact@nextgenswitch.com)
 - Company: Infosoftbd Solutions, Bangladesh
-
-## Historical Source
-
-The former repository contents are available on [`archive/source-code-2026-07-18`](../../tree/archive/source-code-2026-07-18). That branch is retained as an old snapshot and is not the current installation channel.
