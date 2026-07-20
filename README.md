@@ -93,7 +93,7 @@ Need help deploying, configuring, integrating, or customizing NextGenSwitch? Pro
 
 - Website: [nextgenswitch.com](https://nextgenswitch.com/)
 - Contact: [nextgenswitch.com/contact](https://nextgenswitch.com/contact-us/)
-- Professional support: [Hire us on Fiverr](https://fiverr.com/iftek_a)
+- Professional support: [Hire us on Fiverr](https://fiverr.com/iftek_ai)
 - Book a consultation: [Schedule 30 minutes on Calendly](https://calendly.com/bdmasum/30min)
 - Email: [contact@nextgenswitch.com](mailto:contact@nextgenswitch.com)
 - Company: Infosoftbd Solutions, Bangladesh
