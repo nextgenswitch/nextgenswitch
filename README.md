@@ -83,7 +83,7 @@ Need help deploying, configuring, integrating, or customizing NextGenSwitch? Pro
 - CRM, e-commerce, API, and custom workflow integration
 - Troubleshooting, migration, training, and ongoing technical support
 
-[**Hire NextGenSwitch professional support on Fiverr →**](https://www.fiverr.com/s/gDAVeyY)
+[**Hire NextGenSwitch professional support on Fiverr →**](https://fiverr.com/iftek_a)
 
 [**Book a 30-minute consultation on Calendly →**](https://calendly.com/bdmasum/30min)
 
@@ -93,7 +93,7 @@ Need help deploying, configuring, integrating, or customizing NextGenSwitch? Pro
 
 - Website: [nextgenswitch.com](https://nextgenswitch.com/)
 - Contact: [nextgenswitch.com/contact](https://nextgenswitch.com/contact-us/)
-- Professional support: [Hire us on Fiverr](https://www.fiverr.com/s/gDAVeyY)
+- Professional support: [Hire us on Fiverr](https://fiverr.com/iftek_a)
 - Book a consultation: [Schedule 30 minutes on Calendly](https://calendly.com/bdmasum/30min)
 - Email: [contact@nextgenswitch.com](mailto:contact@nextgenswitch.com)
 - Company: Infosoftbd Solutions, Bangladesh
